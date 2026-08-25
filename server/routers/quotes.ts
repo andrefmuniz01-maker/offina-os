@@ -20,6 +20,7 @@ import {
   tenantMembers,
   tenantSettings,
   tenants,
+  users,
   vehicles,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
@@ -45,6 +46,22 @@ const allowedRequestTransitions: Record<z.infer<typeof requestStatus>, z.infer<t
 
 export function isRequestTransitionAllowed(current: z.infer<typeof requestStatus>, next: z.infer<typeof requestStatus>) {
   return current === next || allowedRequestTransitions[current].includes(next);
+}
+
+const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
+const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
+  draft: ["ready", "cancelled"],
+  ready: ["sent", "cancelled"],
+  sent: ["viewed", "approved", "rejected", "expired", "cancelled"],
+  viewed: ["approved", "rejected", "expired", "cancelled"],
+  approved: [],
+  rejected: ["ready"],
+  expired: ["ready", "cancelled"],
+  cancelled: [],
+};
+
+export function isQuoteTransitionAllowed(current: z.infer<typeof quoteStatus>, next: z.infer<typeof quoteStatus>) {
+  return current === next || allowedQuoteTransitions[current].includes(next);
 }
 
 export function buildReservationPlan(
@@ -187,8 +204,9 @@ export const quoteRequestRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    return db.select({ request: quoteRequests, customer: customers, vehicle: vehicles }).from(quoteRequests)
+    return db.select({ request: quoteRequests, customer: customers, vehicle: vehicles, assignedUser: { id: users.id, name: users.name, email: users.email } }).from(quoteRequests)
       .leftJoin(customers, eq(customers.id, quoteRequests.customerId)).leftJoin(vehicles, eq(vehicles.id, quoteRequests.vehicleId))
+      .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
       .orderBy(desc(quoteRequests.createdAt));
   }),
@@ -272,7 +290,7 @@ export const quoteRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const quote = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
-    if (!quote || ["approved", "rejected", "expired", "cancelled"].includes(quote.quote.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não pode ser enviado." });
+    if (!quote || !isQuoteTransitionAllowed(quote.quote.status, "sent")) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não pode ser enviado." });
     await db.transaction(async (tx) => {
       await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(eq(quotes.id, input.quoteId));
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
@@ -351,12 +369,13 @@ export const quoteRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const row = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles, tenant: tenants, branding: tenantBranding }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).innerJoin(tenants, eq(tenants.id, quotes.tenantId)).leftJoin(tenantBranding, eq(tenantBranding.tenantId, tenants.id)).where(eq(quotes.publicToken, input.token)).limit(1))[0];
     if (!row || !row.tenant.active) return null;
-    if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && !["approved", "rejected"].includes(row.quote.status)) {
+    if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && isQuoteTransitionAllowed(row.quote.status, "expired")) {
       await db.update(quotes).set({ status: "expired" }).where(eq(quotes.id, row.quote.id));
       return { expired: true as const };
     }
+    if (row.quote.status === "expired") return { expired: true as const };
     const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, row.quote.id)).orderBy(asc(quoteItems.sortOrder));
-    if (!row.quote.viewedAt && row.quote.status === "sent") {
+    if (!row.quote.viewedAt && isQuoteTransitionAllowed(row.quote.status, "viewed")) {
       await db.transaction(async (tx) => {
         await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(eq(quotes.id, row.quote.id));
         await tx.insert(quoteEvents).values({ tenantId: row.quote.tenantId, quoteId: row.quote.id, type: "viewed" });
@@ -372,7 +391,7 @@ export const quoteRouter = router({
     if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Orçamento não encontrado." });
     if (quote.publicTokenExpiresAt.getTime() < Date.now()) throw new TRPCError({ code: "BAD_REQUEST", message: "Este link de orçamento expirou." });
     if (quote.status === "approved" || quote.status === "rejected") return { status: quote.status, idempotent: true };
-    if (!["ready", "sent", "viewed"].includes(quote.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não está disponível para decisão." });
+    if (!isQuoteTransitionAllowed(quote.status, input.decision)) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não está disponível para decisão." });
     await db.transaction(async (tx) => {
       if (input.decision === "rejected") {
         await tx.update(quotes).set({ status: "rejected", rejectedAt: new Date() }).where(eq(quotes.id, quote.id));

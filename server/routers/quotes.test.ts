@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReservationPlan, isRequestTransitionAllowed, renderQuoteMessage } from "./quotes";
+import { buildReservationPlan, isQuoteTransitionAllowed, isRequestTransitionAllowed, renderQuoteMessage } from "./quotes";
 
 describe("transições de solicitação de orçamento", () => {
   it("permite o fluxo comercial principal até envio", () => {
@@ -51,5 +51,20 @@ describe("modelo manual de mensagem de orçamento", () => {
   it("mantém um texto padrão seguro quando a oficina ainda não configurou um modelo", () => {
     expect(renderQuoteMessage(null, values)).toContain("Olá, Marina!");
     expect(renderQuoteMessage(null, values)).toContain("/orcamento/token-seguro");
+  });
+});
+
+describe("transições de orçamento", () => {
+  it("permite apenas a progressão comercial esperada", () => {
+    expect(isQuoteTransitionAllowed("draft", "ready")).toBe(true);
+    expect(isQuoteTransitionAllowed("ready", "sent")).toBe(true);
+    expect(isQuoteTransitionAllowed("sent", "viewed")).toBe(true);
+    expect(isQuoteTransitionAllowed("viewed", "approved")).toBe(true);
+  });
+
+  it("bloqueia saltos e mudanças após aprovação", () => {
+    expect(isQuoteTransitionAllowed("draft", "approved")).toBe(false);
+    expect(isQuoteTransitionAllowed("ready", "approved")).toBe(false);
+    expect(isQuoteTransitionAllowed("approved", "sent")).toBe(false);
   });
 });

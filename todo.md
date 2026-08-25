@@ -60,3 +60,7 @@
 - [x] Vincular o lembrete de pós-venda a cliente e veículo de forma explícita na API e na interface, com origem da entrega e ação recomendada.
 - [x] Exibir no histórico do cliente e do veículo os eventos de pós-venda sugerido vinculados à entrega da OS.
 - [x] Ampliar as APIs de histórico de cliente e veículo com data da entrega, alerta sugerido, ação recomendada e link relacionado.
+- [ ] Implementar e exibir tempo em fila das solicitações desde a última mudança de status.
+- [ ] Adicionar interface de atribuição de responsável da solicitação com trilha de mudanças visível.
+- [x] Criar matriz explícita e testável de transições de orçamento, reutilizada nas mutações públicas e internas.
+- [ ] Cobrir o bloqueio de transições inválidas de solicitações e orçamentos com testes.
