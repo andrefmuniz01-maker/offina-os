@@ -20,6 +20,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const moneyInput = z.coerce.number().finite().positive().max(1_000_000_000);
+const listPageInput = z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) });
 
 function periodBounds(reference: Date) {
   const start = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), 1));
@@ -29,11 +30,12 @@ function periodBounds(reference: Date) {
 
 export const financialRouter = router({
   revenues: router({
-    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["expected", "received", "cancelled"]).optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["expected", "received", "cancelled"]).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.view");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      return db.select().from(revenues).where(input.status ? and(eq(revenues.tenantId, input.tenantId), eq(revenues.status, input.status)) : eq(revenues.tenantId, input.tenantId)).orderBy(desc(revenues.createdAt));
+      const rows = await db.select().from(revenues).where(input.status ? and(eq(revenues.tenantId, input.tenantId), eq(revenues.status, input.status)) : eq(revenues.tenantId, input.tenantId)).orderBy(desc(revenues.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
     markReceived: protectedProcedure.input(tenantIdInput.extend({ revenueId: z.number().int().positive(), paymentMethod: z.string().trim().min(2).max(64) })).mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
@@ -46,11 +48,12 @@ export const financialRouter = router({
     }),
   }),
   expenses: router({
-    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["planned", "paid", "cancelled"]).optional() })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["planned", "paid", "cancelled"]).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.view");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      return db.select().from(expenses).where(input.status ? and(eq(expenses.tenantId, input.tenantId), eq(expenses.status, input.status)) : eq(expenses.tenantId, input.tenantId)).orderBy(desc(expenses.expenseDate));
+      const rows = await db.select().from(expenses).where(input.status ? and(eq(expenses.tenantId, input.tenantId), eq(expenses.status, input.status)) : eq(expenses.tenantId, input.tenantId)).orderBy(desc(expenses.expenseDate)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
     create: protectedProcedure.input(tenantIdInput.extend({ category: z.string().trim().min(2).max(96), amount: moneyInput, expenseDate: z.date(), dueAt: z.date().optional(), recurrence: z.string().trim().max(32).optional(), notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");

@@ -74,3 +74,5 @@
 - [x] Expor taxa-hora e margem padrão de peças na configuração e testar o upsert de settings e branding sem registro prévio.
 - [x] Reforçar o escopo de tenant nos joins de dashboard e notificações internas.
 - [x] Bloquear baixa de despesa inexistente no tenant e registrar auditoria somente após a atualização confirmada.
+- [x] Paginar receitas e despesas por tenant, com filtros de status e estados de interface seguros.
+- [x] Exibir erros explícitos de dashboard, receitas e despesas no financeiro, sem confundir falha, permissão e estado vazio.
