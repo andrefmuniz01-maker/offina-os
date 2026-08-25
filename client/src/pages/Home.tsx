@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { Bell, Boxes, CalendarClock, ChartNoAxesCombined, ClipboardList, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShoppingCart, UsersRound, Wrench } from "lucide-react";
+import { Bell, Boxes, CalendarClock, ChartNoAxesCombined, ClipboardList, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, ShoppingCart, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ const menuItems: DashboardMenuItem[] = [
   { icon: UsersRound, label: "Clientes", path: "/clientes" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: Bell, label: "Notificações", path: "/notificacoes" },
+  { icon: ShieldCheck, label: "Auditoria", path: "/auditoria" },
   { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 

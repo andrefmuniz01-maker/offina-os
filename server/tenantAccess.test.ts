@@ -27,4 +27,20 @@ describe("permissões por perfil de oficina", () => {
     expect(hasPermission({ ...baseAccess, isPlatformSuperAdmin: true }, "tenant.manage")).toBe(true);
     expect(hasPermission({ ...baseAccess, isPlatformSuperAdmin: true }, "financial.manage")).toBe(true);
   });
+
+  it("libera gestão operacional e financeira apenas para dono e administrador", () => {
+    for (const role of ["owner", "admin"] as const) {
+      const permissions = resolvePermissions(role);
+      expect(permissions).toContain("team.manage");
+      expect(permissions).toContain("inventory.manage");
+      expect(permissions).toContain("financial.manage");
+    }
+  });
+
+  it("não permite que permissões extras removam os limites nativos de um técnico", () => {
+    const permissions = resolvePermissions("technician", ["customers.manage"]);
+    expect(permissions).toContain("work_orders.execute");
+    expect(permissions).toContain("customers.manage");
+    expect(permissions).not.toContain("financial.view");
+  });
 });
