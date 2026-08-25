@@ -118,3 +118,4 @@
 - [x] Impedir atribuição, transições e geração de orçamento a partir de solicitações sem tenant ativo, exibindo orientação de associação à oficina.
 - [x] Impedir filtros e consultas de relatórios acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
 - [x] Cobrir o bloqueio de solicitação pública quando o slug não estiver vinculado a uma oficina ativa, antes de qualquer transação.
+- [x] Cobrir a ausência de identidade e catálogo públicos quando o slug não estiver vinculado a uma oficina ativa.

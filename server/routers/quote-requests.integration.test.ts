@@ -102,6 +102,13 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
 });
 
 describe("quoteRequests.submitPublic — disponibilidade da oficina", () => {
+  it("não expõe identidade ou catálogo quando o slug não corresponde a uma oficina ativa", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.publicServices({ tenantSlug: "oficina-inativa" })).resolves.toBeNull();
+  });
+
   it("recusa a solicitação antes de qualquer transação quando a oficina não estiver ativa", async () => {
     mocks.db = buildDb([[]]);
     const caller = quoteRequestRouter.createCaller(createContext());
