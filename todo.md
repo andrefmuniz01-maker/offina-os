@@ -82,3 +82,4 @@
 - [x] Separar blocos financeiros do dashboard e ocultar despesas e resultado quando o perfil não tiver `financial.view`.
 - [x] Adaptar o relatório mensal e testar a ausência de dados financeiros para perfis com `reports.view` sem acesso financeiro.
 - [x] Permitir definir o horizonte da previsão de estoque e exibir reservas e agendamentos afetados sem expor custos a perfis restritos.
+- [x] Integrar preferências internas por usuário à central de notificações, sem habilitar e-mail ou envio automático externo.

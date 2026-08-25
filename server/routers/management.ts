@@ -6,6 +6,7 @@ import {
   customers,
   expenses,
   inventoryBalances,
+  notificationPreferences,
   notifications,
   products,
   quoteRequests,
@@ -109,15 +110,34 @@ export const dashboardRouter = router({
 });
 
 export const notificationRouter = router({
+  preferences: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const preference = (await db.select().from(notificationPreferences).where(and(eq(notificationPreferences.tenantId, input.tenantId), eq(notificationPreferences.userId, ctx.user.id))).limit(1))[0];
+    return preference ?? { tenantId: input.tenantId, userId: ctx.user.id, inAppEnabled: true, emailEnabled: false, enabledTypes: [] as string[] };
+  }),
+  updatePreferences: protectedProcedure.input(tenantIdInput.extend({ inAppEnabled: z.boolean(), enabledTypes: z.array(z.string().trim().min(1).max(64)).max(20) })).mutation(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const enabledTypes = Array.from(new Set(input.enabledTypes));
+    await db.insert(notificationPreferences).values({ tenantId: input.tenantId, userId: ctx.user.id, inAppEnabled: input.inAppEnabled, emailEnabled: false, enabledTypes }).onDuplicateKeyUpdate({ set: { inAppEnabled: input.inAppEnabled, emailEnabled: false, enabledTypes } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "notification_preferences.updated", entityType: "notification_preferences", entityId: ctx.user.id, after: { inAppEnabled: input.inAppEnabled, enabledTypes } });
+    return { success: true };
+  }),
   listMine: protectedProcedure.input(tenantIdInput.extend({ limit: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const preference = (await db.select().from(notificationPreferences).where(and(eq(notificationPreferences.tenantId, input.tenantId), eq(notificationPreferences.userId, ctx.user.id))).limit(1))[0];
+    if (preference && !preference.inAppEnabled) return [];
+    const enabledTypes = preference?.enabledTypes ?? [];
     return db.select({ notification: notifications, customer: { id: customers.id, name: customers.name, whatsapp: customers.whatsapp }, vehicle: { id: vehicles.id, make: vehicles.make, model: vehicles.model, plate: vehicles.plate } })
       .from(notifications)
       .leftJoin(customers, and(eq(customers.id, notifications.customerId), eq(customers.tenantId, notifications.tenantId)))
       .leftJoin(vehicles, and(eq(vehicles.id, notifications.vehicleId), eq(vehicles.tenantId, notifications.tenantId)))
-      .where(and(eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId))))
+      .where(and(eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId)), ...(enabledTypes.length ? [inArray(notifications.type, enabledTypes)] : [])))
       .orderBy(desc(notifications.createdAt)).limit(input.limit);
   }),
   markRead: protectedProcedure.input(tenantIdInput.extend({ notificationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
