@@ -125,8 +125,8 @@ export const workOrderRouter = router({
       if (uncompleted.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Conclua o checklist antes de finalizar a OS." });
     }
     await db.transaction(async (tx) => {
-      await tx.update(workOrders).set({ status: input.status, notes: input.notes ?? order.notes, completedAt: input.status === "completed" ? new Date() : order.completedAt, deliveredAt: input.status === "delivered" ? new Date() : order.deliveredAt }).where(eq(workOrders.id, input.workOrderId));
-      if (order.appointmentId) await tx.update(appointments).set({ status: input.status }).where(eq(appointments.id, order.appointmentId));
+      await tx.update(workOrders).set({ status: input.status, notes: input.notes ?? order.notes, completedAt: input.status === "completed" ? new Date() : order.completedAt, deliveredAt: input.status === "delivered" ? new Date() : order.deliveredAt }).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId)));
+      if (order.appointmentId) await tx.update(appointments).set({ status: input.status }).where(and(eq(appointments.id, order.appointmentId), eq(appointments.tenantId, input.tenantId)));
       if (input.status === "completed") {
         const existingRevenue = (await tx.select({ id: revenues.id }).from(revenues).where(and(eq(revenues.tenantId, input.tenantId), eq(revenues.workOrderId, input.workOrderId))).limit(1))[0];
         if (!existingRevenue) await tx.insert(revenues).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, customerId: order.customerId, vehicleId: order.vehicleId, amount: order.estimatedTotal, status: "expected", dueAt: new Date(), notes: `Receita prevista pela OS #${order.number}` });
@@ -139,8 +139,8 @@ export const workOrderRouter = router({
         for (const reservation of activeReservations) {
           const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, input.tenantId), eq(inventoryBalances.productId, reservation.productId))).limit(1))[0];
           if (!balance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Saldo de estoque não encontrado para liberar a reserva." });
-          await tx.update(inventoryReservations).set({ status: "released", releasedAt: new Date() }).where(eq(inventoryReservations.id, reservation.id));
-          await tx.update(inventoryBalances).set({ reservedQuantity: sql`greatest(${inventoryBalances.reservedQuantity} - ${reservation.quantity}, 0)` }).where(eq(inventoryBalances.id, balance.id));
+          await tx.update(inventoryReservations).set({ status: "released", releasedAt: new Date() }).where(and(eq(inventoryReservations.id, reservation.id), eq(inventoryReservations.tenantId, input.tenantId)));
+          await tx.update(inventoryBalances).set({ reservedQuantity: sql`greatest(${inventoryBalances.reservedQuantity} - ${reservation.quantity}, 0)` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
           await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: reservation.productId, type: "reservation_release", quantity: reservation.quantity, physicalDelta: "0", reservedDelta: sql`-${reservation.quantity}`, referenceType: "work_order", referenceId: input.workOrderId, createdByUserId: ctx.user.id, notes: "Reserva liberada no encerramento da ordem de serviço." });
         }
       }

@@ -22,8 +22,8 @@
 - [x] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
 - [x] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
 - [ ] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
-- [ ] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
-- [ ] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
+- [x] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
+- [x] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
 - [x] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
 - [ ] Implementar busca, filtros, paginação e estados vazios em módulos operacionais.
 - [ ] Implementar notificações internas por evento e preferências por usuário; preparar a entrega por e-mail mediante configuração.
@@ -86,3 +86,4 @@
 - [x] Impedir operações financeiras quando não houver tenant ativo e exibir uma orientação explícita em vez de um formulário acionável.
 - [x] Adicionar markup padrão por tenant, aplicá-lo ao preço sugerido e validar seu salvamento, recarregamento e efeito no catálogo.
 - [x] Impedir salvamento de configurações sem tenant ativo e orientar a associação à oficina antes de exibir o formulário administrativo.
+- [x] Validar e auditar a conclusão e entrega de OS, com receita prevista, pós-venda e liberação de reservas estritamente no tenant.
