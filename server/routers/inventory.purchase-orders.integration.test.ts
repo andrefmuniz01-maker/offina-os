@@ -94,4 +94,16 @@ describe("inventory.purchaseOrders.create — isolamento de fornecedor", () => {
       page: 1, pageSize: 10, hasMore: false,
     });
   });
+
+  it("mantém custo unitário apenas na listagem de perfil com permissão financeira", async () => {
+    mocks.hasPermission.mockReturnValue(true);
+    const order = { id: 62, tenantId: 4, number: 13, status: "received", createdAt: new Date("2026-08-25T12:00:00.000Z") };
+    const item = { id: 72, tenantId: 4, purchaseOrderId: 62, productId: 12, orderedQuantity: "2.000", receivedQuantity: "2.000", unitCost: "45.00" };
+    mocks.db = buildDb([[{ order, supplier: null }], [item]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.purchaseOrders.list({ tenantId: 4, page: 1, pageSize: 10 })).resolves.toEqual({
+      items: [{ order, supplier: null, items: [item] }], page: 1, pageSize: 10, hasMore: false,
+    });
+  });
 });
