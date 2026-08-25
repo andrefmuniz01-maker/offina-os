@@ -62,7 +62,7 @@ export default function Finance() {
     },
     onError: error => toast.error(error.message),
   });
-  const metrics = dashboard.data ? [
+  const metrics = dashboard.data?.finance ? [
     { label: "Recebido no mês", value: money.format(dashboard.data.sales.billing), icon: TrendingUp },
     { label: "Receita prevista", value: money.format(dashboard.data.sales.expectedRevenue), icon: ReceiptText },
     { label: "Despesas pagas", value: money.format(dashboard.data.finance.expenses), icon: CircleDollarSign },

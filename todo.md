@@ -43,7 +43,7 @@
 - [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
 - [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
 - [x] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
-- [ ] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
+- [x] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
 - [x] Completar os dados cadastrais e de contato da tela de configuração da oficina.
 - [x] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
 - [x] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
@@ -78,3 +78,6 @@
 - [x] Exibir erros explícitos de dashboard, receitas e despesas no financeiro, sem confundir falha, permissão e estado vazio.
 - [x] Auditar saldos e custos antes/depois em ajustes e recebimentos de estoque, reforçando os updates por tenant.
 - [x] Paginar a fila de solicitações por tenant, com filtro de status e estados explícitos de carregamento, vazio e erro.
+- [x] Criar relatório mensal por tenant com indicadores comerciais, operacionais e financeiros restritos por permissão.
+- [x] Separar blocos financeiros do dashboard e ocultar despesas e resultado quando o perfil não tiver `financial.view`.
+- [x] Adaptar o relatório mensal e testar a ausência de dados financeiros para perfis com `reports.view` sem acesso financeiro.

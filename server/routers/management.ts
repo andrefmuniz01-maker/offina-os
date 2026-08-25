@@ -15,14 +15,14 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
-import { requireTenantPermission } from "../tenantAccess";
+import { hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const moneyInput = z.coerce.number().finite().positive().max(1_000_000_000);
 const listPageInput = z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) });
 
-function periodBounds(reference: Date) {
+export function periodBounds(reference: Date) {
   const start = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth(), 1));
   const end = new Date(Date.UTC(reference.getUTCFullYear(), reference.getUTCMonth() + 1, 1));
   return { start, end };
@@ -78,20 +78,21 @@ export const financialRouter = router({
 
 export const dashboardRouter = router({
   overview: protectedProcedure.input(tenantIdInput.extend({ referenceDate: z.date().optional() })).query(async ({ ctx, input }) => {
-    await requireTenantPermission(ctx.user, input.tenantId, "reports.view");
+    const access = await requireTenantPermission(ctx.user, input.tenantId, "reports.view");
+    const canViewFinancials = hasPermission(access, "financial.view");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const { start, end } = periodBounds(input.referenceDate ?? new Date());
-    const [received, expected, spent, concluded, quoteStats, pendingQuotes, operation, stock] = await Promise.all([
+    const [received, expected, concluded, quoteStats, pendingQuotes, operation, stock] = await Promise.all([
       db.select({ total: sql<string>`coalesce(sum(${revenues.amount}), 0)` }).from(revenues).where(and(eq(revenues.tenantId, input.tenantId), eq(revenues.status, "received"), gte(revenues.receivedAt, start), sql`${revenues.receivedAt} < ${end}`)),
       db.select({ total: sql<string>`coalesce(sum(${revenues.amount}), 0)` }).from(revenues).where(and(eq(revenues.tenantId, input.tenantId), eq(revenues.status, "expected"))),
-      db.select({ total: sql<string>`coalesce(sum(${expenses.amount}), 0)` }).from(expenses).where(and(eq(expenses.tenantId, input.tenantId), eq(expenses.status, "paid"), gte(expenses.expenseDate, start), sql`${expenses.expenseDate} < ${end}`)),
       db.select({ count: sql<number>`count(*)` }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.status, "completed"), gte(workOrders.completedAt, start), sql`${workOrders.completedAt} < ${end}`)),
       db.select({ total: sql<string>`coalesce(sum(${quotes.total}), 0)`, count: sql<number>`count(*)`, approved: sql<number>`sum(case when ${quotes.status} = 'approved' then 1 else 0 end)` }).from(quotes).where(and(eq(quotes.tenantId, input.tenantId), gte(quotes.createdAt, start), sql`${quotes.createdAt} < ${end}`)),
       db.select({ total: sql<string>`coalesce(sum(${quotes.total}), 0)`, count: sql<number>`count(*)` }).from(quotes).where(and(eq(quotes.tenantId, input.tenantId), inArray(quotes.status, ["sent", "viewed", "ready"]))),
       db.select({ scheduled: sql<number>`sum(case when ${appointments.status} in ('scheduled','confirmed') then 1 else 0 end)`, inProgress: sql<number>`sum(case when ${workOrders.status} = 'in_service' then 1 else 0 end)`, yard: sql<number>`sum(case when ${workOrders.status} in ('received','diagnosis','awaiting_approval','awaiting_part','in_service') then 1 else 0 end)` }).from(workOrders).leftJoin(appointments, and(eq(appointments.workOrderId, workOrders.id), eq(appointments.tenantId, workOrders.tenantId))).where(eq(workOrders.tenantId, input.tenantId)),
       db.select({ critical: sql<number>`sum(case when ${inventoryBalances.physicalQuantity} - ${inventoryBalances.reservedQuantity} <= ${products.minStock} then 1 else 0 end)`, reserved: sql<number>`sum(case when ${inventoryBalances.reservedQuantity} > 0 then 1 else 0 end)` }).from(inventoryBalances).innerJoin(products, and(eq(products.id, inventoryBalances.productId), eq(products.tenantId, inventoryBalances.tenantId))).where(eq(inventoryBalances.tenantId, input.tenantId)),
     ]);
+    const spent = canViewFinancials ? await db.select({ total: sql<string>`coalesce(sum(${expenses.amount}), 0)` }).from(expenses).where(and(eq(expenses.tenantId, input.tenantId), eq(expenses.status, "paid"), gte(expenses.expenseDate, start), sql`${expenses.expenseDate} < ${end}`)) : [];
     const billing = Number(received[0]?.total ?? 0);
     const expensesTotal = Number(spent[0]?.total ?? 0);
     const completedOrders = Number(concluded[0]?.count ?? 0);
@@ -99,7 +100,7 @@ export const dashboardRouter = router({
     const approvedQuotes = Number(quoteStats[0]?.approved ?? 0);
     return {
       sales: { billing, expectedRevenue: Number(expected[0]?.total ?? 0), averageTicket: completedOrders ? billing / completedOrders : 0, completedOrders, quoteApprovalRate: quoteCount ? approvedQuotes / quoteCount : 0 },
-      finance: { expenses: expensesTotal, estimatedOperationalResult: billing - expensesTotal },
+      ...(canViewFinancials ? { finance: { expenses: expensesTotal, estimatedOperationalResult: billing - expensesTotal } } : {}),
       commercial: { pendingQuoteValue: Number(pendingQuotes[0]?.total ?? 0), pendingQuoteCount: Number(pendingQuotes[0]?.count ?? 0) },
       operation: { scheduled: Number(operation[0]?.scheduled ?? 0), inProgress: Number(operation[0]?.inProgress ?? 0), yard: Number(operation[0]?.yard ?? 0) },
       inventory: { critical: Number(stock[0]?.critical ?? 0), reservedProducts: Number(stock[0]?.reserved ?? 0) },

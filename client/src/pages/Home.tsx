@@ -22,6 +22,7 @@ const menuItems: DashboardMenuItem[] = [
   { icon: Boxes, label: "Cadastros", path: "/cadastros" },
   { icon: ShoppingCart, label: "Compras", path: "/compras" },
   { icon: CircleDollarSign, label: "Financeiro", path: "/financeiro" },
+  { icon: ChartNoAxesCombined, label: "Relatórios", path: "/relatorios" },
   { icon: UsersRound, label: "Clientes", path: "/clientes" },
   { icon: UsersRound, label: "Equipe", path: "/equipe" },
   { icon: Bell, label: "Notificações", path: "/notificacoes" },
