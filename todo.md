@@ -68,3 +68,5 @@
 - [x] Verificar e testar o isolamento de fornecedor em pedidos de compra por tenant.
 - [x] Calcular `queueMinutes` a partir do último evento de mudança de status, sem reinício em atribuição ou observação.
 - [x] Auditar a criação de produtos e serviços com custo, preço e margem, preservando os valores comerciais críticos no evento.
+- [x] Auditar alterações de componentes de serviços e criação de kits, com testes de bloqueio para componentes de outro tenant.
+- [x] Cobrir explicitamente o bloqueio de `serviceId` de outro tenant na criação de kits.

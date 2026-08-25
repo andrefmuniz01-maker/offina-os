@@ -265,6 +265,7 @@ export const catalogRouter = router({
         await tx.delete(serviceProducts).where(and(eq(serviceProducts.tenantId, input.tenantId), eq(serviceProducts.serviceId, input.serviceId)));
         await tx.insert(serviceProducts).values(input.items.map(item => ({ tenantId: input.tenantId, serviceId: input.serviceId, productId: item.productId, quantity: item.quantity.toFixed(3), required: item.required })));
       });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.products_updated", entityType: "service", entityId: input.serviceId, after: { items: input.items.map(item => ({ productId: item.productId, quantity: item.quantity, required: item.required })) } });
       return { success: true };
     }),
   }),
@@ -302,6 +303,7 @@ export const catalogRouter = router({
           await tx.insert(kitItems).values(input.items.map(item => ({ tenantId: input.tenantId, kitId: id, productId: item.productId ?? null, serviceId: item.serviceId ?? null, quantity: item.quantity.toFixed(3) })));
           return id;
         });
+        await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "kit.created", entityType: "kit", entityId: kitId, after: { name: input.name, categoryId: input.categoryId ?? null, salePriceOverride: input.salePriceOverride ?? null, items: input.items.map(item => ({ productId: item.productId ?? null, serviceId: item.serviceId ?? null, quantity: item.quantity })) } });
         return { id: kitId };
       }),
     preview: protectedProcedure.input(tenantIdInput.extend({ kitId: z.number().int().positive() })).query(async ({ ctx, input }) => {
