@@ -247,7 +247,7 @@ export const quoteRequestRouter = router({
       assignedUserName = member.name;
     }
     await db.transaction(async tx => {
-      await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId }).where(eq(quoteRequests.id, request.id));
+      await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId }).where(and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId)));
       if (request.status !== input.status) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "status_changed", actorUserId: ctx.user.id, metadata: { from: request.status, to: input.status } });
       if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId, assignedToUserName: assignedUserName } });
       if (input.note) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "note_added", actorUserId: ctx.user.id, metadata: { note: input.note } });
@@ -301,7 +301,7 @@ export const quoteRouter = router({
       const quoteId = Number(quote[0].insertId);
       await tx.insert(quoteItems).values(suggested.map((item, sortOrder) => ({ tenantId: input.tenantId, quoteId, productId: item.productId ?? null, serviceId: item.serviceId ?? null, itemType: item.itemType, description: item.description, quantity: item.quantity.toFixed(3), unitPrice: item.unitPrice.toFixed(2), unitCost: item.unitCost.toFixed(2), sortOrder })));
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId, type: "created", actorUserId: ctx.user.id });
-      await tx.update(quoteRequests).set({ status: "ready", assignedToUserId: ctx.user.id }).where(eq(quoteRequests.id, request.id));
+      await tx.update(quoteRequests).set({ status: "ready", assignedToUserId: ctx.user.id }).where(and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId)));
       await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "quote_created", actorUserId: ctx.user.id, metadata: { quoteId } });
       return { id: quoteId, number: Number(next), publicToken: token };
     });
@@ -313,12 +313,12 @@ export const quoteRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const quote = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
+    const quote = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
     if (!quote || !isQuoteTransitionAllowed(quote.quote.status, "sent")) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não pode ser enviado." });
     await db.transaction(async (tx) => {
-      await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(eq(quotes.id, input.quoteId));
+      await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId)));
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
-      if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(eq(quoteRequests.id, quote.quote.quoteRequestId));
+      if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(and(eq(quoteRequests.id, quote.quote.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId)));
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, metadata: { channel: "manual_whatsapp_preparation" } });
     const publicUrl = `/orcamento/${quote.quote.publicToken}`;
@@ -333,7 +333,7 @@ export const quoteRouter = router({
     const access = await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const rows = await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).where(input.status ? and(eq(quotes.tenantId, input.tenantId), eq(quotes.status, input.status)) : eq(quotes.tenantId, input.tenantId)).orderBy(desc(quotes.createdAt));
+    const rows = await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).where(input.status ? and(eq(quotes.tenantId, input.tenantId), eq(quotes.status, input.status)) : eq(quotes.tenantId, input.tenantId)).orderBy(desc(quotes.createdAt));
     return rows.map(row => hasPermission(access, "financial.view") ? row : { ...row, quote: (({ estimatedCostTotal, estimatedMarginPercent, ...safe }) => safe)(row.quote) });
   }),
 
@@ -391,17 +391,17 @@ export const quoteRouter = router({
   publicView: publicProcedure.input(z.object({ token: z.string().min(1).max(96) })).query(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const row = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles, tenant: tenants, branding: tenantBranding }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).innerJoin(tenants, eq(tenants.id, quotes.tenantId)).leftJoin(tenantBranding, eq(tenantBranding.tenantId, tenants.id)).where(eq(quotes.publicToken, input.token)).limit(1))[0];
+    const row = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles, tenant: tenants, branding: tenantBranding }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).innerJoin(tenants, eq(tenants.id, quotes.tenantId)).leftJoin(tenantBranding, eq(tenantBranding.tenantId, tenants.id)).where(eq(quotes.publicToken, input.token)).limit(1))[0];
     if (!row || !row.tenant.active) return null;
     if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && isQuoteTransitionAllowed(row.quote.status, "expired")) {
-      await db.update(quotes).set({ status: "expired" }).where(eq(quotes.id, row.quote.id));
+      await db.update(quotes).set({ status: "expired" }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId)));
       return { expired: true as const };
     }
     if (row.quote.status === "expired") return { expired: true as const };
-    const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, row.quote.id)).orderBy(asc(quoteItems.sortOrder));
+    const items = await db.select().from(quoteItems).where(and(eq(quoteItems.quoteId, row.quote.id), eq(quoteItems.tenantId, row.quote.tenantId))).orderBy(asc(quoteItems.sortOrder));
     if (!row.quote.viewedAt && isQuoteTransitionAllowed(row.quote.status, "viewed")) {
       await db.transaction(async (tx) => {
-        await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(eq(quotes.id, row.quote.id));
+        await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId)));
         await tx.insert(quoteEvents).values({ tenantId: row.quote.tenantId, quoteId: row.quote.id, type: "viewed" });
       });
     }
@@ -418,9 +418,9 @@ export const quoteRouter = router({
     if (!isQuoteTransitionAllowed(quote.status, input.decision)) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não está disponível para decisão." });
     await db.transaction(async (tx) => {
       if (input.decision === "rejected") {
-        await tx.update(quotes).set({ status: "rejected", rejectedAt: new Date() }).where(eq(quotes.id, quote.id));
+        await tx.update(quotes).set({ status: "rejected", rejectedAt: new Date() }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, quote.tenantId)));
         await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "rejected", metadata: { source: "public_link" } });
-        if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "rejected" }).where(eq(quoteRequests.id, quote.quoteRequestId));
+        if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "rejected" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
         return;
       }
       const productItems = await tx.select().from(quoteItems).where(and(eq(quoteItems.tenantId, quote.tenantId), eq(quoteItems.quoteId, quote.id), eq(quoteItems.itemType, "product")));
@@ -431,12 +431,12 @@ export const quoteRouter = router({
       for (const item of plan) {
         const balance = balances.find(candidate => candidate.productId === item.productId)!;
         await tx.insert(inventoryReservations).values({ tenantId: quote.tenantId, productId: item.productId, quoteId: quote.id, quantity: item.quantity.toFixed(3) });
-        await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity.toFixed(3)}` }).where(eq(inventoryBalances.id, balance.id));
+        await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity.toFixed(3)}` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, quote.tenantId)));
         await tx.insert(inventoryMovements).values({ tenantId: quote.tenantId, productId: item.productId, type: "reservation", quantity: item.quantity.toFixed(3), physicalDelta: "0", reservedDelta: item.quantity.toFixed(3), referenceType: "quote", referenceId: quote.id, notes: "Reserva criada por aprovação do orçamento." });
       }
-      await tx.update(quotes).set({ status: "approved", approvedAt: new Date() }).where(eq(quotes.id, quote.id));
+      await tx.update(quotes).set({ status: "approved", approvedAt: new Date() }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, quote.tenantId)));
       await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "approved", metadata: { source: "public_link" } });
-      if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "approved" }).where(eq(quoteRequests.id, quote.quoteRequestId));
+      if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "approved" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
     });
     await writeAuditLog({ tenantId: quote.tenantId, action: `quote.${input.decision}_public`, entityType: "quote", entityId: quote.id, metadata: { source: "public_link" } });
     return { status: input.decision, idempotent: false };

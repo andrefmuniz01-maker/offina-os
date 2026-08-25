@@ -54,4 +54,14 @@ describe("workOrders.consumeProduct — integração tRPC simulada", () => {
     await expect(caller.consumeProduct({ tenantId: 4, workOrderId: 401, productId: 44, quantity: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocks.db.inserts()).toHaveLength(0);
   });
+
+  it("bloqueia consumo de OS que não pertence ao tenant antes de consultar ou alterar estoque", async () => {
+    mocks.db = dbWith([[]]);
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.consumeProduct({ tenantId: 4, workOrderId: 999, productId: 44, quantity: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.db.updates()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
 });

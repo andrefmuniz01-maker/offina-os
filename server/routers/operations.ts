@@ -70,7 +70,7 @@ export const appointmentRouter = router({
       }
       const appointment = await tx.insert(appointments).values({ tenantId: input.tenantId, quoteId: quote.id, customerId: quote.customerId, vehicleId: quote.vehicleId, workOrderId, assignedToUserId: input.assignedToUserId ?? null, bay: input.bay ?? null, scheduledStart: input.scheduledStart, scheduledEnd: input.scheduledEnd, notes: input.notes ?? null });
       const appointmentId = Number(appointment[0].insertId);
-      await tx.update(workOrders).set({ appointmentId, assignedToUserId: input.assignedToUserId ?? null }).where(eq(workOrders.id, workOrderId));
+      await tx.update(workOrders).set({ appointmentId, assignedToUserId: input.assignedToUserId ?? null }).where(and(eq(workOrders.id, workOrderId), eq(workOrders.tenantId, input.tenantId)));
       return { appointmentId, workOrderId, workOrderNumber: existing ? undefined : Number(next) };
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "appointment.created_from_quote", entityType: "appointment", entityId: result.appointmentId, metadata: { quoteId: input.quoteId, workOrderId: result.workOrderId } });
@@ -155,7 +155,7 @@ export const workOrderRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const row = (await db.select({ checklist: workOrderChecklists, order: workOrders }).from(workOrderChecklists).innerJoin(workOrders, and(eq(workOrders.id, workOrderChecklists.workOrderId), eq(workOrders.tenantId, workOrderChecklists.tenantId))).where(and(eq(workOrderChecklists.id, input.checklistId), eq(workOrderChecklists.tenantId, input.tenantId))).limit(1))[0];
     if (!row || (access.membership?.role === "technician" && row.order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Checklist indisponível para o seu perfil." });
-    await db.update(workOrderChecklists).set({ completed: input.completed, completedByUserId: input.completed ? ctx.user.id : null, completedAt: input.completed ? new Date() : null }).where(eq(workOrderChecklists.id, input.checklistId));
+    await db.update(workOrderChecklists).set({ completed: input.completed, completedByUserId: input.completed ? ctx.user.id : null, completedAt: input.completed ? new Date() : null }).where(and(eq(workOrderChecklists.id, input.checklistId), eq(workOrderChecklists.tenantId, input.tenantId)));
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.checklist_updated", entityType: "work_order_checklist", entityId: input.checklistId, before: { completed: row.checklist.completed }, after: { completed: input.completed, workOrderId: row.order.id } });
     return { success: true };
   }),
@@ -204,15 +204,15 @@ export const workOrderRouter = router({
         if (!reservation || Number(reservation.quantity) < input.quantity) throw new TRPCError({ code: "BAD_REQUEST", message: "A reserva indicada não cobre este consumo." });
         reservedDelta = input.quantity;
         const remaining = Number(reservation.quantity) - input.quantity;
-        await tx.update(inventoryReservations).set({ quantity: remaining.toFixed(3), status: remaining === 0 ? "consumed" : "active", releasedAt: remaining === 0 ? new Date() : null }).where(eq(inventoryReservations.id, reservation.id));
+        await tx.update(inventoryReservations).set({ quantity: remaining.toFixed(3), status: remaining === 0 ? "consumed" : "active", releasedAt: remaining === 0 ? new Date() : null }).where(and(eq(inventoryReservations.id, reservation.id), eq(inventoryReservations.tenantId, input.tenantId)));
       }
-      await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} - ${input.quantity.toFixed(3)}`, reservedQuantity: reservedDelta ? sql`${inventoryBalances.reservedQuantity} - ${reservedDelta.toFixed(3)}` : balance.reservedQuantity }).where(eq(inventoryBalances.id, balance.id));
+      await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} - ${input.quantity.toFixed(3)}`, reservedQuantity: reservedDelta ? sql`${inventoryBalances.reservedQuantity} - ${reservedDelta.toFixed(3)}` : balance.reservedQuantity }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
       await tx.insert(workOrderConsumption).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, productId: input.productId, reservationId: input.reservationId ?? null, quantity: input.quantity.toFixed(3), unitCost: product.currentCost, consumedByUserId: ctx.user.id });
       await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: input.productId, type: "consumption", quantity: input.quantity.toFixed(3), physicalDelta: (-input.quantity).toFixed(3), reservedDelta: (-reservedDelta).toFixed(3), referenceType: "work_order", referenceId: input.workOrderId, createdByUserId: ctx.user.id });
       const aggregate = (await tx.select({ cost: sql<string>`coalesce(sum(${workOrderConsumption.quantity} * ${workOrderConsumption.unitCost}), 0)` }).from(workOrderConsumption).where(and(eq(workOrderConsumption.tenantId, input.tenantId), eq(workOrderConsumption.workOrderId, input.workOrderId))))[0];
       const realCost = Number(aggregate?.cost ?? 0);
       const margin = Number(order.estimatedTotal) > 0 ? ((Number(order.estimatedTotal) - realCost) / Number(order.estimatedTotal)) * 100 : 0;
-      await tx.update(workOrders).set({ realCostTotal: realCost.toFixed(2), realMarginPercent: margin.toFixed(2) }).where(eq(workOrders.id, input.workOrderId));
+      await tx.update(workOrders).set({ realCostTotal: realCost.toFixed(2), realMarginPercent: margin.toFixed(2) }).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId)));
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.product_consumed", entityType: "work_order", entityId: input.workOrderId, metadata: { productId: input.productId, quantity: input.quantity } });
     return { success: true };
