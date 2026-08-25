@@ -47,7 +47,7 @@
 - [x] Completar os dados cadastrais e de contato da tela de configuração da oficina.
 - [x] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
 - [x] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
-- [ ] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
+- [x] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
 - [x] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
 - [ ] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
 - [ ] Executar revisão verificável de teclado, foco visível, labels e semântica nos fluxos principais.
