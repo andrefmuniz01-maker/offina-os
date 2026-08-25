@@ -80,7 +80,7 @@ export const appointmentRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "appointments.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    return db.select({ appointment: appointments, customer: customers, vehicle: vehicles, workOrder: workOrders }).from(appointments).innerJoin(customers, eq(customers.id, appointments.customerId)).innerJoin(vehicles, eq(vehicles.id, appointments.vehicleId)).leftJoin(workOrders, eq(workOrders.id, appointments.workOrderId)).where(and(eq(appointments.tenantId, input.tenantId), ...(input.from ? [gte(appointments.scheduledStart, input.from)] : []), ...(input.to ? [sql`${appointments.scheduledStart} <= ${input.to}`] : []))).orderBy(asc(appointments.scheduledStart));
+    return db.select({ appointment: appointments, customer: customers, vehicle: vehicles, workOrder: workOrders }).from(appointments).innerJoin(customers, and(eq(customers.id, appointments.customerId), eq(customers.tenantId, appointments.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, appointments.vehicleId), eq(vehicles.tenantId, appointments.tenantId))).leftJoin(workOrders, and(eq(workOrders.id, appointments.workOrderId), eq(workOrders.tenantId, appointments.tenantId))).where(and(eq(appointments.tenantId, input.tenantId), ...(input.from ? [gte(appointments.scheduledStart, input.from)] : []), ...(input.to ? [sql`${appointments.scheduledStart} <= ${input.to}`] : []))).orderBy(asc(appointments.scheduledStart));
   }),
 });
 
@@ -91,7 +91,7 @@ export const workOrderRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const ownOnly = access.membership?.role === "technician";
-    const rows = await db.select({ workOrder: workOrders, vehicle: vehicles, customer: customers, appointment: appointments }).from(workOrders).innerJoin(vehicles, eq(vehicles.id, workOrders.vehicleId)).innerJoin(customers, eq(customers.id, workOrders.customerId)).leftJoin(appointments, eq(appointments.id, workOrders.appointmentId)).where(and(eq(workOrders.tenantId, input.tenantId), ...(ownOnly ? [eq(workOrders.assignedToUserId, ctx.user.id)] : []), inArray(workOrders.status, ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed"])));
+    const rows = await db.select({ workOrder: workOrders, vehicle: vehicles, customer: customers, appointment: appointments }).from(workOrders).innerJoin(vehicles, and(eq(vehicles.id, workOrders.vehicleId), eq(vehicles.tenantId, workOrders.tenantId))).innerJoin(customers, and(eq(customers.id, workOrders.customerId), eq(customers.tenantId, workOrders.tenantId))).leftJoin(appointments, and(eq(appointments.id, workOrders.appointmentId), eq(appointments.tenantId, workOrders.tenantId))).where(and(eq(workOrders.tenantId, input.tenantId), ...(ownOnly ? [eq(workOrders.assignedToUserId, ctx.user.id)] : []), inArray(workOrders.status, ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed"])));
     return rows;
   }),
   detail: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive() })).query(async ({ ctx, input }) => {
@@ -153,9 +153,10 @@ export const workOrderRouter = router({
     if (!hasPermission(access, "work_orders.manage") && !hasPermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode atualizar o checklist." });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const row = (await db.select({ checklist: workOrderChecklists, order: workOrders }).from(workOrderChecklists).innerJoin(workOrders, eq(workOrders.id, workOrderChecklists.workOrderId)).where(and(eq(workOrderChecklists.id, input.checklistId), eq(workOrderChecklists.tenantId, input.tenantId))).limit(1))[0];
+    const row = (await db.select({ checklist: workOrderChecklists, order: workOrders }).from(workOrderChecklists).innerJoin(workOrders, and(eq(workOrders.id, workOrderChecklists.workOrderId), eq(workOrders.tenantId, workOrderChecklists.tenantId))).where(and(eq(workOrderChecklists.id, input.checklistId), eq(workOrderChecklists.tenantId, input.tenantId))).limit(1))[0];
     if (!row || (access.membership?.role === "technician" && row.order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Checklist indisponível para o seu perfil." });
     await db.update(workOrderChecklists).set({ completed: input.completed, completedByUserId: input.completed ? ctx.user.id : null, completedAt: input.completed ? new Date() : null }).where(eq(workOrderChecklists.id, input.checklistId));
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.checklist_updated", entityType: "work_order_checklist", entityId: input.checklistId, before: { completed: row.checklist.completed }, after: { completed: input.completed, workOrderId: row.order.id } });
     return { success: true };
   }),
   uploadExecutionAttachment: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), filename: z.string().trim().min(1).max(180), mimeType: z.string().trim().regex(/^(image|video)\//), base64: z.string().min(8).max(7_000_000) })).mutation(async ({ ctx, input }) => {

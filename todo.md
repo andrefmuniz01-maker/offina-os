@@ -70,3 +70,4 @@
 - [x] Auditar a criação de produtos e serviços com custo, preço e margem, preservando os valores comerciais críticos no evento.
 - [x] Auditar alterações de componentes de serviços e criação de kits, com testes de bloqueio para componentes de outro tenant.
 - [x] Cobrir explicitamente o bloqueio de `serviceId` de outro tenant na criação de kits.
+- [x] Auditar alterações de checklist de OS e reforçar o escopo de tenant nos joins de agenda e pátio.
