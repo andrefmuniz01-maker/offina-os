@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -16,6 +16,7 @@ import {
   workOrderChecklists,
   workOrderConsumption,
   workOrderItems,
+  workOrderNotes,
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
@@ -25,17 +26,23 @@ import { protectedProcedure, router } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const operationStatus = z.enum(["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed", "delivered", "cancelled"]);
+const allowedWorkOrderTransitions: Record<z.infer<typeof operationStatus>, z.infer<typeof operationStatus>[]> = {
+  scheduled: ["received", "cancelled"],
+  received: ["diagnosis", "cancelled"],
+  diagnosis: ["awaiting_approval", "awaiting_part", "in_service", "cancelled"],
+  awaiting_approval: ["awaiting_part", "in_service", "cancelled"],
+  awaiting_part: ["in_service", "cancelled"],
+  in_service: ["awaiting_part", "completed"],
+  completed: ["delivered"],
+  delivered: [],
+  cancelled: [],
+};
+
+export function isWorkOrderTransitionAllowed(current: z.infer<typeof operationStatus>, next: z.infer<typeof operationStatus>) {
+  return current === next || allowedWorkOrderTransitions[current].includes(next);
+}
 
 const defaultChecklist = ["Inspeção inicial", "Desmontagem", "Instalação", "Ajuste", "Teste", "Finalização"];
-
-async function assertOperationalAssignment(userId: number, tenantId: number, workOrderId: number) {
-  const db = await getDb();
-  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-  const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, workOrderId), eq(workOrders.tenantId, tenantId))).limit(1))[0];
-  if (!order) throw new TRPCError({ code: "NOT_FOUND", message: "Ordem de serviço não encontrada." });
-  const access = await getTenantAccess(userId as never, tenantId).catch(() => null);
-  return { order, access };
-}
 
 export const appointmentRouter = router({
   scheduleFromQuote: protectedProcedure.input(tenantIdInput.extend({ quoteId: z.number().int().positive(), scheduledStart: z.date(), scheduledEnd: z.date(), assignedToUserId: z.number().int().positive().optional(), bay: z.string().trim().max(80).optional(), notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {
@@ -88,15 +95,16 @@ export const workOrderRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
     if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Ordem de serviço indisponível para o seu perfil." });
-    const [items, checklist, consumption, reservations, executionAttachments] = await Promise.all([
+    const [items, checklist, consumption, reservations, executionAttachments, notes] = await Promise.all([
       db.select().from(workOrderItems).where(and(eq(workOrderItems.tenantId, input.tenantId), eq(workOrderItems.workOrderId, input.workOrderId))),
       db.select().from(workOrderChecklists).where(and(eq(workOrderChecklists.tenantId, input.tenantId), eq(workOrderChecklists.workOrderId, input.workOrderId))).orderBy(asc(workOrderChecklists.sortOrder)),
       db.select().from(workOrderConsumption).where(and(eq(workOrderConsumption.tenantId, input.tenantId), eq(workOrderConsumption.workOrderId, input.workOrderId))),
       db.select().from(inventoryReservations).where(and(eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.status, "active"))),
       db.select().from(attachments).where(and(eq(attachments.tenantId, input.tenantId), eq(attachments.workOrderId, input.workOrderId))),
+      db.select().from(workOrderNotes).where(and(eq(workOrderNotes.tenantId, input.tenantId), eq(workOrderNotes.workOrderId, input.workOrderId))).orderBy(desc(workOrderNotes.createdAt)),
     ]);
     const visibleFinancial = hasPermission(access, "financial.view");
-    return { order: visibleFinancial ? order : (({ estimatedCostTotal, realCostTotal, realMarginPercent, ...safe }) => safe)(order), items: visibleFinancial ? items : items.map(({ expectedUnitCost, ...safe }) => safe), checklist, consumption: visibleFinancial ? consumption : consumption.map(({ unitCost, ...safe }) => safe), reservations, executionAttachments };
+    return { order: visibleFinancial ? order : (({ estimatedCostTotal, realCostTotal, realMarginPercent, ...safe }) => safe)(order), items: visibleFinancial ? items : items.map(({ expectedUnitCost, ...safe }) => safe), checklist, consumption: visibleFinancial ? consumption : consumption.map(({ unitCost, ...safe }) => safe), reservations, executionAttachments, notes };
   }),
   updateStatus: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), status: operationStatus, notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {
     const access = await getTenantAccess(ctx.user, input.tenantId);
@@ -105,6 +113,7 @@ export const workOrderRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
     if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Ordem de serviço indisponível para o seu perfil." });
+    if (!isWorkOrderTransitionAllowed(order.status, input.status)) throw new TRPCError({ code: "BAD_REQUEST", message: `Não é permitido mudar a OS de ${order.status} para ${input.status}.` });
     if (input.status === "completed") {
       const uncompleted = await db.select({ id: workOrderChecklists.id }).from(workOrderChecklists).where(and(eq(workOrderChecklists.tenantId, input.tenantId), eq(workOrderChecklists.workOrderId, input.workOrderId), eq(workOrderChecklists.completed, false))).limit(1);
       if (uncompleted.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Conclua o checklist antes de finalizar a OS." });
@@ -145,6 +154,18 @@ export const workOrderRouter = router({
     const id = Number(result[0].insertId);
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.execution_attachment_added", entityType: "attachment", entityId: id, metadata: { workOrderId: input.workOrderId, mimeType: input.mimeType } });
     return { id, url: stored.url };
+  }),
+  addNote: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), body: z.string().trim().min(1).max(4000) })).mutation(async ({ ctx, input }) => {
+    const access = await getTenantAccess(ctx.user, input.tenantId);
+    if (!hasPermission(access, "work_orders.manage") && !hasPermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode adicionar apontamentos à OS." });
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
+    if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "OS indisponível para o seu perfil." });
+    const result = await db.insert(workOrderNotes).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, authorUserId: ctx.user.id, body: input.body });
+    const id = Number(result[0].insertId);
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.note_added", entityType: "work_order_note", entityId: id, metadata: { workOrderId: input.workOrderId } });
+    return { id };
   }),
   consumeProduct: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), productId: z.number().int().positive(), quantity: z.coerce.number().positive(), reservationId: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => {
     const access = await getTenantAccess(ctx.user, input.tenantId);

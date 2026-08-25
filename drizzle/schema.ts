@@ -428,6 +428,15 @@ export const workOrderChecklists = mysqlTable("work_order_checklists", {
   createdAt,
 }, (table) => [index("work_order_checklists_tenant_order_idx").on(table.tenantId, table.workOrderId)]);
 
+export const workOrderNotes = mysqlTable("work_order_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull().references(() => tenants.id),
+  workOrderId: int("workOrderId").notNull().references(() => workOrders.id),
+  authorUserId: int("authorUserId").notNull().references(() => users.id),
+  body: text("body").notNull(),
+  createdAt,
+}, (table) => [index("work_order_notes_tenant_order_idx").on(table.tenantId, table.workOrderId)]);
+
 export const inventoryReservations = mysqlTable("inventory_reservations", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId").notNull().references(() => tenants.id),

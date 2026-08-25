@@ -18,6 +18,7 @@ import Purchases from "./pages/Purchases";
 import WorkOrder from "./pages/WorkOrder";
 import Finance from "./pages/Finance";
 import Clients from "./pages/Clients";
+import WorkOrderNotes from "./pages/WorkOrderNotes";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -33,6 +34,7 @@ function Router() {
       <Route path={"/plataforma"} component={Platform} />
       <Route path={"/cadastros"} component={Catalog} />
       <Route path={"/compras"} component={Purchases} />
+      <Route path={"/os/:id/anotacoes"} component={WorkOrderNotes} />
       <Route path={"/os/:id"} component={WorkOrder} />
       <Route path={"/financeiro"} component={Finance} />
       <Route path={"/clientes"} component={Clients} />
