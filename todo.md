@@ -112,3 +112,4 @@
 - [x] Permitir busca acessível por nome ou WhatsApp ao selecionar o cliente para cadastro e histórico de veículos.
 - [x] Paginar a seleção operacional de clientes sem alterar os consumidores legados de cadastro, preservando busca e tenant.
 - [x] Impedir preferências e notificações acionáveis sem tenant ativo, exibindo orientação explícita de associação à oficina.
+- [x] Impedir convites, papéis e ativações de equipe acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
