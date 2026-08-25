@@ -19,7 +19,7 @@
 - [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
 - [x] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
 - [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
-- [ ] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
+- [x] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
 - [x] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
 - [ ] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
 - [ ] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
@@ -49,7 +49,7 @@
 - [x] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
 - [x] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
 - [x] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
-- [ ] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
+- [x] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
 - [ ] Executar revisão verificável de teclado, foco visível, labels e semântica nos fluxos principais.
 - [ ] Validar explicitamente os estados de carregamento, vazio e erro das rotas principais em desktop e mobile.
 - [x] Confirmar ausência de erros de runtime atuais após navegar pelos fluxos principais antes de concluir a revisão de interface.
