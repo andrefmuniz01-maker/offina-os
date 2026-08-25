@@ -78,6 +78,16 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("bloqueia atualização de solicitação que não pertence ao tenant antes de criar eventos ou auditoria", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.updateStatus({ tenantId: 4, quoteRequestId: 999, status: "in_analysis" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("atualiza a atribuição de membro ativo, registra a trilha e audita a mudança", async () => {
     mocks.db = buildDb([[request], [{ userId: 19, name: "Ana Técnica" }]]);
     const caller = quoteRequestRouter.createCaller(createContext());

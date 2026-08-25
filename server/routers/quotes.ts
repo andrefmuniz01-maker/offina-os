@@ -209,7 +209,7 @@ export const quoteRequestRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const rows = await db.select({ request: quoteRequests, customer: customers, vehicle: vehicles, assignedUser: { id: users.id, name: users.name, email: users.email } }).from(quoteRequests)
-      .leftJoin(customers, eq(customers.id, quoteRequests.customerId)).leftJoin(vehicles, eq(vehicles.id, quoteRequests.vehicleId))
+      .leftJoin(customers, and(eq(customers.id, quoteRequests.customerId), eq(customers.tenantId, quoteRequests.tenantId))).leftJoin(vehicles, and(eq(vehicles.id, quoteRequests.vehicleId), eq(vehicles.tenantId, quoteRequests.tenantId)))
       .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
       .orderBy(desc(quoteRequests.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);

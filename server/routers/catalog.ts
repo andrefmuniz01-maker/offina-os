@@ -75,7 +75,7 @@ export const customerRouter = router({
     if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado nesta oficina." });
     return db.select({ id: workOrders.id, number: workOrders.number, status: workOrders.status, completedAt: workOrders.completedAt, deliveredAt: workOrders.deliveredAt, createdAt: workOrders.createdAt, vehicleId: vehicles.id, vehicleMake: vehicles.make, vehicleModel: vehicles.model, vehiclePlate: vehicles.plate, postSaleNotificationId: notifications.id, postSaleTitle: notifications.title, postSaleBody: notifications.body, postSaleCreatedAt: notifications.createdAt, postSaleLink: notifications.link })
       .from(workOrders)
-      .innerJoin(vehicles, eq(vehicles.id, workOrders.vehicleId))
+      .innerJoin(vehicles, and(eq(vehicles.id, workOrders.vehicleId), eq(vehicles.tenantId, workOrders.tenantId)))
       .leftJoin(notifications, and(eq(notifications.workOrderId, workOrders.id), eq(notifications.tenantId, input.tenantId), eq(notifications.type, "post_sale_suggested")))
       .where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.customerId, input.customerId)))
       .orderBy(desc(workOrders.createdAt));
