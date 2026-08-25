@@ -23,14 +23,14 @@ function chain(result: unknown) {
 }
 
 function buildDb(selectResults: unknown[], insertResults: number[]) {
-  const inserts: unknown[] = [];
+  const inserts: unknown[] = []; const updates: unknown[] = [];
   const select = vi.fn(() => chain(selectResults.shift() ?? []));
   const tx = {
     select,
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: insertResults.shift() ?? 1 }]; }) })),
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return [{ affectedRows: 1 }]; }) })) })),
   };
-  return { select, transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), inserts: () => inserts };
+  return { select, transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), inserts: () => inserts, updates: () => updates };
 }
 
 function context(): TrpcContext {
@@ -60,6 +60,7 @@ describe("appointments.scheduleFromQuote — integração tRPC simulada", () => 
       expect.arrayContaining([expect.objectContaining({ workOrderId: 401, description: "Componente", productId: 9 }), expect.objectContaining({ workOrderId: 401, description: "Instalação", serviceId: 5 })]),
       expect.objectContaining({ tenantId: 4, quoteId: 70, workOrderId: 401, customerId: 20, vehicleId: 31, bay: "Baia 2" }),
     ]));
+    expect(mocks.db.updates()).toEqual(expect.arrayContaining([expect.objectContaining({ workOrderId: 401 })]));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "appointment.created_from_quote", entityId: 901, metadata: { quoteId: 70, workOrderId: 401 } }));
   });
 
