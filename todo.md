@@ -91,3 +91,4 @@
 - [x] Impedir agendamento e pátio acionáveis sem tenant ativo, exibindo orientação explícita para associação à oficina.
 - [x] Incluir itens de OS ativas sem agendamento na previsão de estoque, sinalizando as ordens afetadas sem dupla contagem com a agenda.
 - [x] Impedir controles de estoque e previsão sem tenant ativo, exibindo orientação explícita antes de consultar a oficina.
+- [x] Repetir o predicate de tenant nas atualizações financeiras de produtos e serviços, além da validação prévia da entidade.
