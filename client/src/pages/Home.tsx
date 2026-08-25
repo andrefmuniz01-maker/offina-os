@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { Bell, CalendarClock, ChartNoAxesCombined, ClipboardList, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, UsersRound, Wrench } from "lucide-react";
+import { Bell, Boxes, CalendarClock, ChartNoAxesCombined, ClipboardList, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShoppingCart, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,14 +15,15 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 
 const menuItems: DashboardMenuItem[] = [
   { icon: ChartNoAxesCombined, label: "Visão geral", path: "/" },
-  { icon: ClipboardList, label: "Solicitações", path: "/solicitacoes", disabled: true },
-  { icon: ReceiptText, label: "Orçamentos", path: "/orcamentos", disabled: true },
-  { icon: CalendarClock, label: "Agenda", path: "/agenda", disabled: true },
-  { icon: Wrench, label: "Pátio & OS", path: "/operacao", disabled: true },
-  { icon: PackageSearch, label: "Estoque", path: "/estoque", disabled: true },
-  { icon: CircleDollarSign, label: "Financeiro", path: "/financeiro", disabled: true },
+  { icon: ClipboardList, label: "Solicitações", path: "/solicitacoes" },
+  { icon: ReceiptText, label: "Orçamentos", path: "/orcamentos" },
+  { icon: CalendarClock, label: "Agenda & pátio", path: "/operacao" },
+  { icon: PackageSearch, label: "Estoque", path: "/estoque" },
+  { icon: Boxes, label: "Cadastros", path: "/cadastros" },
+  { icon: ShoppingCart, label: "Compras", path: "/compras" },
+  { icon: CircleDollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: UsersRound, label: "Clientes", path: "/clientes", disabled: true },
-  { icon: Settings2, label: "Configurações", path: "/configuracoes", disabled: true },
+  { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 
 function Metric({ label, value, detail, icon: Icon, tone = "default" }: { label: string; value: string; detail: string; icon: typeof ChartNoAxesCombined; tone?: "default" | "amber" | "red" | "green" }) {
@@ -69,5 +70,5 @@ export default function Home() {
   const [activeTenantId, setActiveTenantId] = useState<number | null>(null);
   const activeTenant = tenantList.data?.find(entry => entry.tenant.id === activeTenantId) ?? tenantList.data?.[0];
   const title = activeTenant?.tenant.name ?? "OficinaOS";
-  return <DashboardLayout menuItems={menuItems} workspaceName={title}><div className="min-h-[calc(100vh-2rem)] rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(251,146,60,.10),transparent_28%),#f8fafc] p-1">{tenantList.isLoading ? <div className="mx-auto max-w-7xl p-6"><Skeleton className="h-16 w-72" /><div className="mt-7 grid gap-4 md:grid-cols-4"><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /></div></div> : activeTenant ? <><div className="mx-auto flex max-w-7xl justify-end px-1 pt-1">{tenantList.data && tenantList.data.length > 1 ? <select aria-label="Selecionar oficina" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" value={activeTenant.tenant.id} onChange={event => setActiveTenantId(Number(event.target.value))}>{tenantList.data.map(entry => <option key={entry.tenant.id} value={entry.tenant.id}>{entry.tenant.name}</option>)}</select> : null}</div><WorkspaceDashboard tenantId={activeTenant.tenant.id} tenantName={activeTenant.tenant.name} /></> : user?.platformRole === "super_admin" ? <CreateTenant onCreated={() => tenantList.refetch()} /> : <Card className="mx-auto mt-16 max-w-xl"><CardHeader><CardTitle>Seu acesso ainda não está vinculado a uma oficina</CardTitle><CardDescription>Peça a um Super Admin para incluí-lo no tenant correto. A associação é obrigatória para proteger os dados de cada oficina.</CardDescription></CardHeader></Card>}</div></DashboardLayout>;
+  return <DashboardLayout menuItems={menuItems} workspaceName={title}><div className="min-h-[calc(100vh-2rem)] rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(251,146,60,.10),transparent_28%),#f8fafc] p-1">{user?.platformRole === "super_admin" ? <div className="mx-auto flex max-w-7xl justify-end px-1 pt-1"><a href="/plataforma" className="text-xs font-medium text-slate-500 hover:text-orange-700">Abrir painel da plataforma →</a></div> : null}{tenantList.isLoading ? <div className="mx-auto max-w-7xl p-6"><Skeleton className="h-16 w-72" /><div className="mt-7 grid gap-4 md:grid-cols-4"><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /></div></div> : activeTenant ? <><div className="mx-auto flex max-w-7xl justify-end px-1 pt-1">{tenantList.data && tenantList.data.length > 1 ? <select aria-label="Selecionar oficina" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" value={activeTenant.tenant.id} onChange={event => setActiveTenantId(Number(event.target.value))}>{tenantList.data.map(entry => <option key={entry.tenant.id} value={entry.tenant.id}>{entry.tenant.name}</option>)}</select> : null}</div><WorkspaceDashboard tenantId={activeTenant.tenant.id} tenantName={activeTenant.tenant.name} /></> : user?.platformRole === "super_admin" ? <CreateTenant onCreated={() => tenantList.refetch()} /> : <Card className="mx-auto mt-16 max-w-xl"><CardHeader><CardTitle>Seu acesso ainda não está vinculado a uma oficina</CardTitle><CardDescription>Peça a um Super Admin para incluí-lo no tenant correto. A associação é obrigatória para proteger os dados de cada oficina.</CardDescription></CardHeader></Card>}</div></DashboardLayout>;
 }

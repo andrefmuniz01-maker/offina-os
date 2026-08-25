@@ -264,6 +264,7 @@ export const quoteRequests = mysqlTable("quote_requests", {
   serviceLabel: varchar("serviceLabel", { length: 180 }).notNull(),
   answers: json("answers").$type<Record<string, string | number | boolean>>(),
   description: text("description"),
+  source: mysqlEnum("source", ["public_link", "manual", "whatsapp", "instagram", "other"]).notNull().default("public_link"),
   status: mysqlEnum("status", ["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"])
     .notNull()
     .default("new"),
@@ -271,6 +272,16 @@ export const quoteRequests = mysqlTable("quote_requests", {
   createdAt,
   updatedAt,
 }, (table) => [uniqueIndex("quote_requests_tenant_number_unique").on(table.tenantId, table.number), index("quote_requests_tenant_status_idx").on(table.tenantId, table.status)]);
+
+export const quoteRequestEvents = mysqlTable("quote_request_events", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull().references(() => tenants.id),
+  quoteRequestId: int("quoteRequestId").notNull().references(() => quoteRequests.id),
+  type: mysqlEnum("type", ["created", "status_changed", "assigned", "note_added", "quote_created"]).notNull(),
+  actorUserId: int("actorUserId").references(() => users.id),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt,
+}, (table) => [index("quote_request_events_tenant_request_idx").on(table.tenantId, table.quoteRequestId)]);
 
 export const attachments = mysqlTable("attachments", {
   id: int("id").autoincrement().primaryKey(),

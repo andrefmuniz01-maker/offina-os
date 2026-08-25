@@ -1,7 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, tenantBranding, tenantMembers, tenants, users } from "../../drizzle/schema";
+import { auditLogs, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -15,6 +15,35 @@ export const platformRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     return db.select().from(tenants).orderBy(desc(tenants.createdAt));
+  }),
+
+  metrics: protectedProcedure.query(async ({ ctx }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const [tenantCount, activeCount, userCount, memberships] = await Promise.all([
+      db.select({ total: count() }).from(tenants),
+      db.select({ total: count() }).from(tenants).where(and(eq(tenants.active, true), eq(tenants.status, "active"))),
+      db.select({ total: count() }).from(users),
+      db.select({ total: count() }).from(tenantMembers).where(eq(tenantMembers.active, true)),
+    ]);
+    return { tenants: Number(tenantCount[0]?.total ?? 0), activeTenants: Number(activeCount[0]?.total ?? 0), users: Number(userCount[0]?.total ?? 0), activeMemberships: Number(memberships[0]?.total ?? 0) };
+  }),
+
+  updateTenant: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), status: z.enum(["trial", "active", "suspended", "inactive"]).optional(), active: z.boolean().optional(), planId: z.number().int().positive().nullable().optional() })).mutation(async ({ ctx, input }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const { tenantId, ...changes } = input;
+    const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+    if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+    if (changes.planId) {
+      const plan = (await db.select({ id: plans.id }).from(plans).where(and(eq(plans.id, changes.planId), eq(plans.active, true))).limit(1))[0];
+      if (!plan) throw new TRPCError({ code: "BAD_REQUEST", message: "Plano indisponível." });
+    }
+    await db.update(tenants).set(changes).where(eq(tenants.id, tenantId));
+    await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "platform.tenant_updated", entityType: "tenant", entityId: tenantId, before: { status: tenant.status, active: tenant.active, planId: tenant.planId }, after: changes });
+    return { success: true };
   }),
 
   createTenant: protectedProcedure.input(z.object({
@@ -62,8 +91,27 @@ export const tenantRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const { tenantId, ...changes } = input;
-      await db.update(tenantBranding).set(changes).where(eq(tenantBranding.tenantId, tenantId));
+      await db.insert(tenantBranding).values({ tenantId, ...changes }).onDuplicateKeyUpdate({ set: changes });
       await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.branding_updated", entityType: "tenant_branding", after: changes });
+      return { success: true };
+    }),
+  }),
+
+  settings: router({
+    get: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "tenant.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      return (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0] ?? null;
+    }),
+    update: protectedProcedure.input(tenantIdInput.extend({ legalName: z.string().trim().max(200).nullable().optional(), document: z.string().trim().max(32).nullable().optional(), phone: z.string().trim().max(32).nullable().optional(), whatsapp: z.string().trim().max(32).nullable().optional(), email: z.string().email().nullable().optional(), defaultLaborHourlyRate: z.coerce.number().min(0).max(1_000_000).optional(), defaultPartsMarginPercent: z.coerce.number().min(0).max(1000).optional(), minimumMarginPercent: z.coerce.number().min(0).max(1000).optional(), attendantMaxDiscountPercent: z.coerce.number().min(0).max(100).optional(), quoteValidityDays: z.number().int().min(1).max(365).optional() })).mutation(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "tenant.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const { tenantId, defaultLaborHourlyRate, defaultPartsMarginPercent, minimumMarginPercent, attendantMaxDiscountPercent, ...rest } = input;
+      const changes = { ...rest, ...(defaultLaborHourlyRate === undefined ? {} : { defaultLaborHourlyRate: defaultLaborHourlyRate.toFixed(2) }), ...(defaultPartsMarginPercent === undefined ? {} : { defaultPartsMarginPercent: defaultPartsMarginPercent.toFixed(2) }), ...(minimumMarginPercent === undefined ? {} : { minimumMarginPercent: minimumMarginPercent.toFixed(2) }), ...(attendantMaxDiscountPercent === undefined ? {} : { attendantMaxDiscountPercent: attendantMaxDiscountPercent.toFixed(2) }) };
+      await db.insert(tenantSettings).values({ tenantId, ...changes }).onDuplicateKeyUpdate({ set: changes });
+      await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.settings_updated", entityType: "tenant_settings", after: changes });
       return { success: true };
     }),
   }),

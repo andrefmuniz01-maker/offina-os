@@ -223,6 +223,13 @@ export const catalogRouter = router({
   }),
 
   kits: router({
+    list: protectedProcedure.input(tenantIdInput.merge(pageInput)).query(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const filter = input.search ? and(eq(kits.tenantId, input.tenantId), like(kits.name, `%${input.search}%`)) : eq(kits.tenantId, input.tenantId);
+      return db.select().from(kits).where(filter).orderBy(kits.name).limit(pagination(input).limit).offset(pagination(input).offset);
+    }),
     create: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), description: z.string().max(4000).optional(), salePriceOverride: decimalInput.optional(), items: z.array(z.object({ productId: z.number().int().positive().optional(), serviceId: z.number().int().positive().optional(), quantity: decimalInput.positive() }).refine(value => Boolean(value.productId) !== Boolean(value.serviceId), "Cada item deve ser um produto ou um serviço.")).min(1).max(100) }))
       .mutation(async ({ ctx, input }) => {
         await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");

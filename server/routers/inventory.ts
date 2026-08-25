@@ -102,7 +102,10 @@ export const inventoryRouter = router({
       await requireTenantPermission(ctx.user, input.tenantId, "purchases.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      return db.select({ order: purchaseOrders, supplier: suppliers }).from(purchaseOrders).leftJoin(suppliers, and(eq(suppliers.id, purchaseOrders.supplierId), eq(suppliers.tenantId, purchaseOrders.tenantId))).where(eq(purchaseOrders.tenantId, input.tenantId)).orderBy(sql`${purchaseOrders.createdAt} desc`);
+      const rows = await db.select({ order: purchaseOrders, supplier: suppliers }).from(purchaseOrders).leftJoin(suppliers, and(eq(suppliers.id, purchaseOrders.supplierId), eq(suppliers.tenantId, purchaseOrders.tenantId))).where(eq(purchaseOrders.tenantId, input.tenantId)).orderBy(sql`${purchaseOrders.createdAt} desc`);
+      const orderIds = rows.map(row => row.order.id);
+      const items = orderIds.length ? await db.select().from(purchaseOrderItems).where(and(eq(purchaseOrderItems.tenantId, input.tenantId), inArray(purchaseOrderItems.purchaseOrderId, orderIds))) : [];
+      return rows.map(row => ({ ...row, items: items.filter(item => item.purchaseOrderId === row.order.id) }));
     }),
     create: protectedProcedure.input(tenantIdInput.extend({ supplierId: z.number().int().positive().optional(), notes: z.string().max(4000).optional(), items: z.array(z.object({ productId: z.number().int().positive(), quantity: quantityInput, unitCost: moneyInput })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
       const access = await requireTenantPermission(ctx.user, input.tenantId, "purchases.manage");

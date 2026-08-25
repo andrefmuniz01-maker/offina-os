@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import {
+  attachments,
   customers,
   inventoryBalances,
   inventoryMovements,
@@ -10,6 +11,7 @@ import {
   products,
   quoteEvents,
   quoteItems,
+  quoteRequestEvents,
   quoteRequests,
   quotes,
   serviceProducts,
@@ -21,10 +23,50 @@ import {
   vehicles,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
+const requestStatus = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
+const allowedRequestTransitions: Record<z.infer<typeof requestStatus>, z.infer<typeof requestStatus>[]> = {
+  new: ["in_analysis", "cancelled"],
+  in_analysis: ["awaiting_information", "in_quoting", "cancelled"],
+  awaiting_information: ["in_analysis", "cancelled"],
+  in_quoting: ["ready", "awaiting_information", "cancelled"],
+  ready: ["sent", "in_quoting", "cancelled"],
+  sent: ["approved", "rejected", "expired", "in_quoting"],
+  approved: [],
+  rejected: ["in_quoting"],
+  expired: ["in_quoting", "cancelled"],
+  cancelled: [],
+};
+
+export function isRequestTransitionAllowed(current: z.infer<typeof requestStatus>, next: z.infer<typeof requestStatus>) {
+  return current === next || allowedRequestTransitions[current].includes(next);
+}
+
+export function buildReservationPlan(
+  items: Array<{ productId: number | null; quantity: string }>,
+  balances: Array<{ productId: number; physicalQuantity: string; reservedQuantity: string }>,
+) {
+  const quantities = new Map<number, number>();
+  for (const item of items) {
+    if (!item.productId) continue;
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + Number(item.quantity));
+  }
+  const balanceByProduct = new Map(balances.map(balance => [balance.productId, balance]));
+  return Array.from(quantities, ([productId, quantity]) => {
+    const balance = balanceByProduct.get(productId);
+    const available = balance ? Number(balance.physicalQuantity) - Number(balance.reservedQuantity) : 0;
+    return { productId, quantity, available, reservable: available >= quantity };
+  });
+}
+
+function assertRequestTransition(current: z.infer<typeof requestStatus>, next: z.infer<typeof requestStatus>) {
+  if (current === next) return;
+  if (!isRequestTransitionAllowed(current, next)) throw new TRPCError({ code: "BAD_REQUEST", message: `Não é permitido mudar a solicitação de ${current} para ${next}.` });
+}
 const publicRequestInput = z.object({
   tenantSlug: z.string().trim().toLowerCase().min(2).max(96),
   name: z.string().trim().min(2).max(180),
@@ -39,6 +81,7 @@ const publicRequestInput = z.object({
   serviceLabel: z.string().trim().min(2).max(180),
   description: z.string().trim().max(5000).optional(),
   answers: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  attachments: z.array(z.object({ filename: z.string().min(1).max(180), mimeType: z.string().min(3).max(120), base64: z.string().min(8).max(7_000_000) })).max(5).optional(),
 });
 
 type SuggestionItem = {
@@ -85,8 +128,9 @@ export const quoteRequestRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const tenant = (await db.select({ id: tenants.id, name: tenants.name, active: tenants.active }).from(tenants).where(and(eq(tenants.slug, input.tenantSlug), eq(tenants.active, true), eq(tenants.status, "active"))).limit(1))[0];
     if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+    const branding = (await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, tenant.id)).limit(1))[0] ?? null;
     const catalog = await db.select({ id: services.id, name: services.name, description: services.description, quoteQuestions: services.quoteQuestions }).from(services).where(and(eq(services.tenantId, tenant.id), eq(services.active, true))).orderBy(asc(services.name));
-    return { workshop: tenant, services: catalog };
+    return { workshop: { ...tenant, branding }, services: catalog };
   }),
   submitPublic: publicProcedure.input(publicRequestInput).mutation(async ({ input }) => {
     const db = await getDb();
@@ -107,14 +151,26 @@ export const quoteRequestRouter = router({
         tenantId: tenant.id, number: Number(next), customerId, vehicleId, serviceId: input.serviceId ?? null,
         requesterName: input.name, requesterWhatsapp: input.whatsapp, requesterEmail: input.email ?? null,
         vehicleSnapshot: { make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null },
-        serviceLabel: input.serviceLabel, description: input.description ?? null, answers: input.answers ?? null,
+        serviceLabel: input.serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
       });
-      return { requestId: Number(request[0].insertId), number: Number(next) };
+      const requestId = Number(request[0].insertId);
+      await tx.insert(quoteRequestEvents).values({ tenantId: tenant.id, quoteRequestId: requestId, type: "created", metadata: { source: "public_link" } });
+      return { requestId, number: Number(next) };
     });
     const members = await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, tenant.id), eq(tenantMembers.active, true)));
     if (members.length) {
       const { notifications } = await import("../../drizzle/schema");
       await db.insert(notifications).values(members.map(member => ({ tenantId: tenant.id, userId: member.userId, type: "quote_request.created", title: "Nova solicitação de orçamento", body: `${input.name} solicitou ${input.serviceLabel}.`, link: `/solicitacoes/${result.requestId}` })));
+    }
+    if (input.attachments?.length) {
+      for (const file of input.attachments) {
+        if (!file.mimeType.startsWith("image/") && !file.mimeType.startsWith("video/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie apenas fotos ou vídeos." });
+        const buffer = Buffer.from(file.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+        if (buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada anexo deve ter no máximo 5 MB." });
+        const filename = file.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const uploaded = await storagePut(`tenants/${tenant.id}/quote-requests/${result.requestId}/${filename}`, buffer, file.mimeType);
+        await db.insert(attachments).values({ tenantId: tenant.id, quoteRequestId: result.requestId, storageKey: uploaded.key, url: uploaded.url, filename, mimeType: file.mimeType, sizeBytes: buffer.length });
+      }
     }
     return { requestId: result.requestId, number: result.number };
   }),
@@ -127,6 +183,34 @@ export const quoteRequestRouter = router({
       .leftJoin(customers, eq(customers.id, quoteRequests.customerId)).leftJoin(vehicles, eq(vehicles.id, quoteRequests.vehicleId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
       .orderBy(desc(quoteRequests.createdAt));
+  }),
+
+  updateStatus: protectedProcedure.input(tenantIdInput.extend({ quoteRequestId: z.number().int().positive(), status: requestStatus, assignedToUserId: z.number().int().positive().nullable().optional(), note: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const request = (await db.select().from(quoteRequests).where(and(eq(quoteRequests.id, input.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId))).limit(1))[0];
+    if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Solicitação não encontrada." });
+    assertRequestTransition(request.status, input.status);
+    if (input.assignedToUserId !== undefined && input.assignedToUserId !== null) {
+      const member = (await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.assignedToUserId), eq(tenantMembers.active, true))).limit(1))[0];
+      if (!member) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável precisa pertencer a esta oficina." });
+    }
+    await db.transaction(async tx => {
+      await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId }).where(eq(quoteRequests.id, request.id));
+      if (request.status !== input.status) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "status_changed", actorUserId: ctx.user.id, metadata: { from: request.status, to: input.status } });
+      if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId } });
+      if (input.note) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "note_added", actorUserId: ctx.user.id, metadata: { note: input.note } });
+    });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote_request.updated", entityType: "quote_request", entityId: request.id, before: { status: request.status, assignedToUserId: request.assignedToUserId }, after: { status: input.status, assignedToUserId: input.assignedToUserId ?? request.assignedToUserId } });
+    return { success: true };
+  }),
+
+  history: protectedProcedure.input(tenantIdInput.extend({ quoteRequestId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    return db.select().from(quoteRequestEvents).where(and(eq(quoteRequestEvents.tenantId, input.tenantId), eq(quoteRequestEvents.quoteRequestId, input.quoteRequestId))).orderBy(desc(quoteRequestEvents.createdAt));
   }),
 
   suggestion: protectedProcedure.input(tenantIdInput.extend({ quoteRequestId: z.number().int().positive() })).query(async ({ ctx, input }) => {
@@ -168,6 +252,7 @@ export const quoteRouter = router({
       await tx.insert(quoteItems).values(suggested.map((item, sortOrder) => ({ tenantId: input.tenantId, quoteId, productId: item.productId ?? null, serviceId: item.serviceId ?? null, itemType: item.itemType, description: item.description, quantity: item.quantity.toFixed(3), unitPrice: item.unitPrice.toFixed(2), unitCost: item.unitCost.toFixed(2), sortOrder })));
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId, type: "created", actorUserId: ctx.user.id });
       await tx.update(quoteRequests).set({ status: "ready", assignedToUserId: ctx.user.id }).where(eq(quoteRequests.id, request.id));
+      await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "quote_created", actorUserId: ctx.user.id, metadata: { quoteId } });
       return { id: quoteId, number: Number(next), publicToken: token };
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.created", entityType: "quote", entityId: output.id, after: { number: output.number, requestId: request.id } });
@@ -232,17 +317,15 @@ export const quoteRouter = router({
         return;
       }
       const productItems = await tx.select().from(quoteItems).where(and(eq(quoteItems.tenantId, quote.tenantId), eq(quoteItems.quoteId, quote.id), eq(quoteItems.itemType, "product")));
-      for (const item of productItems) {
-        if (!item.productId) continue;
-        const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, quote.tenantId), eq(inventoryBalances.productId, item.productId))).limit(1))[0];
-        if (!balance || Number(balance.physicalQuantity) - Number(balance.reservedQuantity) < Number(item.quantity)) throw new TRPCError({ code: "CONFLICT", message: "Um ou mais itens não possuem disponibilidade para reserva. Fale com a oficina." });
-      }
-      for (const item of productItems) {
-        if (!item.productId) continue;
-        await tx.insert(inventoryReservations).values({ tenantId: quote.tenantId, productId: item.productId, quoteId: quote.id, quantity: item.quantity });
-        const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, quote.tenantId), eq(inventoryBalances.productId, item.productId))).limit(1))[0]!;
-        await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity}` }).where(eq(inventoryBalances.id, balance.id));
-        await tx.insert(inventoryMovements).values({ tenantId: quote.tenantId, productId: item.productId, type: "reservation", quantity: item.quantity, physicalDelta: "0", reservedDelta: item.quantity, referenceType: "quote", referenceId: quote.id, notes: "Reserva criada por aprovação do orçamento." });
+      const productIds = productItems.flatMap(item => item.productId ? [item.productId] : []);
+      const balances = productIds.length ? await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, quote.tenantId), inArray(inventoryBalances.productId, productIds))) : [];
+      const plan = buildReservationPlan(productItems, balances);
+      if (plan.some(item => !item.reservable)) throw new TRPCError({ code: "CONFLICT", message: "Um ou mais itens não possuem disponibilidade para reserva. Fale com a oficina." });
+      for (const item of plan) {
+        const balance = balances.find(candidate => candidate.productId === item.productId)!;
+        await tx.insert(inventoryReservations).values({ tenantId: quote.tenantId, productId: item.productId, quoteId: quote.id, quantity: item.quantity.toFixed(3) });
+        await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity.toFixed(3)}` }).where(eq(inventoryBalances.id, balance.id));
+        await tx.insert(inventoryMovements).values({ tenantId: quote.tenantId, productId: item.productId, type: "reservation", quantity: item.quantity.toFixed(3), physicalDelta: "0", reservedDelta: item.quantity.toFixed(3), referenceType: "quote", referenceId: quote.id, notes: "Reserva criada por aprovação do orçamento." });
       }
       await tx.update(quotes).set({ status: "approved", approvedAt: new Date() }).where(eq(quotes.id, quote.id));
       await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "approved", metadata: { source: "public_link" } });

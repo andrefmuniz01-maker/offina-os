@@ -12,19 +12,19 @@
 - [ ] Implementar serviços, perguntas configuráveis de orçamento e kits com expansão de componentes.
 - [ ] Implementar saldos físico, reservado e disponível de estoque por produto.
 - [ ] Implementar movimentações de estoque com origem, responsável e histórico imutável.
-- [ ] Implementar compras e entrada de estoque a partir de pedido recebido.
+- [x] Implementar compras e entrada de estoque a partir de pedido recebido.
 - [ ] Implementar reserva no orçamento aprovado e consumo efetivo na ordem de serviço.
 - [ ] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
-- [ ] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
-- [ ] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
+- [x] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
+- [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
 - [ ] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
-- [ ] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
+- [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
 - [ ] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
 - [ ] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
 - [ ] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
 - [ ] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
 - [ ] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
-- [ ] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
+- [x] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
 - [ ] Implementar busca, filtros, paginação e estados vazios em módulos operacionais.
 - [ ] Implementar notificações internas por evento e preferências por usuário; preparar a entrega por e-mail mediante configuração.
 - [ ] Implementar rotinas periódicas idempotentes para recalcular necessidade de estoque e identificar orçamentos sem resposta, sem enviar lembretes automaticamente.
@@ -36,3 +36,17 @@
 - [ ] Cobrir explicitamente em auditoria as alterações de preço/custo e os demais eventos críticos ainda não registrados.
 - [ ] Criar e ativar após publicação o job periódico, persistindo seu identificador e evitando lembretes automáticos.
 - [ ] Executar uma revisão verificável de estados de carregamento, erro e acessibilidade de teclado/foco sem erros pendentes no runtime.
+- [ ] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
+- [ ] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
+- [ ] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
+- [ ] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
+- [ ] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
+- [ ] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
+- [ ] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
+- [ ] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
+- [ ] Completar os dados cadastrais e de contato da tela de configuração da oficina.
+- [ ] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
+- [ ] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
+- [ ] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
+- [ ] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
+- [ ] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
