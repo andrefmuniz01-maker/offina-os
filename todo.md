@@ -109,3 +109,4 @@
 - [x] Auditar visualização e expiração públicas de orçamento com estados anterior e posterior, sem retornar custos no fluxo público.
 - [x] Registrar os valores anteriores e posteriores de branding e políticas comerciais nas atualizações de configuração por tenant.
 - [x] Paginar a trilha de auditoria por tenant e exibir estados seguros de acesso, carregamento, erro e vazio.
+- [x] Permitir busca acessível por nome ou WhatsApp ao selecionar o cliente para cadastro e histórico de veículos.
