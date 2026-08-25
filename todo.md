@@ -72,3 +72,4 @@
 - [x] Cobrir explicitamente o bloqueio de `serviceId` de outro tenant na criação de kits.
 - [x] Auditar alterações de checklist de OS e reforçar o escopo de tenant nos joins de agenda e pátio.
 - [x] Expor taxa-hora e margem padrão de peças na configuração e testar o upsert de settings e branding sem registro prévio.
+- [x] Reforçar o escopo de tenant nos joins de dashboard e notificações internas.

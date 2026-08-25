@@ -85,8 +85,8 @@ export const dashboardRouter = router({
       db.select({ count: sql<number>`count(*)` }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.status, "completed"), gte(workOrders.completedAt, start), sql`${workOrders.completedAt} < ${end}`)),
       db.select({ total: sql<string>`coalesce(sum(${quotes.total}), 0)`, count: sql<number>`count(*)`, approved: sql<number>`sum(case when ${quotes.status} = 'approved' then 1 else 0 end)` }).from(quotes).where(and(eq(quotes.tenantId, input.tenantId), gte(quotes.createdAt, start), sql`${quotes.createdAt} < ${end}`)),
       db.select({ total: sql<string>`coalesce(sum(${quotes.total}), 0)`, count: sql<number>`count(*)` }).from(quotes).where(and(eq(quotes.tenantId, input.tenantId), inArray(quotes.status, ["sent", "viewed", "ready"]))),
-      db.select({ scheduled: sql<number>`sum(case when ${appointments.status} in ('scheduled','confirmed') then 1 else 0 end)`, inProgress: sql<number>`sum(case when ${workOrders.status} = 'in_service' then 1 else 0 end)`, yard: sql<number>`sum(case when ${workOrders.status} in ('received','diagnosis','awaiting_approval','awaiting_part','in_service') then 1 else 0 end)` }).from(workOrders).leftJoin(appointments, eq(appointments.workOrderId, workOrders.id)).where(eq(workOrders.tenantId, input.tenantId)),
-      db.select({ critical: sql<number>`sum(case when ${inventoryBalances.physicalQuantity} - ${inventoryBalances.reservedQuantity} <= ${products.minStock} then 1 else 0 end)`, reserved: sql<number>`sum(case when ${inventoryBalances.reservedQuantity} > 0 then 1 else 0 end)` }).from(inventoryBalances).innerJoin(products, eq(products.id, inventoryBalances.productId)).where(eq(inventoryBalances.tenantId, input.tenantId)),
+      db.select({ scheduled: sql<number>`sum(case when ${appointments.status} in ('scheduled','confirmed') then 1 else 0 end)`, inProgress: sql<number>`sum(case when ${workOrders.status} = 'in_service' then 1 else 0 end)`, yard: sql<number>`sum(case when ${workOrders.status} in ('received','diagnosis','awaiting_approval','awaiting_part','in_service') then 1 else 0 end)` }).from(workOrders).leftJoin(appointments, and(eq(appointments.workOrderId, workOrders.id), eq(appointments.tenantId, workOrders.tenantId))).where(eq(workOrders.tenantId, input.tenantId)),
+      db.select({ critical: sql<number>`sum(case when ${inventoryBalances.physicalQuantity} - ${inventoryBalances.reservedQuantity} <= ${products.minStock} then 1 else 0 end)`, reserved: sql<number>`sum(case when ${inventoryBalances.reservedQuantity} > 0 then 1 else 0 end)` }).from(inventoryBalances).innerJoin(products, and(eq(products.id, inventoryBalances.productId), eq(products.tenantId, inventoryBalances.tenantId))).where(eq(inventoryBalances.tenantId, input.tenantId)),
     ]);
     const billing = Number(received[0]?.total ?? 0);
     const expensesTotal = Number(spent[0]?.total ?? 0);
@@ -110,8 +110,8 @@ export const notificationRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     return db.select({ notification: notifications, customer: { id: customers.id, name: customers.name, whatsapp: customers.whatsapp }, vehicle: { id: vehicles.id, make: vehicles.make, model: vehicles.model, plate: vehicles.plate } })
       .from(notifications)
-      .leftJoin(customers, eq(customers.id, notifications.customerId))
-      .leftJoin(vehicles, eq(vehicles.id, notifications.vehicleId))
+      .leftJoin(customers, and(eq(customers.id, notifications.customerId), eq(customers.tenantId, notifications.tenantId)))
+      .leftJoin(vehicles, and(eq(vehicles.id, notifications.vehicleId), eq(vehicles.tenantId, notifications.tenantId)))
       .where(and(eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId))))
       .orderBy(desc(notifications.createdAt)).limit(input.limit);
   }),
