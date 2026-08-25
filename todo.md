@@ -21,7 +21,7 @@
 - [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
 - [x] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
 - [x] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
-- [ ] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
+- [x] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
 - [x] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
 - [x] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
 - [x] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
@@ -87,3 +87,5 @@
 - [x] Adicionar markup padrão por tenant, aplicá-lo ao preço sugerido e validar seu salvamento, recarregamento e efeito no catálogo.
 - [x] Impedir salvamento de configurações sem tenant ativo e orientar a associação à oficina antes de exibir o formulário administrativo.
 - [x] Validar e auditar a conclusão e entrega de OS, com receita prevista, pós-venda e liberação de reservas estritamente no tenant.
+- [x] Conectar filtro temporal à agenda operacional, mantendo o pátio e os agendamentos estritamente no tenant ativo.
+- [x] Impedir agendamento e pátio acionáveis sem tenant ativo, exibindo orientação explícita para associação à oficina.
