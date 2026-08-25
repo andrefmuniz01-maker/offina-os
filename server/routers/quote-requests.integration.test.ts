@@ -100,3 +100,14 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote_request.updated", entityId: 91, after: { status: "in_quoting", assignedToUserId: 19 } }));
   });
 });
+
+describe("quoteRequests.submitPublic — disponibilidade da oficina", () => {
+  it("recusa a solicitação antes de qualquer transação quando a oficina não estiver ativa", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.submitPublic({ tenantSlug: "oficina-inativa", name: "Marina", whatsapp: "11999999999", make: "BMW", model: "320i", serviceLabel: "Downpipe" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+    expect(mocks.db.inserts()).toHaveLength(0);
+  });
+});
