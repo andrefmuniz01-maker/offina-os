@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   createTenant: vi.fn(),
   assertSuperAdmin: vi.fn(),
+  requirePermission: vi.fn(),
 }));
 
 vi.mock("../db", () => ({
@@ -18,10 +19,10 @@ vi.mock("../db", () => ({
 vi.mock("../tenantAccess", () => ({
   assertPlatformSuperAdmin: mocks.assertSuperAdmin,
   getTenantAccess: vi.fn(),
-  requireTenantPermission: vi.fn(),
+  requireTenantPermission: mocks.requirePermission,
 }));
 
-import { platformRouter } from "./platform";
+import { platformRouter, tenantRouter } from "./platform";
 
 function chain(result: unknown) {
   const query: any = {};
@@ -53,6 +54,7 @@ describe("platform — ciclo administrativo de tenants", () => {
     mocks.audit.mockReset();
     mocks.createTenant.mockReset();
     mocks.assertSuperAdmin.mockReset();
+    mocks.requirePermission.mockResolvedValue({ permissions: ["team.manage"] });
   });
 
   it("cria tenant isolado após validar proprietário e identificador disponível", async () => {
@@ -78,5 +80,16 @@ describe("platform — ciclo administrativo de tenants", () => {
 
     await expect(caller.updateTenant({ tenantId: 41, active: true, status: "active" })).resolves.toEqual({ success: true });
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 41, actorUserId: 7, action: "platform.tenant_updated", entityType: "tenant", entityId: 41, after: { active: true, status: "active" } }));
+  });
+
+  it("registra papel e ativação anteriores e posteriores ao atualizar membro do tenant", async () => {
+    mocks.db = buildDb([[{ role: "technician", active: true }]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.updateRole({ tenantId: 41, userId: 19, role: "attendant", active: false })).resolves.toEqual({ success: true });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 41, actorUserId: 7, action: "tenant.member_updated", entityType: "tenant_member", entityId: 19,
+      before: { role: "technician", active: true }, after: { role: "attendant", active: false },
+    }));
   });
 });

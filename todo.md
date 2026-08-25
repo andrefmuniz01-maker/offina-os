@@ -95,3 +95,4 @@
 - [x] Repetir o predicate de tenant nas escritas de consumo, checklist, agenda, solicitações, orçamento e reservas, incluindo fluxos públicos por token.
 - [x] Reforçar os joins de cliente e veículo no histórico e na fila comercial, bloqueando solicitação externa antes de transação ou auditoria.
 - [x] Bloquear decisão pública de orçamento por token quando a oficina não estiver ativa, preservando o fluxo aprovado em tenant ativo.
+- [x] Registrar estado anterior e posterior na auditoria de alterações de papel e ativação de membros do tenant.

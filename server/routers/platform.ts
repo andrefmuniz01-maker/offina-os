@@ -145,10 +145,13 @@ export const tenantRouter = router({
         await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+        const member = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
+          .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0];
+        if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
         const result = await db.update(tenantMembers).set({ role: input.role, ...(input.active === undefined ? {} : { active: input.active }) })
           .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId)));
         if (!result[0].affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
-        await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_updated", entityType: "tenant_member", entityId: input.userId, after: { role: input.role, active: input.active } });
+        await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_updated", entityType: "tenant_member", entityId: input.userId, before: { role: member.role, active: member.active }, after: { role: input.role, active: input.active ?? member.active } });
         return { success: true };
       }),
   }),
