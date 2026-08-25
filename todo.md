@@ -115,3 +115,4 @@
 - [x] Impedir convites, papéis e ativações de equipe acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
 - [x] Impedir cadastros e alterações de catálogo acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
 - [x] Impedir checklist, consumo, anexos e apontamentos de OS acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
+- [x] Impedir atribuição, transições e geração de orçamento a partir de solicitações sem tenant ativo, exibindo orientação de associação à oficina.

@@ -47,6 +47,9 @@ export default function Requests() {
   const updateStatus = trpc.quoteRequests.updateStatus.useMutation({ onSuccess: () => { toast.success("Solicitação atualizada."); utils.quoteRequests.list.invalidate(); utils.quoteRequests.history.invalidate(); }, onError: error => toast.error(error.message) });
   const items = requests.data?.items ?? [];
 
+  if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-6xl"><Skeleton className="h-96" /></main></DashboardLayout>;
+  if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-3xl"><Card><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Solicitações, atribuições e geração de orçamento pertencem a uma oficina ativa. Peça a um Super Admin para associar seu acesso antes de atuar nesta fila.</CardDescription></CardHeader></Card></main></DashboardLayout>;
+
   return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}>
     <main className="mx-auto max-w-6xl space-y-7">
       <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
