@@ -204,7 +204,7 @@ export const quoteRequestRouter = router({
     return { requestId: result.requestId, number: result.number };
   }),
 
-  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional() })).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
@@ -212,14 +212,15 @@ export const quoteRequestRouter = router({
       .leftJoin(customers, eq(customers.id, quoteRequests.customerId)).leftJoin(vehicles, eq(vehicles.id, quoteRequests.vehicleId))
       .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
-      .orderBy(desc(quoteRequests.createdAt));
-    const requestIds = rows.map(row => row.request.id);
+      .orderBy(desc(quoteRequests.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+    const pageRows = rows.slice(0, input.pageSize);
+    const requestIds = pageRows.map(row => row.request.id);
     const statusEvents = requestIds.length ? await db.select({ quoteRequestId: quoteRequestEvents.quoteRequestId, createdAt: quoteRequestEvents.createdAt }).from(quoteRequestEvents)
       .where(and(eq(quoteRequestEvents.tenantId, input.tenantId), inArray(quoteRequestEvents.quoteRequestId, requestIds), eq(quoteRequestEvents.type, "status_changed")))
       .orderBy(desc(quoteRequestEvents.createdAt)) : [];
     const lastStatusChangedAt = new Map<number, Date>();
     for (const event of statusEvents) if (!lastStatusChangedAt.has(event.quoteRequestId)) lastStatusChangedAt.set(event.quoteRequestId, event.createdAt);
-    return rows.map(row => ({ ...row, queueMinutes: calculateRequestQueueMinutes(row.request.createdAt, lastStatusChangedAt.get(row.request.id)) }));
+    return { items: pageRows.map(row => ({ ...row, queueMinutes: calculateRequestQueueMinutes(row.request.createdAt, lastStatusChangedAt.get(row.request.id)) })), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
   }),
 
   assignees: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {

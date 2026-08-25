@@ -77,3 +77,4 @@
 - [x] Paginar receitas e despesas por tenant, com filtros de status e estados de interface seguros.
 - [x] Exibir erros explícitos de dashboard, receitas e despesas no financeiro, sem confundir falha, permissão e estado vazio.
 - [x] Auditar saldos e custos antes/depois em ajustes e recebimentos de estoque, reforçando os updates por tenant.
+- [x] Paginar a fila de solicitações por tenant, com filtro de status e estados explícitos de carregamento, vazio e erro.
