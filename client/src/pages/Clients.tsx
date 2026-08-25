@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, CarFront, ClipboardList, Plus, UsersRound } from "lucide-react";
+import { ArrowLeft, CarFront, ChevronLeft, ChevronRight, ClipboardList, Plus, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -50,15 +50,16 @@ export default function Clients() {
   const utils = trpc.useUtils();
   const [customerId, setCustomerId] = useState("");
   const [customerSearch, setCustomerSearch] = useState("");
+  const [customerPage, setCustomerPage] = useState(1);
   const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [form, setForm] = useState({ make: "", model: "", modelYear: "", plate: "" });
 
-  const customersInput = useMemo(() => ({ tenantId, page: 1, pageSize: 100, search: customerSearch.trim() || undefined }), [tenantId, customerSearch]);
+  const customersInput = useMemo(() => ({ tenantId, page: customerPage, pageSize: 25, search: customerSearch.trim() || undefined }), [tenantId, customerPage, customerSearch]);
   const selectedCustomerId = Number(customerId);
   const vehiclesInput = useMemo(() => ({ tenantId, customerId: selectedCustomerId }), [tenantId, selectedCustomerId]);
   const vehicleHistoryInput = useMemo(() => ({ tenantId, vehicleId: vehicleId ?? 0 }), [tenantId, vehicleId]);
   const customerHistoryInput = useMemo(() => ({ tenantId, customerId: selectedCustomerId }), [tenantId, selectedCustomerId]);
-  const customers = trpc.customers.list.useQuery(customersInput, { enabled: Boolean(tenantId) });
+  const customers = trpc.customers.listPaged.useQuery(customersInput, { enabled: Boolean(tenantId) });
   const vehicles = trpc.vehicles.listByCustomer.useQuery(vehiclesInput, { enabled: Boolean(tenantId && customerId) });
   const vehicleHistory = trpc.vehicles.workOrderHistory.useQuery(vehicleHistoryInput, { enabled: Boolean(tenantId && vehicleId) });
   const customerHistory = trpc.customers.workOrderHistory.useQuery(customerHistoryInput, { enabled: Boolean(tenantId && customerId) });
@@ -90,8 +91,8 @@ export default function Clients() {
         <Card className="border-slate-200">
           <CardHeader><CardTitle className="text-lg">Novo veículo</CardTitle><CardDescription>Selecione o proprietário antes de cadastrar o veículo.</CardDescription></CardHeader>
           <CardContent className="grid gap-3">
-            <div className="grid gap-2"><Label htmlFor="customer-search">Buscar cliente</Label><Input id="customer-search" value={customerSearch} onChange={event => { setCustomerSearch(event.target.value); setCustomerId(""); setVehicleId(null); }} placeholder="Nome ou WhatsApp" /><p className="text-xs text-slate-500">A busca é aplicada somente aos clientes desta oficina.</p></div>
-            <div className="grid gap-2"><Label htmlFor="vehicle-customer">Cliente</Label><select id="vehicle-customer" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={customerId} onChange={event => selectCustomer(event.target.value)} aria-describedby="vehicle-customer-help"><option value="">{customers.isLoading ? "Buscando clientes…" : "Selecione"}</option>{customers.data?.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select><p id="vehicle-customer-help" className="text-xs text-slate-500">A seleção limita veículos e históricos a este cliente nesta oficina.</p></div>
+            <div className="grid gap-2"><Label htmlFor="customer-search">Buscar cliente</Label><Input id="customer-search" value={customerSearch} onChange={event => { setCustomerSearch(event.target.value); setCustomerPage(1); setCustomerId(""); setVehicleId(null); }} placeholder="Nome ou WhatsApp" /><p className="text-xs text-slate-500">A busca é aplicada somente aos clientes desta oficina.</p></div>
+            <div className="grid gap-2"><Label htmlFor="vehicle-customer">Cliente</Label><select id="vehicle-customer" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={customerId} onChange={event => selectCustomer(event.target.value)} aria-describedby="vehicle-customer-help"><option value="">{customers.isLoading ? "Buscando clientes…" : "Selecione"}</option>{customers.data?.items.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select><p id="vehicle-customer-help" className="text-xs text-slate-500">A seleção limita veículos e históricos a este cliente nesta oficina.</p>{customers.data?.items.length ? <div className="flex items-center justify-between text-xs text-slate-500"><span>Página {customers.data.page}</span><span className="flex gap-1"><Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Página anterior de clientes" disabled={customerPage === 1} onClick={() => setCustomerPage(current => current - 1)}><ChevronLeft className="h-4 w-4" /></Button><Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label="Próxima página de clientes" disabled={!customers.data.hasMore} onClick={() => setCustomerPage(current => current + 1)}><ChevronRight className="h-4 w-4" /></Button></span></div> : null}</div>
             {customers.isError ? <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">Não foi possível carregar os clientes disponíveis.</p> : null}
             <div className="grid grid-cols-2 gap-3"><div className="grid gap-2"><Label htmlFor="vehicle-make">Marca</Label><Input id="vehicle-make" value={form.make} onChange={event => setForm({ ...form, make: event.target.value })} placeholder="Ex.: BMW" /></div><div className="grid gap-2"><Label htmlFor="vehicle-model">Modelo</Label><Input id="vehicle-model" value={form.model} onChange={event => setForm({ ...form, model: event.target.value })} placeholder="Ex.: 320i" /></div></div>
             <div className="grid grid-cols-2 gap-3"><div className="grid gap-2"><Label htmlFor="vehicle-year">Ano</Label><Input id="vehicle-year" type="number" min="1900" max="2100" value={form.modelYear} onChange={event => setForm({ ...form, modelYear: event.target.value })} /></div><div className="grid gap-2"><Label htmlFor="vehicle-plate">Placa</Label><Input id="vehicle-plate" value={form.plate} onChange={event => setForm({ ...form, plate: event.target.value })} placeholder="ABC1D23" /></div></div>

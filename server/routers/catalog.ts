@@ -57,6 +57,14 @@ export const customerRouter = router({
     const filter = input.search ? and(eq(customers.tenantId, input.tenantId), or(like(customers.name, `%${input.search}%`), like(customers.whatsapp, `%${input.search}%`))) : eq(customers.tenantId, input.tenantId);
     return db.select().from(customers).where(filter).orderBy(customers.name).limit(pagination(input).limit).offset(pagination(input).offset);
   }),
+  listPaged: protectedProcedure.input(tenantIdInput.merge(pageInput)).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const filter = input.search ? and(eq(customers.tenantId, input.tenantId), or(like(customers.name, `%${input.search}%`), like(customers.whatsapp, `%${input.search}%`))) : eq(customers.tenantId, input.tenantId);
+    const rows = await db.select().from(customers).where(filter).orderBy(customers.name).limit(input.pageSize + 1).offset(pagination(input).offset);
+    return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
+  }),
   create: protectedProcedure.input(tenantIdInput.extend({ name: z.string().trim().min(2).max(180), whatsapp: z.string().trim().min(8).max(32), email: z.string().email().optional(), document: z.string().max(32).optional(), notes: z.string().max(4000).optional() }))
     .mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
