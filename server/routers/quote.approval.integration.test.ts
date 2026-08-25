@@ -62,4 +62,12 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
   });
+
+  it("bloqueia no procedimento real a aprovação que salta o envio comercial", async () => {
+    mocks.db = database([[{ ...quote, status: "ready" }]], []);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
 });

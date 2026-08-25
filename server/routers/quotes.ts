@@ -204,11 +204,12 @@ export const quoteRequestRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    return db.select({ request: quoteRequests, customer: customers, vehicle: vehicles, assignedUser: { id: users.id, name: users.name, email: users.email } }).from(quoteRequests)
+    const rows = await db.select({ request: quoteRequests, customer: customers, vehicle: vehicles, assignedUser: { id: users.id, name: users.name, email: users.email } }).from(quoteRequests)
       .leftJoin(customers, eq(customers.id, quoteRequests.customerId)).leftJoin(vehicles, eq(vehicles.id, quoteRequests.vehicleId))
       .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
       .orderBy(desc(quoteRequests.createdAt));
+    return rows.map(row => ({ ...row, queueMinutes: Math.max(0, Math.floor((Date.now() - row.request.updatedAt.getTime()) / 60_000)) }));
   }),
 
   updateStatus: protectedProcedure.input(tenantIdInput.extend({ quoteRequestId: z.number().int().positive(), status: requestStatus, assignedToUserId: z.number().int().positive().nullable().optional(), note: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
