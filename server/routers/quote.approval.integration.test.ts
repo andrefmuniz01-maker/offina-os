@@ -8,8 +8,8 @@ vi.mock("../tenantAccess", () => ({ getTenantAccess: vi.fn(), hasPermission: vi.
 import { quoteRouter } from "./quotes";
 
 function query(result: unknown) {
-  const builder: any = { from: vi.fn(), where: vi.fn(), limit: vi.fn(), orderBy: vi.fn() };
-  builder.from.mockReturnValue(builder); builder.where.mockReturnValue(builder); builder.limit.mockResolvedValue(result); builder.orderBy.mockResolvedValue(result);
+  const builder: any = { from: vi.fn(), innerJoin: vi.fn(), where: vi.fn(), limit: vi.fn(), orderBy: vi.fn() };
+  builder.from.mockReturnValue(builder); builder.innerJoin.mockReturnValue(builder); builder.where.mockReturnValue(builder); builder.limit.mockResolvedValue(result); builder.orderBy.mockResolvedValue(result);
   builder.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return builder;
 }
@@ -35,7 +35,7 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
   beforeEach(() => mocks.audit.mockReset());
 
   it("consolida produtos, reserva o saldo e aprova o orçamento sem depender de autenticação do cliente", async () => {
-    mocks.db = database([[quote]], [items, [{ id: 7, tenantId: 4, productId: 55, physicalQuantity: "8.000", reservedQuantity: "2.000" }]]);
+    mocks.db = database([[{ quote }]], [items, [{ id: 7, tenantId: 4, productId: 55, physicalQuantity: "8.000", reservedQuantity: "2.000" }]]);
     const caller = quoteRouter.createCaller(publicContext);
 
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).resolves.toEqual({ status: "approved", idempotent: false });
@@ -47,7 +47,7 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
   });
 
   it("interrompe a aprovação antes de inserir reservas quando o saldo disponível não cobre o plano", async () => {
-    mocks.db = database([[quote]], [items, [{ id: 7, tenantId: 4, productId: 55, physicalQuantity: "4.000", reservedQuantity: "2.000" }]]);
+    mocks.db = database([[{ quote }]], [items, [{ id: 7, tenantId: 4, productId: 55, physicalQuantity: "4.000", reservedQuantity: "2.000" }]]);
     const caller = quoteRouter.createCaller(publicContext);
 
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "CONFLICT" });
@@ -56,15 +56,25 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
   });
 
   it("não processa decisão por link vencido", async () => {
-    mocks.db = database([[{ ...quote, publicTokenExpiresAt: new Date("2026-01-01T00:00:00.000Z") }]], []);
+    mocks.db = database([[{ quote: { ...quote, publicTokenExpiresAt: new Date("2026-01-01T00:00:00.000Z") } }]], []);
     const caller = quoteRouter.createCaller(publicContext);
 
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
   });
 
+  it("bloqueia a decisão pública de token que não pertence a uma oficina ativa", async () => {
+    mocks.db = database([[]], []);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("bloqueia no procedimento real a aprovação que salta o envio comercial", async () => {
-    mocks.db = database([[{ ...quote, status: "ready" }]], []);
+    mocks.db = database([[{ quote: { ...quote, status: "ready" } }]], []);
     const caller = quoteRouter.createCaller(publicContext);
 
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });

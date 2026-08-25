@@ -411,7 +411,8 @@ export const quoteRouter = router({
   publicDecision: publicProcedure.input(z.object({ token: z.string().min(1).max(96), decision: z.enum(["approved", "rejected"]) })).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const quote = (await db.select().from(quotes).where(eq(quotes.publicToken, input.token)).limit(1))[0];
+    const row = (await db.select({ quote: quotes }).from(quotes).innerJoin(tenants, and(eq(tenants.id, quotes.tenantId), eq(tenants.active, true), eq(tenants.status, "active"))).where(eq(quotes.publicToken, input.token)).limit(1))[0];
+    const quote = row?.quote;
     if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Orçamento não encontrado." });
     if (quote.publicTokenExpiresAt.getTime() < Date.now()) throw new TRPCError({ code: "BAD_REQUEST", message: "Este link de orçamento expirou." });
     if (quote.status === "approved" || quote.status === "rejected") return { status: quote.status, idempotent: true };
