@@ -320,7 +320,7 @@ export const quoteRouter = router({
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
       if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(and(eq(quoteRequests.id, quote.quote.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId)));
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, metadata: { channel: "manual_whatsapp_preparation" } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, before: { status: quote.quote.status }, after: { status: "sent" }, metadata: { channel: "manual_whatsapp_preparation" } });
     const publicUrl = `/orcamento/${quote.quote.publicToken}`;
     const [settings, tenant] = await Promise.all([
       db.select({ quoteMessageTemplate: tenantSettings.quoteMessageTemplate }).from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1),
@@ -417,12 +417,12 @@ export const quoteRouter = router({
     if (quote.publicTokenExpiresAt.getTime() < Date.now()) throw new TRPCError({ code: "BAD_REQUEST", message: "Este link de orçamento expirou." });
     if (quote.status === "approved" || quote.status === "rejected") return { status: quote.status, idempotent: true };
     if (!isQuoteTransitionAllowed(quote.status, input.decision)) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não está disponível para decisão." });
-    await db.transaction(async (tx) => {
+    const decisionAudit = await db.transaction(async (tx) => {
       if (input.decision === "rejected") {
         await tx.update(quotes).set({ status: "rejected", rejectedAt: new Date() }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, quote.tenantId)));
         await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "rejected", metadata: { source: "public_link" } });
         if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "rejected" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
-        return;
+        return { reservedProductCount: 0 };
       }
       const productItems = await tx.select().from(quoteItems).where(and(eq(quoteItems.tenantId, quote.tenantId), eq(quoteItems.quoteId, quote.id), eq(quoteItems.itemType, "product")));
       const productIds = productItems.flatMap(item => item.productId ? [item.productId] : []);
@@ -438,8 +438,9 @@ export const quoteRouter = router({
       await tx.update(quotes).set({ status: "approved", approvedAt: new Date() }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, quote.tenantId)));
       await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "approved", metadata: { source: "public_link" } });
       if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "approved" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
+      return { reservedProductCount: plan.length };
     });
-    await writeAuditLog({ tenantId: quote.tenantId, action: `quote.${input.decision}_public`, entityType: "quote", entityId: quote.id, metadata: { source: "public_link" } });
+    await writeAuditLog({ tenantId: quote.tenantId, action: `quote.${input.decision}_public`, entityType: "quote", entityId: quote.id, before: { status: quote.status }, after: { status: input.decision }, metadata: { source: "public_link", reservedProductCount: decisionAudit.reservedProductCount } });
     return { status: input.decision, idempotent: false };
   }),
 });

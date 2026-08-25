@@ -104,3 +104,4 @@
 - [x] Associar labels e foco visível aos controles de clientes e veículos, com estados de erro e orientação sem tenant ativo.
 - [x] Registrar saldos físicos, reservas e seus estados anterior e posterior na auditoria de consumo de produto da OS.
 - [x] Registrar status anterior e posterior do pedido ao receber compra, mantendo saldos e custo médio auditáveis.
+- [x] Registrar estados anterior e posterior no envio e nas decisões públicas de orçamento, com contagem agregada de reservas.

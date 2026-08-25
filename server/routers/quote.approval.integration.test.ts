@@ -43,7 +43,15 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
       expect.objectContaining({ tenantId: 4, quoteId: 81, productId: 55, quantity: "3.000" }),
       expect.objectContaining({ tenantId: 4, productId: 55, type: "reservation", referenceType: "quote", referenceId: 81, reservedDelta: "3.000" }),
     ]));
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "quote.approved_public", entityId: 81 }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "quote.approved_public", entityId: 81, before: { status: "sent" }, after: { status: "approved" }, metadata: { source: "public_link", reservedProductCount: 1 } }));
+  });
+
+  it("registra a recusa pública com estado anterior e sem reserva de produto", async () => {
+    mocks.db = database([[{ quote }]], []);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "rejected" })).resolves.toEqual({ status: "rejected", idempotent: false });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "quote.rejected_public", entityId: 81, before: { status: "sent" }, after: { status: "rejected" }, metadata: { source: "public_link", reservedProductCount: 0 } }));
   });
 
   it("interrompe a aprovação antes de inserir reservas quando o saldo disponível não cobre o plano", async () => {
