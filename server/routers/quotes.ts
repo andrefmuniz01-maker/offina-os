@@ -271,6 +271,7 @@ export const quoteRouter = router({
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
       if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(eq(quoteRequests.id, quote.quote.quoteRequestId));
     });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, metadata: { channel: "manual_whatsapp_preparation" } });
     const publicUrl = `/orcamento/${quote.quote.publicToken}`;
     return { preparedMessage: `Olá, ${quote.customer.name}! Seu orçamento para ${quote.vehicle.make} ${quote.vehicle.model} está pronto. Total: R$ ${Number(quote.quote.total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. Consulte os detalhes e responda aqui: ${publicUrl}`, publicUrl };
   }),
