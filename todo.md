@@ -67,3 +67,4 @@
 - [x] Exibir responsável por solicitação, permitir atribuição apenas a membros ativos do tenant e registrar sua trilha operacional.
 - [x] Verificar e testar o isolamento de fornecedor em pedidos de compra por tenant.
 - [x] Calcular `queueMinutes` a partir do último evento de mudança de status, sem reinício em atribuição ou observação.
+- [x] Auditar a criação de produtos e serviços com custo, preço e margem, preservando os valores comerciais críticos no evento.

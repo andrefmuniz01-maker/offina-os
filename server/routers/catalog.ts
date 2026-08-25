@@ -194,7 +194,7 @@ export const catalogRouter = router({
         await tx.insert(inventoryBalances).values({ tenantId: input.tenantId, productId: id });
         return id;
       });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.created", entityType: "product", entityId: productId, after: { name: input.name, sku: input.sku } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.created", entityType: "product", entityId: productId, after: { name: input.name, sku: input.sku, categoryId: input.categoryId ?? null, supplierId: input.supplierId ?? null, currentCost: input.currentCost, salePrice: pricing.price, desiredMarginPercent: pricing.targetMarginPercent } });
       return { id: productId };
     }),
     updateFinancial: protectedProcedure.input(tenantIdInput.extend({ productId: z.number().int().positive(), currentCost: decimalInput, salePrice: decimalInput, desiredMarginPercent: decimalInput.max(99.99) })).mutation(async ({ ctx, input }) => {
@@ -237,7 +237,9 @@ export const catalogRouter = router({
           if (!category) throw new TRPCError({ code: "BAD_REQUEST", message: "A categoria não pertence a esta oficina." });
         }
         const result = await db.insert(services).values({ tenantId: input.tenantId, categoryId: input.categoryId ?? null, name: input.name, description: input.description ?? null, estimatedMinutes: input.estimatedMinutes, laborPrice: pricing.price.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2), quoteQuestions: input.quoteQuestions ?? null });
-        return { id: Number(result[0].insertId) };
+        const id = Number(result[0].insertId);
+        await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.created", entityType: "service", entityId: id, after: { name: input.name, categoryId: input.categoryId ?? null, estimatedMinutes: input.estimatedMinutes, laborPrice: pricing.price, estimatedCost: input.estimatedCost, desiredMarginPercent: pricing.targetMarginPercent } });
+        return { id };
       }),
     updateFinancial: protectedProcedure.input(tenantIdInput.extend({ serviceId: z.number().int().positive(), laborPrice: decimalInput, estimatedCost: decimalInput, desiredMarginPercent: decimalInput.max(99.99) })).mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
