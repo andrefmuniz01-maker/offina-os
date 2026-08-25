@@ -133,7 +133,9 @@ export const catalogRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const result = await db.insert(productCategories).values({ tenantId: input.tenantId, name: input.name, description: input.description ?? null });
-      return { id: Number(result[0].insertId) };
+      const id = Number(result[0].insertId);
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product_category.created", entityType: "product_category", entityId: id, after: { name: input.name, description: input.description ?? null } });
+      return { id };
     }),
     listServices: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
@@ -146,7 +148,9 @@ export const catalogRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const result = await db.insert(serviceCategories).values({ tenantId: input.tenantId, name: input.name, description: input.description ?? null });
-      return { id: Number(result[0].insertId) };
+      const id = Number(result[0].insertId);
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service_category.created", entityType: "service_category", entityId: id, after: { name: input.name, description: input.description ?? null } });
+      return { id };
     }),
   }),
 

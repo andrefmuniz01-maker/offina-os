@@ -109,5 +109,6 @@ describe("catalog — composição segura por tenant", () => {
     await expect(caller.categories.createProduct({ tenantId: 4, name: "Performance", description: "Peças de preparação" })).resolves.toEqual({ id: 71 });
     expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "catalog.manage");
     expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, name: "Performance", description: "Peças de preparação" })]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "product_category.created", entityType: "product_category", entityId: 71, after: { name: "Performance", description: "Peças de preparação" } }));
   });
 });
