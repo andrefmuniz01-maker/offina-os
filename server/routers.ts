@@ -2,6 +2,12 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { platformRouter, tenantRouter } from "./routers/platform";
+import { catalogRouter, customerRouter, vehicleRouter } from "./routers/catalog";
+import { inventoryRouter } from "./routers/inventory";
+import { quoteRequestRouter, quoteRouter } from "./routers/quotes";
+import { appointmentRouter, workOrderRouter } from "./routers/operations";
+import { dashboardRouter, financialRouter, notificationRouter } from "./routers/management";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -16,13 +22,19 @@ export const appRouter = router({
       } as const;
     }),
   }),
-
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  platform: platformRouter,
+  tenant: tenantRouter,
+  customers: customerRouter,
+  vehicles: vehicleRouter,
+  catalog: catalogRouter,
+  inventory: inventoryRouter,
+  quoteRequests: quoteRequestRouter,
+  quotes: quoteRouter,
+  appointments: appointmentRouter,
+  workOrders: workOrderRouter,
+  financial: financialRouter,
+  dashboard: dashboardRouter,
+  notifications: notificationRouter,
 });
 
 export type AppRouter = typeof appRouter;
