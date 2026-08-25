@@ -92,4 +92,12 @@ describe("platform — ciclo administrativo de tenants", () => {
       before: { role: "technician", active: true }, after: { role: "attendant", active: false },
     }));
   });
+
+  it("bloqueia atualização de membro ausente no tenant antes de escrever ou auditar", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.updateRole({ tenantId: 41, userId: 999, role: "attendant" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
 });
