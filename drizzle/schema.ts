@@ -72,6 +72,7 @@ export const tenantSettings = mysqlTable("tenant_settings", {
   minimumMarginPercent: decimal("minimumMarginPercent", { precision: 7, scale: 2 }).notNull().default("0"),
   attendantMaxDiscountPercent: decimal("attendantMaxDiscountPercent", { precision: 7, scale: 2 }).notNull().default("0"),
   quoteValidityDays: int("quoteValidityDays").notNull().default(7),
+  quoteMessageTemplate: text("quoteMessageTemplate"),
   createdAt,
   updatedAt,
 }, (table) => [uniqueIndex("tenant_settings_tenant_unique").on(table.tenantId)]);

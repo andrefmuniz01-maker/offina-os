@@ -123,6 +123,13 @@ function publicQuoteItems(items: typeof quoteItems.$inferSelect[]) {
   return items.map(item => ({ id: item.id, itemType: item.itemType, description: item.description, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), discount: Number(item.discount), total: Number(item.quantity) * Number(item.unitPrice) - Number(item.discount) }));
 }
 
+const defaultQuoteMessageTemplate = "Olá, {{cliente}}! Seu orçamento para {{veiculo}} está pronto. Total: {{total}}. Consulte os detalhes e responda aqui: {{link}}";
+
+export function renderQuoteMessage(template: string | null | undefined, values: { client: string; vehicle: string; total: string; link: string; workshop: string }) {
+  const placeholders: Record<string, string> = { "{{cliente}}": values.client, "{{veiculo}}": values.vehicle, "{{total}}": values.total, "{{link}}": values.link, "{{oficina}}": values.workshop };
+  return Object.entries(placeholders).reduce((message, [token, value]) => message.replaceAll(token, value), template?.trim() || defaultQuoteMessageTemplate);
+}
+
 export const quoteRequestRouter = router({
   publicServices: publicProcedure.input(z.object({ tenantSlug: z.string().trim().toLowerCase().min(2).max(96) })).query(async ({ input }) => {
     const db = await getDb();
@@ -273,7 +280,11 @@ export const quoteRouter = router({
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, metadata: { channel: "manual_whatsapp_preparation" } });
     const publicUrl = `/orcamento/${quote.quote.publicToken}`;
-    return { preparedMessage: `Olá, ${quote.customer.name}! Seu orçamento para ${quote.vehicle.make} ${quote.vehicle.model} está pronto. Total: R$ ${Number(quote.quote.total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}. Consulte os detalhes e responda aqui: ${publicUrl}`, publicUrl };
+    const [settings, tenant] = await Promise.all([
+      db.select({ quoteMessageTemplate: tenantSettings.quoteMessageTemplate }).from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1),
+      db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1),
+    ]);
+    return { preparedMessage: renderQuoteMessage(settings[0]?.quoteMessageTemplate, { client: quote.customer.name, vehicle: `${quote.vehicle.make} ${quote.vehicle.model}`, total: `R$ ${Number(quote.quote.total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, link: publicUrl, workshop: tenant[0]?.name ?? "Oficina" }), publicUrl };
   }),
 
   list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]).optional() })).query(async ({ ctx, input }) => {

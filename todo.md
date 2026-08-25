@@ -20,7 +20,7 @@
 - [x] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
 - [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
 - [ ] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
-- [ ] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
+- [x] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
 - [ ] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
 - [ ] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
 - [ ] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
