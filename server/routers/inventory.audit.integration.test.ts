@@ -67,6 +67,6 @@ describe("inventory — auditoria de ajuste e recebimento", () => {
     const caller = inventoryRouter.createCaller(createContext());
 
     await expect(caller.purchaseOrders.receive({ tenantId: 4, purchaseOrderId: 91, items: [{ itemId: 201, receivedQuantity: 5 }] })).resolves.toEqual({ success: true });
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "purchase_order.received", entityId: 91, after: { status: "received", receivedItems: [expect.objectContaining({ itemId: 201, productId: 12, quantity: 5, previousPhysical: 10, nextPhysical: 15, previousAverageCost: 15, nextAverageCost: 16.67, currentCost: "20.00" })] } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "purchase_order.received", entityId: 91, before: { status: "ordered" }, after: { status: "received", receivedItems: [expect.objectContaining({ itemId: 201, productId: 12, quantity: 5, previousPhysical: 10, nextPhysical: 15, previousAverageCost: 15, nextAverageCost: 16.67, currentCost: "20.00" })] } }));
   });
 });

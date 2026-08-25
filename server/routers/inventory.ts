@@ -193,9 +193,9 @@ export const inventoryRouter = router({
         const complete = refreshed.every(item => Number(item.receivedQuantity) >= Number(item.orderedQuantity));
         const status = complete ? "received" : "partially_received";
         await tx.update(purchaseOrders).set({ status, receivedAt: complete ? new Date() : null }).where(and(eq(purchaseOrders.id, input.purchaseOrderId), eq(purchaseOrders.tenantId, input.tenantId)));
-        return { status, items: receivedItems };
+        return { previousStatus: order.status, status, items: receivedItems };
       });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.received", entityType: "purchase_order", entityId: input.purchaseOrderId, after: { status: receipt.status, receivedItems: receipt.items } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.received", entityType: "purchase_order", entityId: input.purchaseOrderId, before: { status: receipt.previousStatus }, after: { status: receipt.status, receivedItems: receipt.items } });
       return { success: true };
     }),
   }),
