@@ -192,18 +192,22 @@ export const workOrderRouter = router({
     if (!hasPermission(access, "work_orders.manage") && !hasPermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode registrar consumo." });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    await db.transaction(async (tx) => {
+    const consumptionAudit = await db.transaction(async (tx) => {
       const order = (await tx.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
       if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "OS indisponível para o seu perfil." });
       const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, input.tenantId), eq(inventoryBalances.productId, input.productId))).limit(1))[0];
       const product = (await tx.select().from(products).where(and(eq(products.id, input.productId), eq(products.tenantId, input.tenantId))).limit(1))[0];
       if (!balance || !product || Number(balance.physicalQuantity) < input.quantity) throw new TRPCError({ code: "CONFLICT", message: "Estoque físico insuficiente para registrar este consumo." });
+      const previousPhysicalQuantity = Number(balance.physicalQuantity);
+      const previousReservedQuantity = Number(balance.reservedQuantity);
       let reservedDelta = 0;
+      let reservationAudit: { id: number; before: { quantity: number; status: string }; after: { quantity: number; status: string } } | null = null;
       if (input.reservationId) {
         const reservation = (await tx.select().from(inventoryReservations).where(and(eq(inventoryReservations.id, input.reservationId), eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.productId, input.productId), eq(inventoryReservations.status, "active"))).limit(1))[0];
         if (!reservation || Number(reservation.quantity) < input.quantity) throw new TRPCError({ code: "BAD_REQUEST", message: "A reserva indicada não cobre este consumo." });
         reservedDelta = input.quantity;
         const remaining = Number(reservation.quantity) - input.quantity;
+        reservationAudit = { id: reservation.id, before: { quantity: Number(reservation.quantity), status: reservation.status }, after: { quantity: remaining, status: remaining === 0 ? "consumed" : "active" } };
         await tx.update(inventoryReservations).set({ quantity: remaining.toFixed(3), status: remaining === 0 ? "consumed" : "active", releasedAt: remaining === 0 ? new Date() : null }).where(and(eq(inventoryReservations.id, reservation.id), eq(inventoryReservations.tenantId, input.tenantId)));
       }
       await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} - ${input.quantity.toFixed(3)}`, reservedQuantity: reservedDelta ? sql`${inventoryBalances.reservedQuantity} - ${reservedDelta.toFixed(3)}` : balance.reservedQuantity }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
@@ -213,8 +217,9 @@ export const workOrderRouter = router({
       const realCost = Number(aggregate?.cost ?? 0);
       const margin = Number(order.estimatedTotal) > 0 ? ((Number(order.estimatedTotal) - realCost) / Number(order.estimatedTotal)) * 100 : 0;
       await tx.update(workOrders).set({ realCostTotal: realCost.toFixed(2), realMarginPercent: margin.toFixed(2) }).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId)));
+      return { before: { physicalQuantity: previousPhysicalQuantity, reservedQuantity: previousReservedQuantity, reservation: reservationAudit?.before ?? null }, after: { physicalQuantity: previousPhysicalQuantity - input.quantity, reservedQuantity: previousReservedQuantity - reservedDelta, reservation: reservationAudit?.after ?? null }, reservationId: reservationAudit?.id ?? null };
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.product_consumed", entityType: "work_order", entityId: input.workOrderId, metadata: { productId: input.productId, quantity: input.quantity } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.product_consumed", entityType: "work_order", entityId: input.workOrderId, before: consumptionAudit.before, after: consumptionAudit.after, metadata: { productId: input.productId, quantity: input.quantity, reservationId: consumptionAudit.reservationId } });
     return { success: true };
   }),
 });

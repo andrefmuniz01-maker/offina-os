@@ -45,7 +45,12 @@ describe("workOrders.consumeProduct — integração tRPC simulada", () => {
       expect.objectContaining({ tenantId: 4, productId: 44, type: "consumption", physicalDelta: "-2.000", reservedDelta: "-2.000", referenceId: 401 }),
     ]));
     expect(mocks.db.updates()).toEqual(expect.arrayContaining([expect.objectContaining({ realCostTotal: "80.00", realMarginPercent: "84.00" })]));
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 5, action: "work_order.product_consumed", entityId: 401 }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 4, actorUserId: 5, action: "work_order.product_consumed", entityId: 401,
+      before: { physicalQuantity: 8, reservedQuantity: 3, reservation: { quantity: 3, status: "active" } },
+      after: { physicalQuantity: 6, reservedQuantity: 1, reservation: { quantity: 1, status: "active" } },
+      metadata: { productId: 44, quantity: 2, reservationId: 200 },
+    }));
   });
 
   it("bloqueia consumo em OS atribuída a outro técnico antes de tocar no estoque", async () => {
