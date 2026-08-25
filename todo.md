@@ -39,7 +39,7 @@
 - [ ] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
 - [x] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
 - [x] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
-- [ ] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
+- [x] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
 - [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
 - [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
 - [x] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
@@ -84,3 +84,5 @@
 - [x] Permitir definir o horizonte da previsão de estoque e exibir reservas e agendamentos afetados sem expor custos a perfis restritos.
 - [x] Integrar preferências internas por usuário à central de notificações, sem habilitar e-mail ou envio automático externo.
 - [x] Impedir operações financeiras quando não houver tenant ativo e exibir uma orientação explícita em vez de um formulário acionável.
+- [x] Adicionar markup padrão por tenant, aplicá-lo ao preço sugerido e validar seu salvamento, recarregamento e efeito no catálogo.
+- [x] Impedir salvamento de configurações sem tenant ativo e orientar a associação à oficina antes de exibir o formulário administrativo.

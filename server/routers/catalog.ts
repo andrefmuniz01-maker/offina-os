@@ -18,7 +18,7 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
-import { grossMarginPercent, suggestedSalePrice } from "../pricing";
+import { grossMarginPercent, suggestedSalePrice, toMoney } from "../pricing";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -38,8 +38,9 @@ function visibleProduct<T extends typeof products.$inferSelect>(product: T, fina
 
 function resolveSellingPrice(input: { cost: number; requestedPrice: number; desiredMarginPercent: number; fallbackPrice?: number }, settings: typeof tenantSettings.$inferSelect | undefined) {
   const targetMarginPercent = input.desiredMarginPercent || Number(settings?.defaultPartsMarginPercent ?? 0);
+  const targetMarkupPercent = Number(settings?.defaultPartsMarkupPercent ?? 0);
   if (targetMarginPercent >= 100) throw new TRPCError({ code: "BAD_REQUEST", message: "A margem alvo deve ser menor que 100%." });
-  const policyPrice = input.cost > 0 ? suggestedSalePrice(input.cost, targetMarginPercent) : 0;
+  const policyPrice = input.cost > 0 ? (targetMarginPercent > 0 ? suggestedSalePrice(input.cost, targetMarginPercent) : toMoney(input.cost * (1 + targetMarkupPercent / 100))) : 0;
   const price = input.requestedPrice > 0 ? input.requestedPrice : Math.max(policyPrice, input.fallbackPrice ?? 0);
   const minimumMarginPercent = Number(settings?.minimumMarginPercent ?? 0);
   if (input.cost > 0 && grossMarginPercent(price, input.cost) < minimumMarginPercent) {

@@ -62,10 +62,10 @@ describe("tenant settings e branding — upsert e recarregamento", () => {
   it("cria os registros ausentes via upsert e os devolve no recarregamento do tenant", async () => {
     const caller = tenantRouter.createCaller(createContext());
 
-    await expect(caller.settings.update({ tenantId: 4, legalName: "Oficina Centro LTDA", defaultLaborHourlyRate: 185.5, defaultPartsMarginPercent: 35, minimumMarginPercent: 20, attendantMaxDiscountPercent: 8, quoteValidityDays: 10 })).resolves.toEqual({ success: true });
+    await expect(caller.settings.update({ tenantId: 4, legalName: "Oficina Centro LTDA", defaultLaborHourlyRate: 185.5, defaultPartsMarginPercent: 35, defaultPartsMarkupPercent: 42, minimumMarginPercent: 20, attendantMaxDiscountPercent: 8, quoteValidityDays: 10 })).resolves.toEqual({ success: true });
     await expect(caller.branding.update({ tenantId: 4, publicTitle: "Oficina Centro", primaryColor: "#112233", secondaryColor: "#223344", accentColor: "#334455" })).resolves.toEqual({ success: true });
 
-    await expect(caller.settings.get({ tenantId: 4 })).resolves.toEqual(expect.objectContaining({ tenantId: 4, legalName: "Oficina Centro LTDA", defaultLaborHourlyRate: "185.50", defaultPartsMarginPercent: "35.00", minimumMarginPercent: "20.00", attendantMaxDiscountPercent: "8.00", quoteValidityDays: 10 }));
+    await expect(caller.settings.get({ tenantId: 4 })).resolves.toEqual(expect.objectContaining({ tenantId: 4, legalName: "Oficina Centro LTDA", defaultLaborHourlyRate: "185.50", defaultPartsMarginPercent: "35.00", defaultPartsMarkupPercent: "42.00", minimumMarginPercent: "20.00", attendantMaxDiscountPercent: "8.00", quoteValidityDays: 10 }));
     await expect(caller.branding.get({ tenantId: 4 })).resolves.toEqual(expect.objectContaining({ tenantId: 4, publicTitle: "Oficina Centro", primaryColor: "#112233", secondaryColor: "#223344", accentColor: "#334455" }));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "tenant.settings_updated" }));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "tenant.branding_updated" }));

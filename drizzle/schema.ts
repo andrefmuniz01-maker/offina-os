@@ -69,6 +69,7 @@ export const tenantSettings = mysqlTable("tenant_settings", {
   openingHours: json("openingHours").$type<Record<string, string>>(),
   defaultLaborHourlyRate: decimal("defaultLaborHourlyRate", { precision: 12, scale: 2 }).notNull().default("0"),
   defaultPartsMarginPercent: decimal("defaultPartsMarginPercent", { precision: 7, scale: 2 }).notNull().default("0"),
+  defaultPartsMarkupPercent: decimal("defaultPartsMarkupPercent", { precision: 7, scale: 2 }).notNull().default("0"),
   minimumMarginPercent: decimal("minimumMarginPercent", { precision: 7, scale: 2 }).notNull().default("0"),
   attendantMaxDiscountPercent: decimal("attendantMaxDiscountPercent", { precision: 7, scale: 2 }).notNull().default("0"),
   quoteValidityDays: int("quoteValidityDays").notNull().default(7),
