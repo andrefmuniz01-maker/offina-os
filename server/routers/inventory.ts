@@ -128,14 +128,20 @@ export const inventoryRouter = router({
   }),
 
   purchaseOrders: router({
-    list: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
-      await requireTenantPermission(ctx.user, input.tenantId, "purchases.manage");
+    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["draft", "ordered", "partially_received", "received", "cancelled"]).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
+      const access = await requireTenantPermission(ctx.user, input.tenantId, "purchases.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      const rows = await db.select({ order: purchaseOrders, supplier: suppliers }).from(purchaseOrders).leftJoin(suppliers, and(eq(suppliers.id, purchaseOrders.supplierId), eq(suppliers.tenantId, purchaseOrders.tenantId))).where(eq(purchaseOrders.tenantId, input.tenantId)).orderBy(sql`${purchaseOrders.createdAt} desc`);
-      const orderIds = rows.map(row => row.order.id);
+      const filter = input.status ? and(eq(purchaseOrders.tenantId, input.tenantId), eq(purchaseOrders.status, input.status)) : eq(purchaseOrders.tenantId, input.tenantId);
+      const rows = await db.select({ order: purchaseOrders, supplier: suppliers }).from(purchaseOrders).leftJoin(suppliers, and(eq(suppliers.id, purchaseOrders.supplierId), eq(suppliers.tenantId, purchaseOrders.tenantId))).where(filter).orderBy(sql`${purchaseOrders.createdAt} desc`).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      const pageRows = rows.slice(0, input.pageSize);
+      const orderIds = pageRows.map(row => row.order.id);
       const items = orderIds.length ? await db.select().from(purchaseOrderItems).where(and(eq(purchaseOrderItems.tenantId, input.tenantId), inArray(purchaseOrderItems.purchaseOrderId, orderIds))) : [];
-      return rows.map(row => ({ ...row, items: items.filter(item => item.purchaseOrderId === row.order.id) }));
+      const financial = hasPermission(access, "financial.view");
+      return { items: pageRows.map(row => {
+        const orderItems = items.filter(item => item.purchaseOrderId === row.order.id);
+        return { ...row, items: financial ? orderItems : orderItems.map(({ unitCost, ...safe }) => safe) };
+      }), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
     create: protectedProcedure.input(tenantIdInput.extend({ supplierId: z.number().int().positive().optional(), notes: z.string().max(4000).optional(), items: z.array(z.object({ productId: z.number().int().positive(), quantity: quantityInput, unitCost: moneyInput })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
       const access = await requireTenantPermission(ctx.user, input.tenantId, "purchases.manage");

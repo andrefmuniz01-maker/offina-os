@@ -24,9 +24,11 @@ import { inventoryRouter } from "./inventory";
 function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
+  query.leftJoin = vi.fn(() => query);
   query.where = vi.fn(() => query);
-  query.limit = vi.fn(async () => result);
-  query.orderBy = vi.fn(async () => result);
+  query.limit = vi.fn(() => query);
+  query.offset = vi.fn(() => query);
+  query.orderBy = vi.fn(() => query);
   query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -78,5 +80,18 @@ describe("inventory.purchaseOrders.create — isolamento de fornecedor", () => {
       expect.arrayContaining([expect.objectContaining({ tenantId: 4, purchaseOrderId: 71, productId: 12, orderedQuantity: "2.000", unitCost: "25.00" })]),
     ]));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "purchase_order.created", entityId: 71 }));
+  });
+
+  it("pagina pedidos do tenant e oculta custo unitário quando o perfil não pode ver financeiro", async () => {
+    mocks.hasPermission.mockImplementation((_access: unknown, permission: string) => permission === "purchases.manage");
+    const order = { id: 61, tenantId: 4, number: 12, status: "ordered", createdAt: new Date("2026-08-25T12:00:00.000Z") };
+    const item = { id: 71, tenantId: 4, purchaseOrderId: 61, productId: 12, orderedQuantity: "2.000", receivedQuantity: "0.000", unitCost: "45.00" };
+    mocks.db = buildDb([[{ order, supplier: null }], [item]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.purchaseOrders.list({ tenantId: 4, status: "ordered", page: 1, pageSize: 10 })).resolves.toEqual({
+      items: [{ order, supplier: null, items: [{ id: 71, tenantId: 4, purchaseOrderId: 61, productId: 12, orderedQuantity: "2.000", receivedQuantity: "0.000" }] }],
+      page: 1, pageSize: 10, hasMore: false,
+    });
   });
 });
