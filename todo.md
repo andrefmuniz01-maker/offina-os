@@ -105,3 +105,4 @@
 - [x] Registrar saldos físicos, reservas e seus estados anterior e posterior na auditoria de consumo de produto da OS.
 - [x] Registrar status anterior e posterior do pedido ao receber compra, mantendo saldos e custo médio auditáveis.
 - [x] Registrar estados anterior e posterior no envio e nas decisões públicas de orçamento, com contagem agregada de reservas.
+- [x] Paginar e filtrar a fila de orçamentos por tenant, com estados vazios/erro e custos restritos por permissão financeira.
