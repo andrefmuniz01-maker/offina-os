@@ -91,8 +91,10 @@ export const tenantRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const { tenantId, ...changes } = input;
+      const previous = (await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, tenantId)).limit(1))[0] ?? null;
+      const before = previous ? Object.fromEntries(Object.keys(changes).map(key => [key, (previous as unknown as Record<string, unknown>)[key]])) : undefined;
       await db.insert(tenantBranding).values({ tenantId, ...changes }).onDuplicateKeyUpdate({ set: changes });
-      await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.branding_updated", entityType: "tenant_branding", after: changes });
+      await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.branding_updated", entityType: "tenant_branding", before, after: changes });
       return { success: true };
     }),
   }),
@@ -110,8 +112,10 @@ export const tenantRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const { tenantId, defaultLaborHourlyRate, defaultPartsMarginPercent, defaultPartsMarkupPercent, minimumMarginPercent, attendantMaxDiscountPercent, ...rest } = input;
       const changes = { ...rest, ...(defaultLaborHourlyRate === undefined ? {} : { defaultLaborHourlyRate: defaultLaborHourlyRate.toFixed(2) }), ...(defaultPartsMarginPercent === undefined ? {} : { defaultPartsMarginPercent: defaultPartsMarginPercent.toFixed(2) }), ...(defaultPartsMarkupPercent === undefined ? {} : { defaultPartsMarkupPercent: defaultPartsMarkupPercent.toFixed(2) }), ...(minimumMarginPercent === undefined ? {} : { minimumMarginPercent: minimumMarginPercent.toFixed(2) }), ...(attendantMaxDiscountPercent === undefined ? {} : { attendantMaxDiscountPercent: attendantMaxDiscountPercent.toFixed(2) }) };
+      const previous = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, tenantId)).limit(1))[0] ?? null;
+      const before = previous ? Object.fromEntries(Object.keys(changes).map(key => [key, (previous as unknown as Record<string, unknown>)[key]])) : undefined;
       await db.insert(tenantSettings).values({ tenantId, ...changes }).onDuplicateKeyUpdate({ set: changes });
-      await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.settings_updated", entityType: "tenant_settings", after: changes });
+      await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "tenant.settings_updated", entityType: "tenant_settings", before, after: changes });
       return { success: true };
     }),
   }),

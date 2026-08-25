@@ -69,5 +69,10 @@ describe("tenant settings e branding — upsert e recarregamento", () => {
     await expect(caller.branding.get({ tenantId: 4 })).resolves.toEqual(expect.objectContaining({ tenantId: 4, publicTitle: "Oficina Centro", primaryColor: "#112233", secondaryColor: "#223344", accentColor: "#334455" }));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "tenant.settings_updated" }));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "tenant.branding_updated" }));
+
+    await expect(caller.settings.update({ tenantId: 4, defaultPartsMarkupPercent: 55 })).resolves.toEqual({ success: true });
+    await expect(caller.branding.update({ tenantId: 4, primaryColor: "#445566" })).resolves.toEqual({ success: true });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "tenant.settings_updated", before: { defaultPartsMarkupPercent: "42.00" }, after: { defaultPartsMarkupPercent: "55.00" } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "tenant.branding_updated", before: { primaryColor: "#112233" }, after: { primaryColor: "#445566" } }));
   });
 });
