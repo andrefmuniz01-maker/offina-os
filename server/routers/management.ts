@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -106,13 +106,13 @@ export const notificationRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    return db.select().from(notifications).where(and(eq(notifications.tenantId, input.tenantId), eq(notifications.userId, ctx.user.id))).orderBy(desc(notifications.createdAt)).limit(input.limit);
+    return db.select().from(notifications).where(and(eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId)))).orderBy(desc(notifications.createdAt)).limit(input.limit);
   }),
   markRead: protectedProcedure.input(tenantIdInput.extend({ notificationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, input.notificationId), eq(notifications.tenantId, input.tenantId), eq(notifications.userId, ctx.user.id)));
+    await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, input.notificationId), eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId))));
     return { success: true };
   }),
 });

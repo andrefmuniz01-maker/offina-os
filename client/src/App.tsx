@@ -19,6 +19,8 @@ import WorkOrder from "./pages/WorkOrder";
 import Finance from "./pages/Finance";
 import Clients from "./pages/Clients";
 import WorkOrderNotes from "./pages/WorkOrderNotes";
+import Notifications from "./pages/Notifications";
+import Team from "./pages/Team";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -38,6 +40,8 @@ function Router() {
       <Route path={"/os/:id"} component={WorkOrder} />
       <Route path={"/financeiro"} component={Finance} />
       <Route path={"/clientes"} component={Clients} />
+      <Route path={"/notificacoes"} component={Notifications} />
+      <Route path={"/equipe"} component={Team} />
       <Route path={"/orcamento/:token"} component={PublicQuote} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

@@ -23,6 +23,8 @@ const menuItems: DashboardMenuItem[] = [
   { icon: ShoppingCart, label: "Compras", path: "/compras" },
   { icon: CircleDollarSign, label: "Financeiro", path: "/financeiro" },
   { icon: UsersRound, label: "Clientes", path: "/clientes" },
+  { icon: UsersRound, label: "Equipe", path: "/equipe" },
+  { icon: Bell, label: "Notificações", path: "/notificacoes" },
   { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 

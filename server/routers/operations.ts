@@ -8,10 +8,12 @@ import {
   inventoryBalances,
   inventoryMovements,
   inventoryReservations,
+  notifications,
   products,
   quoteItems,
   quotes,
   revenues,
+  tenantMembers,
   vehicles,
   workOrderChecklists,
   workOrderConsumption,
@@ -52,6 +54,10 @@ export const appointmentRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const quote = (await db.select().from(quotes).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId), eq(quotes.status, "approved"))).limit(1))[0];
     if (!quote) throw new TRPCError({ code: "BAD_REQUEST", message: "Somente um orçamento aprovado pode ser agendado." });
+    if (input.assignedToUserId) {
+      const assignee = (await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.assignedToUserId), eq(tenantMembers.active, true))).limit(1))[0];
+      if (!assignee) throw new TRPCError({ code: "BAD_REQUEST", message: "O profissional selecionado não pertence a esta oficina ou está inativo." });
+    }
     const result = await db.transaction(async (tx) => {
       const existing = (await tx.select({ id: workOrders.id }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.quoteId, quote.id))).limit(1))[0];
       const next = (await tx.select({ value: sql<number>`coalesce(max(${workOrders.number}), 0) + 1` }).from(workOrders).where(eq(workOrders.tenantId, input.tenantId)))[0]?.value ?? 1;
@@ -124,6 +130,19 @@ export const workOrderRouter = router({
       if (input.status === "completed") {
         const existingRevenue = (await tx.select({ id: revenues.id }).from(revenues).where(and(eq(revenues.tenantId, input.tenantId), eq(revenues.workOrderId, input.workOrderId))).limit(1))[0];
         if (!existingRevenue) await tx.insert(revenues).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, customerId: order.customerId, vehicleId: order.vehicleId, amount: order.estimatedTotal, status: "expected", dueAt: new Date(), notes: `Receita prevista pela OS #${order.number}` });
+      }
+      if (input.status === "delivered" && order.status !== "delivered") {
+        await tx.insert(notifications).values({ tenantId: input.tenantId, type: "post_sale_suggested", title: `Pós-venda sugerido para OS #${order.number}`, body: "O veículo foi entregue. Prepare um contato de acompanhamento quando fizer sentido para o cliente.", link: `/os/${input.workOrderId}` });
+      }
+      if (["delivered", "cancelled"].includes(input.status) && order.status !== input.status) {
+        const activeReservations = await tx.select().from(inventoryReservations).where(and(eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.status, "active")));
+        for (const reservation of activeReservations) {
+          const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, input.tenantId), eq(inventoryBalances.productId, reservation.productId))).limit(1))[0];
+          if (!balance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Saldo de estoque não encontrado para liberar a reserva." });
+          await tx.update(inventoryReservations).set({ status: "released", releasedAt: new Date() }).where(eq(inventoryReservations.id, reservation.id));
+          await tx.update(inventoryBalances).set({ reservedQuantity: sql`greatest(${inventoryBalances.reservedQuantity} - ${reservation.quantity}, 0)` }).where(eq(inventoryBalances.id, balance.id));
+          await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: reservation.productId, type: "reservation_release", quantity: reservation.quantity, physicalDelta: "0", reservedDelta: sql`-${reservation.quantity}`, referenceType: "work_order", referenceId: input.workOrderId, createdByUserId: ctx.user.id, notes: "Reserva liberada no encerramento da ordem de serviço." });
+        }
       }
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.status_updated", entityType: "work_order", entityId: input.workOrderId, after: { status: input.status } });

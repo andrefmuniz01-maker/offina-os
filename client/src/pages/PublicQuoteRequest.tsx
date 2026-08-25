@@ -22,7 +22,7 @@ export default function PublicQuoteRequest() {
   const submit = trpc.quoteRequests.submitPublic.useMutation();
   const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
   if (catalog.isLoading) return <main className="min-h-screen bg-stone-50 p-6"><div className="mx-auto max-w-xl animate-pulse rounded-2xl bg-white p-8">Carregando formulário…</div></main>;
-  if (catalog.error || !catalog.data) return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle>Link indisponível</CardTitle><CardDescription>Esta oficina não está disponível para receber solicitações pelo momento.</CardDescription></CardHeader></Card></main>;
+  if (catalog.error || !catalog.data) return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="w-full max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle>Link indisponível</CardTitle><CardDescription>Esta oficina não está disponível para receber solicitações pelo momento.</CardDescription></CardHeader></Card></main>;
   const branding = catalog.data.workshop.branding;
   const primaryColor = branding?.primaryColor ?? "#E84D1C";
   const secondaryColor = branding?.secondaryColor ?? "#171717";

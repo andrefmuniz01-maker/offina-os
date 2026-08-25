@@ -1,4 +1,4 @@
-import { and, eq, inArray, like, or } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -13,6 +13,7 @@ import {
   services,
   suppliers,
   vehicles,
+  workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
@@ -58,6 +59,14 @@ export const vehicleRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     return db.select().from(vehicles).where(and(eq(vehicles.tenantId, input.tenantId), eq(vehicles.customerId, input.customerId)));
+  }),
+  workOrderHistory: protectedProcedure.input(tenantIdInput.extend({ vehicleId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const vehicle = (await db.select({ id: vehicles.id }).from(vehicles).where(and(eq(vehicles.id, input.vehicleId), eq(vehicles.tenantId, input.tenantId))).limit(1))[0];
+    if (!vehicle) throw new TRPCError({ code: "NOT_FOUND", message: "Veículo não encontrado nesta oficina." });
+    return db.select({ id: workOrders.id, number: workOrders.number, status: workOrders.status, completedAt: workOrders.completedAt, deliveredAt: workOrders.deliveredAt, createdAt: workOrders.createdAt }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.vehicleId, input.vehicleId))).orderBy(desc(workOrders.createdAt));
   }),
   create: protectedProcedure.input(tenantIdInput.extend({
     customerId: z.number().int().positive(), make: z.string().trim().min(1).max(100), model: z.string().trim().min(1).max(140), modelYear: z.number().int().min(1900).max(2100).optional(), manufactureYear: z.number().int().min(1900).max(2100).optional(), plate: z.string().trim().max(16).optional(), mileage: z.number().int().nonnegative().optional(), engine: z.string().trim().max(120).optional(), notes: z.string().max(4000).optional(),
