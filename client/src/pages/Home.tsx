@@ -22,7 +22,7 @@ const menuItems: DashboardMenuItem[] = [
   { icon: Boxes, label: "Cadastros", path: "/cadastros" },
   { icon: ShoppingCart, label: "Compras", path: "/compras" },
   { icon: CircleDollarSign, label: "Financeiro", path: "/financeiro" },
-  { icon: UsersRound, label: "Clientes", path: "/clientes", disabled: true },
+  { icon: UsersRound, label: "Clientes", path: "/clientes" },
   { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 

@@ -17,6 +17,7 @@ import Catalog from "./pages/Catalog";
 import Purchases from "./pages/Purchases";
 import WorkOrder from "./pages/WorkOrder";
 import Finance from "./pages/Finance";
+import Clients from "./pages/Clients";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -34,6 +35,7 @@ function Router() {
       <Route path={"/compras"} component={Purchases} />
       <Route path={"/os/:id"} component={WorkOrder} />
       <Route path={"/financeiro"} component={Finance} />
+      <Route path={"/clientes"} component={Clients} />
       <Route path={"/orcamento/:token"} component={PublicQuote} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

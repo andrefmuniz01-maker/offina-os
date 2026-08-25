@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Palette, Save, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
 const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: Settings2, label: "Configurações", path: "/configuracoes" }];

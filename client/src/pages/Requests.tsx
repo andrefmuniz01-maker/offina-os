@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, FileText, PlusCircle, Sparkles } from "lucide-react";
-import { Link } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
 const menu: DashboardMenuItem[] = [

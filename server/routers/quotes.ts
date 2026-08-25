@@ -127,7 +127,7 @@ export const quoteRequestRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const tenant = (await db.select({ id: tenants.id, name: tenants.name, active: tenants.active }).from(tenants).where(and(eq(tenants.slug, input.tenantSlug), eq(tenants.active, true), eq(tenants.status, "active"))).limit(1))[0];
-    if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+    if (!tenant) return null;
     const branding = (await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, tenant.id)).limit(1))[0] ?? null;
     const catalog = await db.select({ id: services.id, name: services.name, description: services.description, quoteQuestions: services.quoteQuestions }).from(services).where(and(eq(services.tenantId, tenant.id), eq(services.active, true))).orderBy(asc(services.name));
     return { workshop: { ...tenant, branding }, services: catalog };
@@ -286,10 +286,10 @@ export const quoteRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const row = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles, tenant: tenants, branding: tenantBranding }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).innerJoin(tenants, eq(tenants.id, quotes.tenantId)).leftJoin(tenantBranding, eq(tenantBranding.tenantId, tenants.id)).where(eq(quotes.publicToken, input.token)).limit(1))[0];
-    if (!row || !row.tenant.active) throw new TRPCError({ code: "NOT_FOUND", message: "Orçamento não encontrado." });
+    if (!row || !row.tenant.active) return null;
     if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && !["approved", "rejected"].includes(row.quote.status)) {
       await db.update(quotes).set({ status: "expired" }).where(eq(quotes.id, row.quote.id));
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Este link de orçamento expirou." });
+      return { expired: true as const };
     }
     const items = await db.select().from(quoteItems).where(eq(quoteItems.quoteId, row.quote.id)).orderBy(asc(quoteItems.sortOrder));
     if (!row.quote.viewedAt && row.quote.status === "sent") {

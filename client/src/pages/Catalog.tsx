@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Boxes, CarFront, PackagePlus, Plus, Truck, Wrench } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
 const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: Boxes, label: "Cadastros", path: "/cadastros" }];

@@ -14,7 +14,7 @@ export default function PublicQuote() {
   const quote = trpc.quotes.publicView.useQuery({ token }, { enabled: Boolean(token), retry: false });
   const decision = trpc.quotes.publicDecision.useMutation({ onSuccess: () => quote.refetch() });
   if (quote.isLoading) return <main className="grid min-h-screen place-items-center bg-stone-50"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></main>;
-  if (quote.error || !quote.data) return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle className="mt-3">Orçamento indisponível</CardTitle><p className="text-sm text-slate-500">{quote.error?.message ?? "Não foi possível localizar este orçamento."}</p></CardHeader></Card></main>;
+  if (quote.error || !quote.data || ("expired" in quote.data && quote.data.expired)) return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle className="mt-3">Orçamento indisponível</CardTitle><p className="text-sm text-slate-500">{"expired" in (quote.data ?? {}) ? "Este link de orçamento expirou." : quote.error?.message ?? "Não foi possível localizar este orçamento."}</p></CardHeader></Card></main>;
   const data = quote.data;
   const primaryColor = data.workshop.branding?.primaryColor ?? "#E84D1C";
   const secondaryColor = data.workshop.branding?.secondaryColor ?? "#171717";

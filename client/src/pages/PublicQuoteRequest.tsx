@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CheckCircle2, CircleAlert, Loader2, Send, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useRoute } from "wouter";
+import { useRoute } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 
 export default function PublicQuoteRequest() {
   const [, params] = useRoute("/solicitar/:slug");

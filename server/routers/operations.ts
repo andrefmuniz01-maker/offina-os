@@ -2,6 +2,7 @@ import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
+  attachments,
   appointments,
   customers,
   inventoryBalances,
@@ -18,6 +19,7 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -86,13 +88,15 @@ export const workOrderRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
     if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Ordem de serviço indisponível para o seu perfil." });
-    const [items, checklist, consumption] = await Promise.all([
+    const [items, checklist, consumption, reservations, executionAttachments] = await Promise.all([
       db.select().from(workOrderItems).where(and(eq(workOrderItems.tenantId, input.tenantId), eq(workOrderItems.workOrderId, input.workOrderId))),
       db.select().from(workOrderChecklists).where(and(eq(workOrderChecklists.tenantId, input.tenantId), eq(workOrderChecklists.workOrderId, input.workOrderId))).orderBy(asc(workOrderChecklists.sortOrder)),
       db.select().from(workOrderConsumption).where(and(eq(workOrderConsumption.tenantId, input.tenantId), eq(workOrderConsumption.workOrderId, input.workOrderId))),
+      db.select().from(inventoryReservations).where(and(eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.status, "active"))),
+      db.select().from(attachments).where(and(eq(attachments.tenantId, input.tenantId), eq(attachments.workOrderId, input.workOrderId))),
     ]);
     const visibleFinancial = hasPermission(access, "financial.view");
-    return { order: visibleFinancial ? order : (({ estimatedCostTotal, realCostTotal, realMarginPercent, ...safe }) => safe)(order), items: visibleFinancial ? items : items.map(({ expectedUnitCost, ...safe }) => safe), checklist, consumption: visibleFinancial ? consumption : consumption.map(({ unitCost, ...safe }) => safe) };
+    return { order: visibleFinancial ? order : (({ estimatedCostTotal, realCostTotal, realMarginPercent, ...safe }) => safe)(order), items: visibleFinancial ? items : items.map(({ expectedUnitCost, ...safe }) => safe), checklist, consumption: visibleFinancial ? consumption : consumption.map(({ unitCost, ...safe }) => safe), reservations, executionAttachments };
   }),
   updateStatus: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), status: operationStatus, notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {
     const access = await getTenantAccess(ctx.user, input.tenantId);
@@ -125,6 +129,22 @@ export const workOrderRouter = router({
     if (!row || (access.membership?.role === "technician" && row.order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "Checklist indisponível para o seu perfil." });
     await db.update(workOrderChecklists).set({ completed: input.completed, completedByUserId: input.completed ? ctx.user.id : null, completedAt: input.completed ? new Date() : null }).where(eq(workOrderChecklists.id, input.checklistId));
     return { success: true };
+  }),
+  uploadExecutionAttachment: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), filename: z.string().trim().min(1).max(180), mimeType: z.string().trim().regex(/^(image|video)\//), base64: z.string().min(8).max(7_000_000) })).mutation(async ({ ctx, input }) => {
+    const access = await getTenantAccess(ctx.user, input.tenantId);
+    if (!hasPermission(access, "work_orders.manage") && !hasPermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode adicionar fotos à OS." });
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
+    if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "OS indisponível para o seu perfil." });
+    const base64 = input.base64.includes(",") ? input.base64.split(",").at(-1)! : input.base64;
+    const bytes = Buffer.from(base64, "base64");
+    if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo precisa ter até 5 MB." });
+    const stored = await storagePut(`tenants/${input.tenantId}/work-orders/${input.workOrderId}/${input.filename}`, bytes, input.mimeType);
+    const result = await db.insert(attachments).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, storageKey: stored.key, url: stored.url, filename: input.filename, mimeType: input.mimeType, sizeBytes: bytes.length, createdByUserId: ctx.user.id });
+    const id = Number(result[0].insertId);
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.execution_attachment_added", entityType: "attachment", entityId: id, metadata: { workOrderId: input.workOrderId, mimeType: input.mimeType } });
+    return { id, url: stored.url };
   }),
   consumeProduct: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), productId: z.number().int().positive(), quantity: z.coerce.number().positive(), reservationId: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => {
     const access = await getTenantAccess(ctx.user, input.tenantId);

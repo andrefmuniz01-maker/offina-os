@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { Activity, Building2, Plus, ShieldCheck, UsersRound } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
 function normalizeSlug(value: string) { return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }

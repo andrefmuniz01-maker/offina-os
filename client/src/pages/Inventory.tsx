@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, ArrowLeft, PackageSearch, Search } from "lucide-react";
 import { useState } from "react";
-import { Link } from "wouter";
+import { SafeLink as Link } from "@/components/SafeLink";
 
 const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: PackageSearch, label: "Estoque", path: "/estoque" }];
 

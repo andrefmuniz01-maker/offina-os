@@ -7,7 +7,7 @@
 - [ ] Registrar trilha de auditoria para eventos críticos, incluindo alteração de preço/custo, estoque, orçamento, permissões e financeiro.
 - [ ] Implementar painel separado de Super Admin com criação controlada e ativação de oficinas.
 - [ ] Implementar configuração de identidade e dados operacionais por oficina.
-- [ ] Implementar cadastros de clientes e veículos com histórico vinculado ao tenant.
+- [x] Implementar cadastros de clientes e veículos com histórico vinculado ao tenant.
 - [ ] Implementar categorias, fornecedores, produtos e regras de preço/margem por oficina.
 - [ ] Implementar serviços, perguntas configuráveis de orçamento e kits com expansão de componentes.
 - [ ] Implementar saldos físico, reservado e disponível de estoque por produto.
@@ -40,7 +40,7 @@
 - [ ] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
 - [ ] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
 - [ ] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
-- [ ] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
+- [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
 - [ ] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
 - [ ] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
 - [ ] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
@@ -50,3 +50,9 @@
 - [ ] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
 - [ ] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
 - [ ] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
+- [ ] Executar revisão verificável de teclado, foco visível, labels e semântica nos fluxos principais.
+- [ ] Validar explicitamente os estados de carregamento, vazio e erro das rotas principais em desktop e mobile.
+- [x] Confirmar ausência de erros de runtime atuais após navegar pelos fluxos principais antes de concluir a revisão de interface.
+- [x] Navegar e validar no console as rotas de solicitações, orçamentos, configurações, clientes e páginas públicas antes de concluir a checagem de runtime.
+- [x] Navegar e validar por rota a home, o painel de plataforma e o detalhe de OS após limpar os logs de runtime.
+- [x] Executar uma checagem final de runtime por rota principal com registro verificável de ausência de erros antes de concluir a revisão de interface.
