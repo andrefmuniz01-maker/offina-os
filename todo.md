@@ -41,8 +41,8 @@
 - [ ] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
 - [ ] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
 - [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
-- [ ] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
-- [ ] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
+- [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
+- [x] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
 - [ ] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
 - [ ] Completar os dados cadastrais e de contato da tela de configuração da oficina.
 - [ ] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
@@ -56,3 +56,7 @@
 - [x] Navegar e validar no console as rotas de solicitações, orçamentos, configurações, clientes e páginas públicas antes de concluir a checagem de runtime.
 - [x] Navegar e validar por rota a home, o painel de plataforma e o detalhe de OS após limpar os logs de runtime.
 - [x] Executar uma checagem final de runtime por rota principal com registro verificável de ausência de erros antes de concluir a revisão de interface.
+- [x] Adicionar histórico operacional e de pós-venda também no contexto do cliente, além do veículo.
+- [x] Vincular o lembrete de pós-venda a cliente e veículo de forma explícita na API e na interface, com origem da entrega e ação recomendada.
+- [x] Exibir no histórico do cliente e do veículo os eventos de pós-venda sugerido vinculados à entrega da OS.
+- [x] Ampliar as APIs de histórico de cliente e veículo com data da entrega, alerta sugerido, ação recomendada e link relacionado.

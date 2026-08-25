@@ -540,13 +540,16 @@ export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId").notNull().references(() => tenants.id),
   userId: int("userId").references(() => users.id),
+  customerId: int("customerId").references(() => customers.id),
+  vehicleId: int("vehicleId").references(() => vehicles.id),
+  workOrderId: int("workOrderId").references(() => workOrders.id),
   type: varchar("type", { length: 64 }).notNull(),
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
   link: varchar("link", { length: 500 }),
   readAt: timestamp("readAt"),
   createdAt,
-}, (table) => [index("notifications_tenant_user_read_idx").on(table.tenantId, table.userId, table.readAt)]);
+}, (table) => [index("notifications_tenant_user_read_idx").on(table.tenantId, table.userId, table.readAt), index("notifications_tenant_customer_idx").on(table.tenantId, table.customerId), index("notifications_tenant_vehicle_idx").on(table.tenantId, table.vehicleId)]);
 
 export const notificationPreferences = mysqlTable("notification_preferences", {
   id: int("id").autoincrement().primaryKey(),

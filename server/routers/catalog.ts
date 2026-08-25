@@ -6,6 +6,7 @@ import {
   inventoryBalances,
   kitItems,
   kits,
+  notifications,
   productCategories,
   products,
   serviceCategories,
@@ -65,6 +66,19 @@ export const customerRouter = router({
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "customer.created", entityType: "customer", entityId: id, after: { name: input.name } });
       return { id };
     }),
+  workOrderHistory: protectedProcedure.input(tenantIdInput.extend({ customerId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const customer = (await db.select({ id: customers.id }).from(customers).where(and(eq(customers.id, input.customerId), eq(customers.tenantId, input.tenantId))).limit(1))[0];
+    if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado nesta oficina." });
+    return db.select({ id: workOrders.id, number: workOrders.number, status: workOrders.status, completedAt: workOrders.completedAt, deliveredAt: workOrders.deliveredAt, createdAt: workOrders.createdAt, vehicleId: vehicles.id, vehicleMake: vehicles.make, vehicleModel: vehicles.model, vehiclePlate: vehicles.plate, postSaleNotificationId: notifications.id, postSaleTitle: notifications.title, postSaleBody: notifications.body, postSaleCreatedAt: notifications.createdAt, postSaleLink: notifications.link })
+      .from(workOrders)
+      .innerJoin(vehicles, eq(vehicles.id, workOrders.vehicleId))
+      .leftJoin(notifications, and(eq(notifications.workOrderId, workOrders.id), eq(notifications.tenantId, input.tenantId), eq(notifications.type, "post_sale_suggested")))
+      .where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.customerId, input.customerId)))
+      .orderBy(desc(workOrders.createdAt));
+  }),
 });
 
 export const vehicleRouter = router({
@@ -80,7 +94,7 @@ export const vehicleRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const vehicle = (await db.select({ id: vehicles.id }).from(vehicles).where(and(eq(vehicles.id, input.vehicleId), eq(vehicles.tenantId, input.tenantId))).limit(1))[0];
     if (!vehicle) throw new TRPCError({ code: "NOT_FOUND", message: "Veículo não encontrado nesta oficina." });
-    return db.select({ id: workOrders.id, number: workOrders.number, status: workOrders.status, completedAt: workOrders.completedAt, deliveredAt: workOrders.deliveredAt, createdAt: workOrders.createdAt }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.vehicleId, input.vehicleId))).orderBy(desc(workOrders.createdAt));
+    return db.select({ id: workOrders.id, number: workOrders.number, status: workOrders.status, completedAt: workOrders.completedAt, deliveredAt: workOrders.deliveredAt, createdAt: workOrders.createdAt, postSaleNotificationId: notifications.id, postSaleTitle: notifications.title, postSaleBody: notifications.body, postSaleCreatedAt: notifications.createdAt, postSaleLink: notifications.link }).from(workOrders).leftJoin(notifications, and(eq(notifications.workOrderId, workOrders.id), eq(notifications.tenantId, input.tenantId), eq(notifications.type, "post_sale_suggested"))).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.vehicleId, input.vehicleId))).orderBy(desc(workOrders.createdAt));
   }),
   create: protectedProcedure.input(tenantIdInput.extend({
     customerId: z.number().int().positive(), make: z.string().trim().min(1).max(100), model: z.string().trim().min(1).max(140), modelYear: z.number().int().min(1900).max(2100).optional(), manufactureYear: z.number().int().min(1900).max(2100).optional(), plate: z.string().trim().max(16).optional(), mileage: z.number().int().nonnegative().optional(), engine: z.string().trim().max(120).optional(), notes: z.string().max(4000).optional(),

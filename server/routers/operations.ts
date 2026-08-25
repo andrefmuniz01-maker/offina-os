@@ -132,7 +132,7 @@ export const workOrderRouter = router({
         if (!existingRevenue) await tx.insert(revenues).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, customerId: order.customerId, vehicleId: order.vehicleId, amount: order.estimatedTotal, status: "expected", dueAt: new Date(), notes: `Receita prevista pela OS #${order.number}` });
       }
       if (input.status === "delivered" && order.status !== "delivered") {
-        await tx.insert(notifications).values({ tenantId: input.tenantId, type: "post_sale_suggested", title: `Pós-venda sugerido para OS #${order.number}`, body: "O veículo foi entregue. Prepare um contato de acompanhamento quando fizer sentido para o cliente.", link: `/os/${input.workOrderId}` });
+        await tx.insert(notifications).values({ tenantId: input.tenantId, customerId: order.customerId, vehicleId: order.vehicleId, workOrderId: input.workOrderId, type: "post_sale_suggested", title: `Pós-venda sugerido para OS #${order.number}`, body: "O veículo foi entregue. Prepare um contato de acompanhamento quando fizer sentido para o cliente.", link: `/os/${input.workOrderId}` });
       }
       if (["delivered", "cancelled"].includes(input.status) && order.status !== input.status) {
         const activeReservations = await tx.select().from(inventoryReservations).where(and(eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.status, "active")));
