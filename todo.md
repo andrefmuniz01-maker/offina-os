@@ -101,3 +101,4 @@
 - [x] Registrar estado operacional anterior e posterior na auditoria de transições de ordem de serviço.
 - [x] Paginar e filtrar pedidos de compra por tenant, com estado vazio/erro na interface e custos ocultos sem permissão financeira.
 - [x] Cobrir a visibilidade de custo unitário de compra para perfis financeiros e sua ocultação para perfis restritos.
+- [x] Associar labels e foco visível aos controles de clientes e veículos, com estados de erro e orientação sem tenant ativo.
