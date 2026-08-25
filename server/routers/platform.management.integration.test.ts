@@ -28,8 +28,9 @@ function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
   query.where = vi.fn(() => query);
-  query.limit = vi.fn(async () => result);
-  query.orderBy = vi.fn(async () => result);
+  query.limit = vi.fn(() => query);
+  query.offset = vi.fn(() => query);
+  query.orderBy = vi.fn(() => query);
   query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -99,5 +100,14 @@ describe("platform — ciclo administrativo de tenants", () => {
 
     await expect(caller.members.updateRole({ tenantId: 41, userId: 999, role: "attendant" })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("pagina a trilha de auditoria sem atravessar o tenant consultado", async () => {
+    const newest = { id: 101, tenantId: 41, action: "quote.sent", entityType: "quote", entityId: 81, createdAt: new Date("2026-08-25T10:00:00.000Z") };
+    const next = { id: 100, tenantId: 41, action: "inventory.adjusted", entityType: "product", entityId: 12, createdAt: new Date("2026-08-25T09:00:00.000Z") };
+    mocks.db = buildDb([[newest, next]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.audit.list({ tenantId: 41, page: 1, pageSize: 1 })).resolves.toEqual({ items: [newest], page: 1, pageSize: 1, hasMore: true });
   });
 });

@@ -108,3 +108,4 @@
 - [x] Paginar e filtrar a fila de orçamentos por tenant, com estados vazios/erro e custos restritos por permissão financeira.
 - [x] Auditar visualização e expiração públicas de orçamento com estados anterior e posterior, sem retornar custos no fluxo público.
 - [x] Registrar os valores anteriores e posteriores de branding e políticas comerciais nas atualizações de configuração por tenant.
+- [x] Paginar a trilha de auditoria por tenant e exibir estados seguros de acesso, carregamento, erro e vazio.

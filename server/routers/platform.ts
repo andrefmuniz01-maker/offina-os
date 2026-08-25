@@ -161,11 +161,12 @@ export const tenantRouter = router({
   }),
 
   audit: router({
-    list: protectedProcedure.input(tenantIdInput.extend({ limit: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(tenantIdInput.extend({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "tenant.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      return db.select().from(auditLogs).where(eq(auditLogs.tenantId, input.tenantId)).orderBy(desc(auditLogs.createdAt)).limit(input.limit);
+      const rows = await db.select().from(auditLogs).where(eq(auditLogs.tenantId, input.tenantId)).orderBy(desc(auditLogs.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
   }),
 });
