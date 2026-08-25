@@ -120,3 +120,4 @@
 - [x] Cobrir o bloqueio de solicitação pública quando o slug não estiver vinculado a uma oficina ativa, antes de qualquer transação.
 - [x] Cobrir a ausência de identidade e catálogo públicos quando o slug não estiver vinculado a uma oficina ativa.
 - [x] Expor criação e consulta de categorias de produtos e serviços em rota protegida por tenant, com acesso pelo catálogo, auditoria e cobertura de criação.
+- [x] Cobrir o bloqueio de categorias de outra oficina antes de criar produtos ou serviços, sem escrita ou auditoria indevida.

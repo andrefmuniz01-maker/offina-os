@@ -111,4 +111,22 @@ describe("catalog — composição segura por tenant", () => {
     expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, name: "Performance", description: "Peças de preparação" })]);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "product_category.created", entityType: "product_category", entityId: 71, after: { name: "Performance", description: "Peças de preparação" } }));
   });
+
+  it("bloqueia categoria de produto pertencente a outra oficina antes de criar o produto", async () => {
+    mocks.db = buildDb([[], []]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.products.create({ tenantId: 4, name: "Filtro esportivo", salePrice: 100, categoryId: 91 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.db.transaction).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia categoria de serviço pertencente a outra oficina antes de criar o serviço", async () => {
+    mocks.db = buildDb([[], []]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.services.create({ tenantId: 4, name: "Instalação", laborPrice: 100, categoryId: 92 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
 });
