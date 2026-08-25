@@ -17,6 +17,8 @@ export default function WorkOrderNotes() {
   const mine = trpc.tenant.mine.useQuery(); const tenant = mine.data?.[0]?.tenant; const tenantId = tenant?.id ?? 0; const utils = trpc.useUtils(); const [body, setBody] = useState("");
   const detail = trpc.workOrders.detail.useQuery({ tenantId, workOrderId }, { enabled: Boolean(tenantId && workOrderId) });
   const addNote = trpc.workOrders.addNote.useMutation({ onSuccess: () => { setBody(""); toast.success("Apontamento registrado na OS."); utils.workOrders.detail.invalidate(); }, onError: error => toast.error(error.message) });
+  if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Skeleton className="mx-auto h-80 max-w-4xl" /></DashboardLayout>;
+  if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Apontamentos técnicos pertencem a uma ordem de serviço da oficina ativa. Peça a um Super Admin para associar seu acesso antes de consultar ou registrar observações.</CardDescription></CardHeader></Card></DashboardLayout>;
   if (detail.isLoading) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Skeleton className="mx-auto h-80 max-w-4xl" /></DashboardLayout>;
   if (detail.error || !detail.data) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>OS indisponível</CardTitle><CardDescription>{detail.error?.message ?? "Não foi possível carregar os apontamentos."}</CardDescription></CardHeader></Card></DashboardLayout>;
   const { order, notes } = detail.data;

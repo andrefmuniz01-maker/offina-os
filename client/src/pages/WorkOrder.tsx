@@ -65,6 +65,8 @@ export default function WorkOrder() {
     }
   };
 
+  if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Skeleton className="mx-auto h-96 max-w-5xl" /></DashboardLayout>;
+  if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Ordens de serviço, consumo, checklist e evidências pertencem a uma oficina ativa. Peça a um Super Admin para associar seu acesso antes de consultar ou alterar esta OS.</CardDescription></CardHeader></Card></DashboardLayout>;
   if (detail.isLoading) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Skeleton className="mx-auto h-96 max-w-5xl" /></DashboardLayout>;
   if (detail.error || !detail.data) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>Ordem de serviço indisponível</CardTitle><CardDescription>{detail.error?.message ?? "Não foi possível abrir esta OS."}</CardDescription></CardHeader></Card></DashboardLayout>;
 
