@@ -17,7 +17,7 @@
 - [ ] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
 - [x] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
 - [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
-- [ ] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
+- [x] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
 - [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
 - [ ] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
 - [ ] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.

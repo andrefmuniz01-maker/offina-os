@@ -12,10 +12,12 @@ import {
   serviceProducts,
   services,
   suppliers,
+  tenantSettings,
   vehicles,
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { grossMarginPercent, suggestedSalePrice } from "../pricing";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -31,6 +33,18 @@ function visibleProduct<T extends typeof products.$inferSelect>(product: T, fina
   if (financial) return product;
   const { currentCost, averageCost, desiredMarginPercent, ...safeProduct } = product;
   return safeProduct;
+}
+
+function resolveSellingPrice(input: { cost: number; requestedPrice: number; desiredMarginPercent: number; fallbackPrice?: number }, settings: typeof tenantSettings.$inferSelect | undefined) {
+  const targetMarginPercent = input.desiredMarginPercent || Number(settings?.defaultPartsMarginPercent ?? 0);
+  if (targetMarginPercent >= 100) throw new TRPCError({ code: "BAD_REQUEST", message: "A margem alvo deve ser menor que 100%." });
+  const policyPrice = input.cost > 0 ? suggestedSalePrice(input.cost, targetMarginPercent) : 0;
+  const price = input.requestedPrice > 0 ? input.requestedPrice : Math.max(policyPrice, input.fallbackPrice ?? 0);
+  const minimumMarginPercent = Number(settings?.minimumMarginPercent ?? 0);
+  if (input.cost > 0 && grossMarginPercent(price, input.cost) < minimumMarginPercent) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `O preço informado não atinge a margem mínima de ${minimumMarginPercent.toFixed(2)}% configurada para a oficina.` });
+  }
+  return { price, targetMarginPercent };
 }
 
 export const customerRouter = router({
@@ -141,13 +155,15 @@ export const catalogRouter = router({
       return rows.map(({ product, balance }) => ({ ...visibleProduct(product, financial), physicalQuantity: balance?.physicalQuantity ?? "0", reservedQuantity: balance?.reservedQuantity ?? "0" }));
     }),
     create: protectedProcedure.input(tenantIdInput.extend({
-      categoryId: z.number().int().positive().optional(), supplierId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), sku: z.string().trim().max(96).optional(), brand: z.string().trim().max(100).optional(), unit: z.string().trim().min(1).max(16).default("un"), currentCost: decimalInput.default(0), salePrice: decimalInput.default(0), desiredMarginPercent: decimalInput.max(1000).default(0), minStock: decimalInput.default(0), maxStock: decimalInput.optional(), location: z.string().trim().max(120).optional(), barcode: z.string().trim().max(96).optional(), description: z.string().max(4000).optional(),
+      categoryId: z.number().int().positive().optional(), supplierId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), sku: z.string().trim().max(96).optional(), brand: z.string().trim().max(100).optional(), unit: z.string().trim().min(1).max(16).default("un"), currentCost: decimalInput.default(0), salePrice: decimalInput.default(0), desiredMarginPercent: decimalInput.max(99.99).default(0), minStock: decimalInput.default(0), maxStock: decimalInput.optional(), location: z.string().trim().max(120).optional(), barcode: z.string().trim().max(96).optional(), description: z.string().max(4000).optional(),
     })).mutation(async ({ ctx, input }) => {
       const access = await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
       const includesFinancial = input.currentCost > 0 || input.desiredMarginPercent > 0;
       if (includesFinancial && !hasPermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode informar custo ou margem." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
+      const pricing = resolveSellingPrice({ cost: input.currentCost, requestedPrice: input.salePrice, desiredMarginPercent: input.desiredMarginPercent }, settings);
       if (input.categoryId) {
         const category = (await db.select({ id: productCategories.id }).from(productCategories).where(and(eq(productCategories.id, input.categoryId), eq(productCategories.tenantId, input.tenantId))).limit(1))[0];
         if (!category) throw new TRPCError({ code: "BAD_REQUEST", message: "A categoria não pertence a esta oficina." });
@@ -158,7 +174,7 @@ export const catalogRouter = router({
       }
       const productId = await db.transaction(async (tx) => {
         const result = await tx.insert(products).values({
-          tenantId: input.tenantId, categoryId: input.categoryId ?? null, supplierId: input.supplierId ?? null, name: input.name, sku: input.sku ?? null, brand: input.brand ?? null, unit: input.unit, currentCost: input.currentCost.toFixed(2), averageCost: input.currentCost.toFixed(2), salePrice: input.salePrice.toFixed(2), desiredMarginPercent: input.desiredMarginPercent.toFixed(2), minStock: input.minStock.toFixed(3), maxStock: input.maxStock?.toFixed(3) ?? null, location: input.location ?? null, barcode: input.barcode ?? null, description: input.description ?? null,
+          tenantId: input.tenantId, categoryId: input.categoryId ?? null, supplierId: input.supplierId ?? null, name: input.name, sku: input.sku ?? null, brand: input.brand ?? null, unit: input.unit, currentCost: input.currentCost.toFixed(2), averageCost: input.currentCost.toFixed(2), salePrice: pricing.price.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2), minStock: input.minStock.toFixed(3), maxStock: input.maxStock?.toFixed(3) ?? null, location: input.location ?? null, barcode: input.barcode ?? null, description: input.description ?? null,
         });
         const id = Number(result[0].insertId);
         await tx.insert(inventoryBalances).values({ tenantId: input.tenantId, productId: id });
@@ -167,14 +183,16 @@ export const catalogRouter = router({
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.created", entityType: "product", entityId: productId, after: { name: input.name, sku: input.sku } });
       return { id: productId };
     }),
-    updateFinancial: protectedProcedure.input(tenantIdInput.extend({ productId: z.number().int().positive(), currentCost: decimalInput, salePrice: decimalInput, desiredMarginPercent: decimalInput.max(1000) })).mutation(async ({ ctx, input }) => {
+    updateFinancial: protectedProcedure.input(tenantIdInput.extend({ productId: z.number().int().positive(), currentCost: decimalInput, salePrice: decimalInput, desiredMarginPercent: decimalInput.max(99.99) })).mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const product = (await db.select().from(products).where(and(eq(products.id, input.productId), eq(products.tenantId, input.tenantId))).limit(1))[0];
       if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado nesta oficina." });
-      await db.update(products).set({ currentCost: input.currentCost.toFixed(2), salePrice: input.salePrice.toFixed(2), desiredMarginPercent: input.desiredMarginPercent.toFixed(2) }).where(eq(products.id, input.productId));
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.financial_updated", entityType: "product", entityId: input.productId, before: { currentCost: product.currentCost, salePrice: product.salePrice, desiredMarginPercent: product.desiredMarginPercent }, after: { currentCost: input.currentCost, salePrice: input.salePrice, desiredMarginPercent: input.desiredMarginPercent } });
+      const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
+      const pricing = resolveSellingPrice({ cost: input.currentCost, requestedPrice: input.salePrice, desiredMarginPercent: input.desiredMarginPercent }, settings);
+      await db.update(products).set({ currentCost: input.currentCost.toFixed(2), salePrice: pricing.price.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(eq(products.id, input.productId));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.financial_updated", entityType: "product", entityId: input.productId, before: { currentCost: product.currentCost, salePrice: product.salePrice, desiredMarginPercent: product.desiredMarginPercent }, after: { currentCost: input.currentCost, salePrice: pricing.price, desiredMarginPercent: pricing.targetMarginPercent } });
       return { success: true };
     }),
   }),
@@ -192,27 +210,31 @@ export const catalogRouter = router({
         return safeService;
       });
     }),
-    create: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), description: z.string().max(4000).optional(), estimatedMinutes: z.number().int().min(5).max(1440).default(60), laborPrice: decimalInput.default(0), estimatedCost: decimalInput.default(0), desiredMarginPercent: decimalInput.max(1000).default(0), quoteQuestions: z.array(z.object({ id: z.string().min(1).max(64), label: z.string().min(1).max(200), required: z.boolean().optional(), type: z.string().max(40).optional(), options: z.array(z.string().max(120)).max(20).optional() })).max(30).optional() }))
+    create: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), description: z.string().max(4000).optional(), estimatedMinutes: z.number().int().min(5).max(1440).default(60), laborPrice: decimalInput.default(0), estimatedCost: decimalInput.default(0), desiredMarginPercent: decimalInput.max(99.99).default(0), quoteQuestions: z.array(z.object({ id: z.string().min(1).max(64), label: z.string().min(1).max(200), required: z.boolean().optional(), type: z.string().max(40).optional(), options: z.array(z.string().max(120)).max(20).optional() })).max(30).optional() }))
       .mutation(async ({ ctx, input }) => {
         const access = await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
         if ((input.estimatedCost > 0 || input.desiredMarginPercent > 0) && !hasPermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode informar custo ou margem." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+        const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
+        const pricing = resolveSellingPrice({ cost: input.estimatedCost, requestedPrice: input.laborPrice, desiredMarginPercent: input.desiredMarginPercent, fallbackPrice: Number(settings?.defaultLaborHourlyRate ?? 0) * input.estimatedMinutes / 60 }, settings);
         if (input.categoryId) {
           const category = (await db.select({ id: serviceCategories.id }).from(serviceCategories).where(and(eq(serviceCategories.id, input.categoryId), eq(serviceCategories.tenantId, input.tenantId))).limit(1))[0];
           if (!category) throw new TRPCError({ code: "BAD_REQUEST", message: "A categoria não pertence a esta oficina." });
         }
-        const result = await db.insert(services).values({ tenantId: input.tenantId, categoryId: input.categoryId ?? null, name: input.name, description: input.description ?? null, estimatedMinutes: input.estimatedMinutes, laborPrice: input.laborPrice.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: input.desiredMarginPercent.toFixed(2), quoteQuestions: input.quoteQuestions ?? null });
+        const result = await db.insert(services).values({ tenantId: input.tenantId, categoryId: input.categoryId ?? null, name: input.name, description: input.description ?? null, estimatedMinutes: input.estimatedMinutes, laborPrice: pricing.price.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2), quoteQuestions: input.quoteQuestions ?? null });
         return { id: Number(result[0].insertId) };
       }),
-    updateFinancial: protectedProcedure.input(tenantIdInput.extend({ serviceId: z.number().int().positive(), laborPrice: decimalInput, estimatedCost: decimalInput, desiredMarginPercent: decimalInput.max(1000) })).mutation(async ({ ctx, input }) => {
+    updateFinancial: protectedProcedure.input(tenantIdInput.extend({ serviceId: z.number().int().positive(), laborPrice: decimalInput, estimatedCost: decimalInput, desiredMarginPercent: decimalInput.max(99.99) })).mutation(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const service = (await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, input.tenantId))).limit(1))[0];
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Serviço não encontrado nesta oficina." });
-      await db.update(services).set({ laborPrice: input.laborPrice.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: input.desiredMarginPercent.toFixed(2) }).where(eq(services.id, input.serviceId));
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.financial_updated", entityType: "service", entityId: input.serviceId, before: { laborPrice: service.laborPrice, estimatedCost: service.estimatedCost, desiredMarginPercent: service.desiredMarginPercent }, after: { laborPrice: input.laborPrice, estimatedCost: input.estimatedCost, desiredMarginPercent: input.desiredMarginPercent } });
+      const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
+      const pricing = resolveSellingPrice({ cost: input.estimatedCost, requestedPrice: input.laborPrice, desiredMarginPercent: input.desiredMarginPercent, fallbackPrice: Number(settings?.defaultLaborHourlyRate ?? 0) * Number(service.estimatedMinutes) / 60 }, settings);
+      await db.update(services).set({ laborPrice: pricing.price.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(eq(services.id, input.serviceId));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.financial_updated", entityType: "service", entityId: input.serviceId, before: { laborPrice: service.laborPrice, estimatedCost: service.estimatedCost, desiredMarginPercent: service.desiredMarginPercent }, after: { laborPrice: pricing.price, estimatedCost: input.estimatedCost, desiredMarginPercent: pricing.targetMarginPercent } });
       return { success: true };
     }),
     setProducts: protectedProcedure.input(tenantIdInput.extend({ serviceId: z.number().int().positive(), items: z.array(z.object({ productId: z.number().int().positive(), quantity: decimalInput.positive(), required: z.boolean().default(true) })).min(1).max(100) })).mutation(async ({ ctx, input }) => {

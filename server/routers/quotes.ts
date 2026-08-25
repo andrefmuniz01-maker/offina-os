@@ -23,6 +23,7 @@ import {
   vehicles,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { calculateQuotePricing, discountPolicyViolation } from "../pricing";
 import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
@@ -280,6 +281,57 @@ export const quoteRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const rows = await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, eq(customers.id, quotes.customerId)).innerJoin(vehicles, eq(vehicles.id, quotes.vehicleId)).where(input.status ? and(eq(quotes.tenantId, input.tenantId), eq(quotes.status, input.status)) : eq(quotes.tenantId, input.tenantId)).orderBy(desc(quotes.createdAt));
     return rows.map(row => hasPermission(access, "financial.view") ? row : { ...row, quote: (({ estimatedCostTotal, estimatedMarginPercent, ...safe }) => safe)(row.quote) });
+  }),
+
+  detail: protectedProcedure.input(tenantIdInput.extend({ quoteId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const access = await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const quote = (await db.select().from(quotes).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
+    if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Orçamento não encontrado nesta oficina." });
+    const items = await db.select().from(quoteItems).where(and(eq(quoteItems.tenantId, input.tenantId), eq(quoteItems.quoteId, quote.id))).orderBy(asc(quoteItems.sortOrder));
+    if (hasPermission(access, "financial.view")) return { quote, items };
+    const { estimatedCostTotal, estimatedMarginPercent, ...safeQuote } = quote;
+    return { quote: safeQuote, items: items.map(({ unitCost, ...safe }) => safe) };
+  }),
+
+  applyDiscounts: protectedProcedure.input(tenantIdInput.extend({
+    quoteId: z.number().int().positive(),
+    items: z.array(z.object({ quoteItemId: z.number().int().positive(), discount: z.coerce.number().finite().nonnegative() })).min(1).max(100),
+    overrideReason: z.string().trim().min(3).max(1000).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    const access = await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const quote = (await db.select().from(quotes).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
+    if (!quote) throw new TRPCError({ code: "NOT_FOUND", message: "Orçamento não encontrado nesta oficina." });
+    if (!["draft", "ready"].includes(quote.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Descontos só podem ser ajustados antes do envio ao cliente." });
+    const savedItems = await db.select().from(quoteItems).where(and(eq(quoteItems.tenantId, input.tenantId), eq(quoteItems.quoteId, quote.id))).orderBy(asc(quoteItems.sortOrder));
+    const discounts = new Map<number, number>();
+    for (const item of input.items) {
+      if (discounts.has(item.quoteItemId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Cada item pode receber apenas um desconto por atualização." });
+      discounts.set(item.quoteItemId, item.discount);
+    }
+    if (discounts.size !== savedItems.length || savedItems.some(item => !discounts.has(item.id))) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe o desconto de todos os itens do orçamento." });
+    const lines = savedItems.map(item => {
+      const discount = discounts.get(item.id) ?? 0;
+      const gross = Number(item.quantity) * Number(item.unitPrice);
+      if (discount > gross) throw new TRPCError({ code: "BAD_REQUEST", message: `O desconto de ${item.description} não pode superar o valor do item.` });
+      return { quantity: Number(item.quantity), unitPrice: Number(item.unitPrice), unitCost: Number(item.unitCost), discount };
+    });
+    const pricing = calculateQuotePricing(lines);
+    const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
+    const financialManager = hasPermission(access, "financial.manage");
+    const minimumMargin = Number(settings?.minimumMarginPercent ?? 0);
+    const violation = discountPolicyViolation({ pricing, attendantMaxDiscountPercent: Number(settings?.attendantMaxDiscountPercent ?? 0), minimumMarginPercent: minimumMargin, canManageFinancials: financialManager, overrideReason: input.overrideReason });
+    if (violation === "discount_limit") throw new TRPCError({ code: "FORBIDDEN", message: "O desconto solicitado ultrapassa o limite permitido para seu perfil." });
+    if (violation === "minimum_margin") throw new TRPCError({ code: "BAD_REQUEST", message: `A margem estimada ficaria abaixo do mínimo de ${minimumMargin.toFixed(2)}%. Um gestor financeiro deve informar uma justificativa para autorizar a exceção.` });
+    await db.transaction(async tx => {
+      for (const item of savedItems) await tx.update(quoteItems).set({ discount: (discounts.get(item.id) ?? 0).toFixed(2) }).where(and(eq(quoteItems.id, item.id), eq(quoteItems.tenantId, input.tenantId)));
+      await tx.update(quotes).set({ subtotal: pricing.subtotal.toFixed(2), discountTotal: pricing.discountTotal.toFixed(2), total: pricing.total.toFixed(2), estimatedCostTotal: pricing.totalCost.toFixed(2), estimatedMarginPercent: pricing.marginPercent.toFixed(2) }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, input.tenantId)));
+    });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.discounts_updated", entityType: "quote", entityId: quote.id, before: { total: quote.total, discountTotal: quote.discountTotal, marginPercent: quote.estimatedMarginPercent }, after: { total: pricing.total, discountTotal: pricing.discountTotal, marginPercent: pricing.marginPercent, overrideReason: input.overrideReason ?? null } });
+    return pricing;
   }),
 
   publicView: publicProcedure.input(z.object({ token: z.string().min(1).max(96) })).query(async ({ input }) => {
