@@ -55,13 +55,16 @@ export const inventoryRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "inventory.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    await db.transaction(async (tx) => {
+    const adjustment = await db.transaction(async (tx) => {
       const row = (await tx.select({ balance: inventoryBalances }).from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, input.tenantId), eq(inventoryBalances.productId, input.productId))).limit(1))[0];
-      if (!row || Number(row.balance.physicalQuantity) + input.quantityDelta < 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O ajuste não pode tornar o estoque físico negativo." });
-      await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${input.quantityDelta.toFixed(3)}` }).where(eq(inventoryBalances.id, row.balance.id));
+      const previousPhysical = Number(row?.balance.physicalQuantity);
+      if (!row || previousPhysical + input.quantityDelta < 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O ajuste não pode tornar o estoque físico negativo." });
+      const nextPhysical = previousPhysical + input.quantityDelta;
+      await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${input.quantityDelta.toFixed(3)}` }).where(and(eq(inventoryBalances.id, row.balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
       await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: input.productId, type: "adjustment", quantity: Math.abs(input.quantityDelta).toFixed(3), physicalDelta: input.quantityDelta.toFixed(3), reservedDelta: "0", notes: input.notes, createdByUserId: ctx.user.id });
+      return { previousPhysical, nextPhysical };
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "inventory.adjusted", entityType: "product", entityId: input.productId, metadata: { quantityDelta: input.quantityDelta, notes: input.notes } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "inventory.adjusted", entityType: "product", entityId: input.productId, before: { physicalQuantity: adjustment.previousPhysical }, after: { physicalQuantity: adjustment.nextPhysical }, metadata: { quantityDelta: input.quantityDelta, notes: input.notes } });
     return { success: true };
   }),
 
@@ -133,11 +136,12 @@ export const inventoryRouter = router({
       if (!hasPermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode concluir recebimentos com custo." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      await db.transaction(async (tx) => {
+      const receipt = await db.transaction(async (tx) => {
         const order = (await tx.select().from(purchaseOrders).where(and(eq(purchaseOrders.id, input.purchaseOrderId), eq(purchaseOrders.tenantId, input.tenantId))).limit(1))[0];
         if (!order || order.status === "cancelled" || order.status === "received") throw new TRPCError({ code: "BAD_REQUEST", message: "Pedido indisponível para recebimento." });
         const items = await tx.select().from(purchaseOrderItems).where(and(eq(purchaseOrderItems.tenantId, input.tenantId), eq(purchaseOrderItems.purchaseOrderId, input.purchaseOrderId), inArray(purchaseOrderItems.id, input.items.map(item => item.itemId))));
         if (items.length !== input.items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Item de compra inválido." });
+        const receivedItems: Array<{ itemId: number; productId: number; quantity: number; previousPhysical: number; nextPhysical: number; previousAverageCost: number; nextAverageCost: number; currentCost: string }> = [];
         for (const received of input.items) {
           const item = items.find(value => value.id === received.itemId)!;
           if (Number(item.receivedQuantity) + received.receivedQuantity > Number(item.orderedQuantity)) throw new TRPCError({ code: "BAD_REQUEST", message: "Recebimento supera a quantidade pedida." });
@@ -146,16 +150,19 @@ export const inventoryRouter = router({
           const oldQuantity = Number(balance.physicalQuantity);
           const oldAverage = Number((await tx.select({ averageCost: products.averageCost }).from(products).where(and(eq(products.id, item.productId), eq(products.tenantId, input.tenantId))).limit(1))[0]?.averageCost ?? 0);
           const newAverage = (oldQuantity * oldAverage + received.receivedQuantity * Number(item.unitCost)) / (oldQuantity + received.receivedQuantity);
-          await tx.update(purchaseOrderItems).set({ receivedQuantity: sql`${purchaseOrderItems.receivedQuantity} + ${received.receivedQuantity.toFixed(3)}` }).where(eq(purchaseOrderItems.id, item.id));
-          await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${received.receivedQuantity.toFixed(3)}` }).where(eq(inventoryBalances.id, balance.id));
-          await tx.update(products).set({ currentCost: item.unitCost, averageCost: newAverage.toFixed(2) }).where(eq(products.id, item.productId));
+          await tx.update(purchaseOrderItems).set({ receivedQuantity: sql`${purchaseOrderItems.receivedQuantity} + ${received.receivedQuantity.toFixed(3)}` }).where(and(eq(purchaseOrderItems.id, item.id), eq(purchaseOrderItems.tenantId, input.tenantId)));
+          await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${received.receivedQuantity.toFixed(3)}` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
+          await tx.update(products).set({ currentCost: item.unitCost, averageCost: newAverage.toFixed(2) }).where(and(eq(products.id, item.productId), eq(products.tenantId, input.tenantId)));
           await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: item.productId, type: "purchase_entry", quantity: received.receivedQuantity.toFixed(3), physicalDelta: received.receivedQuantity.toFixed(3), reservedDelta: "0", referenceType: "purchase_order", referenceId: input.purchaseOrderId, createdByUserId: ctx.user.id });
+          receivedItems.push({ itemId: item.id, productId: item.productId, quantity: received.receivedQuantity, previousPhysical: oldQuantity, nextPhysical: oldQuantity + received.receivedQuantity, previousAverageCost: oldAverage, nextAverageCost: Number(newAverage.toFixed(2)), currentCost: item.unitCost });
         }
         const refreshed = await tx.select().from(purchaseOrderItems).where(and(eq(purchaseOrderItems.tenantId, input.tenantId), eq(purchaseOrderItems.purchaseOrderId, input.purchaseOrderId)));
         const complete = refreshed.every(item => Number(item.receivedQuantity) >= Number(item.orderedQuantity));
-        await tx.update(purchaseOrders).set({ status: complete ? "received" : "partially_received", receivedAt: complete ? new Date() : null }).where(eq(purchaseOrders.id, input.purchaseOrderId));
+        const status = complete ? "received" : "partially_received";
+        await tx.update(purchaseOrders).set({ status, receivedAt: complete ? new Date() : null }).where(and(eq(purchaseOrders.id, input.purchaseOrderId), eq(purchaseOrders.tenantId, input.tenantId)));
+        return { status, items: receivedItems };
       });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.received", entityType: "purchase_order", entityId: input.purchaseOrderId });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.received", entityType: "purchase_order", entityId: input.purchaseOrderId, after: { status: receipt.status, receivedItems: receipt.items } });
       return { success: true };
     }),
   }),

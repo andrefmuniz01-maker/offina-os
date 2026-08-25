@@ -76,3 +76,4 @@
 - [x] Bloquear baixa de despesa inexistente no tenant e registrar auditoria somente após a atualização confirmada.
 - [x] Paginar receitas e despesas por tenant, com filtros de status e estados de interface seguros.
 - [x] Exibir erros explícitos de dashboard, receitas e despesas no financeiro, sem confundir falha, permissão e estado vazio.
+- [x] Auditar saldos e custos antes/depois em ajustes e recebimentos de estoque, reforçando os updates por tenant.
