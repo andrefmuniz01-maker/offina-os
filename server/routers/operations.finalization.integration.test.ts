@@ -37,7 +37,7 @@ describe("operations.updateStatus — finalização integrada", () => {
 
     await expect(caller.updateStatus({ tenantId: 4, workOrderId: 91, status: "completed" })).resolves.toEqual({ success: true });
     expect(completed.inserted).toContainEqual(expect.objectContaining({ tenantId: 4, workOrderId: 91, customerId: 21, vehicleId: 22, amount: "850.00", status: "expected" }));
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "work_order.status_updated", after: { status: "completed" } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "work_order.status_updated", before: expect.objectContaining({ status: "in_service" }), after: expect.objectContaining({ status: "completed", completedAt: "set" }) }));
 
     const delivered = buildDb([[{ id: 91, tenantId: 4, number: 12, status: "completed", customerId: 21, vehicleId: 22, appointmentId: 31, estimatedTotal: "850.00", notes: null }], [{ id: 63, tenantId: 4, productId: 8, quantity: "2.000", status: "active" }], [{ id: 44, tenantId: 4, productId: 8, reservedQuantity: "2.000" }]]);
     mocks.db = delivered.db;

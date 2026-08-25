@@ -98,3 +98,4 @@
 - [x] Registrar estado anterior e posterior na auditoria de alterações de papel e ativação de membros do tenant.
 - [x] Bloquear alteração de membro ausente no tenant antes de escrita ou auditoria de permissões.
 - [x] Registrar estado anterior e posterior nas baixas financeiras de receitas previstas e despesas planejadas.
+- [x] Registrar estado operacional anterior e posterior na auditoria de transições de ordem de serviço.

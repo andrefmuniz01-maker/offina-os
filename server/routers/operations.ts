@@ -145,7 +145,7 @@ export const workOrderRouter = router({
         }
       }
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.status_updated", entityType: "work_order", entityId: input.workOrderId, after: { status: input.status } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.status_updated", entityType: "work_order", entityId: input.workOrderId, before: { status: order.status, completedAt: order.completedAt, deliveredAt: order.deliveredAt }, after: { status: input.status, completedAt: input.status === "completed" ? "set" : order.completedAt, deliveredAt: input.status === "delivered" ? "set" : order.deliveredAt } });
     return { success: true };
   }),
   toggleChecklist: protectedProcedure.input(tenantIdInput.extend({ checklistId: z.number().int().positive(), completed: z.boolean() })).mutation(async ({ ctx, input }) => {
