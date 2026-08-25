@@ -13,7 +13,7 @@
 - [ ] Implementar saldos físico, reservado e disponível de estoque por produto.
 - [ ] Implementar movimentações de estoque com origem, responsável e histórico imutável.
 - [x] Implementar compras e entrada de estoque a partir de pedido recebido.
-- [ ] Implementar reserva no orçamento aprovado e consumo efetivo na ordem de serviço.
+- [x] Implementar reserva no orçamento aprovado e consumo efetivo na ordem de serviço.
 - [ ] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
 - [x] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
 - [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
@@ -89,3 +89,5 @@
 - [x] Validar e auditar a conclusão e entrega de OS, com receita prevista, pós-venda e liberação de reservas estritamente no tenant.
 - [x] Conectar filtro temporal à agenda operacional, mantendo o pátio e os agendamentos estritamente no tenant ativo.
 - [x] Impedir agendamento e pátio acionáveis sem tenant ativo, exibindo orientação explícita para associação à oficina.
+- [x] Incluir itens de OS ativas sem agendamento na previsão de estoque, sinalizando as ordens afetadas sem dupla contagem com a agenda.
+- [x] Impedir controles de estoque e previsão sem tenant ativo, exibindo orientação explícita antes de consultar a oficina.

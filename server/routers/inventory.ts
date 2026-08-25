@@ -11,6 +11,8 @@ import {
   purchaseOrders,
   quoteItems,
   suppliers,
+  workOrderItems,
+  workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
@@ -79,24 +81,49 @@ export const inventoryRouter = router({
     const upcoming = await db.select({ appointment: appointments, item: quoteItems }).from(appointments)
       .innerJoin(quoteItems, and(eq(quoteItems.tenantId, appointments.tenantId), eq(quoteItems.quoteId, appointments.quoteId)))
       .where(and(eq(appointments.tenantId, input.tenantId), gte(appointments.scheduledStart, now), sql`${appointments.scheduledStart} <= ${end}`, inArray(appointments.status, ["scheduled", "confirmed", "received", "diagnosis", "awaiting_part", "in_service"])));
+    const activeWorkOrders = await db.select({ workOrder: workOrders, item: workOrderItems }).from(workOrders)
+      .innerJoin(workOrderItems, and(eq(workOrderItems.tenantId, workOrders.tenantId), eq(workOrderItems.workOrderId, workOrders.id)))
+      .where(and(eq(workOrders.tenantId, input.tenantId), sql`${workOrders.appointmentId} is null`, inArray(workOrders.status, ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service"])));
     const reservedByProduct = new Map<number, number>();
-    activeReservations.forEach(item => reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) ?? 0) + Number(item.quantity)));
+    const reservationCoverageBySource = new Map<string, number>();
+    activeReservations.forEach(item => {
+      reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) ?? 0) + Number(item.quantity));
+      if (item.quoteId) reservationCoverageBySource.set(`quote:${item.quoteId}:product:${item.productId}`, (reservationCoverageBySource.get(`quote:${item.quoteId}:product:${item.productId}`) ?? 0) + Number(item.quantity));
+      if (item.workOrderId) reservationCoverageBySource.set(`work_order:${item.workOrderId}:product:${item.productId}`, (reservationCoverageBySource.get(`work_order:${item.workOrderId}:product:${item.productId}`) ?? 0) + Number(item.quantity));
+    });
     const futureNeedByProduct = new Map<number, number>();
+    const unreservedFutureNeedByProduct = new Map<number, number>();
     const affectedAppointments = new Map<number, number[]>();
+    const affectedWorkOrders = new Map<number, number[]>();
+    const addDemand = (productId: number, quantity: number, sourceKey: string | undefined) => {
+      futureNeedByProduct.set(productId, (futureNeedByProduct.get(productId) ?? 0) + quantity);
+      const covered = sourceKey ? reservationCoverageBySource.get(sourceKey) ?? 0 : 0;
+      const uncovered = Math.max(0, quantity - covered);
+      if (sourceKey) reservationCoverageBySource.set(sourceKey, Math.max(0, covered - quantity));
+      unreservedFutureNeedByProduct.set(productId, (unreservedFutureNeedByProduct.get(productId) ?? 0) + uncovered);
+    };
     upcoming.filter(row => row.item.productId !== null).forEach(row => {
       const productId = row.item.productId!;
-      futureNeedByProduct.set(productId, (futureNeedByProduct.get(productId) ?? 0) + Number(row.item.quantity));
+      addDemand(productId, Number(row.item.quantity), row.appointment.quoteId ? `quote:${row.appointment.quoteId}:product:${productId}` : undefined);
       const rows = affectedAppointments.get(productId) ?? [];
       rows.push(row.appointment.id);
       affectedAppointments.set(productId, rows);
+    });
+    activeWorkOrders.filter(row => row.item.productId !== null).forEach(row => {
+      const productId = row.item.productId!;
+      addDemand(productId, Number(row.item.quantity), `work_order:${row.workOrder.id}:product:${productId}`);
+      const rows = affectedWorkOrders.get(productId) ?? [];
+      rows.push(row.workOrder.id);
+      affectedWorkOrders.set(productId, rows);
     });
     return balances.map(({ product, balance }) => {
       const physical = Number(balance.physicalQuantity);
       const reserved = Number(balance.reservedQuantity);
       const available = availableQuantity(physical, reserved);
       const futureNeed = futureNeedByProduct.get(product.id) ?? 0;
-      const projectedDeficit = Math.max(0, futureNeed - available);
-      return { productId: product.id, productName: product.name, physical, reserved, available, futureNeed, activeReservationDemand: reservedByProduct.get(product.id) ?? 0, projectedDeficit, recommendedPurchaseQuantity: projectedDeficit, affectedAppointmentIds: affectedAppointments.get(product.id) ?? [], critical: available <= Number(product.minStock) || projectedDeficit > 0 };
+      const unreservedFutureNeed = unreservedFutureNeedByProduct.get(product.id) ?? 0;
+      const projectedDeficit = Math.max(0, unreservedFutureNeed - available);
+      return { productId: product.id, productName: product.name, physical, reserved, available, futureNeed, unreservedFutureNeed, activeReservationDemand: reservedByProduct.get(product.id) ?? 0, projectedDeficit, recommendedPurchaseQuantity: projectedDeficit, affectedAppointmentIds: affectedAppointments.get(product.id) ?? [], affectedWorkOrderIds: affectedWorkOrders.get(product.id) ?? [], critical: available <= Number(product.minStock) || projectedDeficit > 0 };
     }).filter(item => item.critical || item.futureNeed > 0).sort((a, b) => b.projectedDeficit - a.projectedDeficit || a.available - b.available);
   }),
 

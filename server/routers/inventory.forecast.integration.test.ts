@@ -28,11 +28,25 @@ describe("inventory.forecast — integração tRPC", () => {
     const select = vi.fn();
     select.mockReturnValueOnce(chain([{ product: { id: 8, name: "Junta", minStock: "4.000" }, balance: { physicalQuantity: "5.000", reservedQuantity: "2.000" } }]))
       .mockReturnValueOnce(chain([{ productId: 8, quantity: "2.000" }]))
-      .mockReturnValueOnce(chain([{ appointment: { id: 100 }, item: { productId: 8, quantity: "4.000" } }]));
+      .mockReturnValueOnce(chain([{ appointment: { id: 100 }, item: { productId: 8, quantity: "4.000" } }]))
+      .mockReturnValueOnce(chain([]));
     mocks.db = { select };
 
     const output = await inventoryRouter.createCaller(context()).forecast({ tenantId: 4, until: new Date("2026-09-01T00:00:00.000Z") });
 
-    expect(output).toEqual([{ productId: 8, productName: "Junta", physical: 5, reserved: 2, available: 3, futureNeed: 4, activeReservationDemand: 2, projectedDeficit: 1, recommendedPurchaseQuantity: 1, affectedAppointmentIds: [100], critical: true }]);
+    expect(output).toEqual([{ productId: 8, productName: "Junta", physical: 5, reserved: 2, available: 3, futureNeed: 4, unreservedFutureNeed: 4, activeReservationDemand: 2, projectedDeficit: 1, recommendedPurchaseQuantity: 1, affectedAppointmentIds: [100], affectedWorkOrderIds: [], critical: true }]);
+  });
+
+  it("inclui itens de OS ativa sem agendamento e não duplica demanda já coberta por reserva da própria OS", async () => {
+    const select = vi.fn();
+    select.mockReturnValueOnce(chain([{ product: { id: 8, name: "Junta", minStock: "0.000" }, balance: { physicalQuantity: "2.000", reservedQuantity: "2.000" } }]))
+      .mockReturnValueOnce(chain([{ productId: 8, workOrderId: 77, quoteId: null, quantity: "2.000" }]))
+      .mockReturnValueOnce(chain([]))
+      .mockReturnValueOnce(chain([{ workOrder: { id: 77 }, item: { productId: 8, quantity: "2.000" } }]));
+    mocks.db = { select };
+
+    const output = await inventoryRouter.createCaller(context()).forecast({ tenantId: 4 });
+
+    expect(output).toEqual([{ productId: 8, productName: "Junta", physical: 2, reserved: 2, available: 0, futureNeed: 2, unreservedFutureNeed: 0, activeReservationDemand: 2, projectedDeficit: 0, recommendedPurchaseQuantity: 0, affectedAppointmentIds: [], affectedWorkOrderIds: [77], critical: true }]);
   });
 });
