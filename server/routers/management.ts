@@ -42,9 +42,12 @@ export const financialRouter = router({
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      const result = await db.update(revenues).set({ status: "received", paymentMethod: input.paymentMethod, receivedAt: new Date() }).where(and(eq(revenues.id, input.revenueId), eq(revenues.tenantId, input.tenantId), eq(revenues.status, "expected")));
+      const revenue = (await db.select({ status: revenues.status, paymentMethod: revenues.paymentMethod, receivedAt: revenues.receivedAt }).from(revenues).where(and(eq(revenues.id, input.revenueId), eq(revenues.tenantId, input.tenantId), eq(revenues.status, "expected"))).limit(1))[0];
+      if (!revenue) throw new TRPCError({ code: "NOT_FOUND", message: "Receita prevista não encontrada." });
+      const receivedAt = new Date();
+      const result = await db.update(revenues).set({ status: "received", paymentMethod: input.paymentMethod, receivedAt }).where(and(eq(revenues.id, input.revenueId), eq(revenues.tenantId, input.tenantId), eq(revenues.status, "expected")));
       if (!result[0].affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "Receita prevista não encontrada." });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "revenue.received", entityType: "revenue", entityId: input.revenueId, after: { paymentMethod: input.paymentMethod } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "revenue.received", entityType: "revenue", entityId: input.revenueId, before: { status: revenue.status, paymentMethod: revenue.paymentMethod, receivedAt: revenue.receivedAt }, after: { status: "received", paymentMethod: input.paymentMethod, receivedAt } });
       return { success: true };
     }),
   }),
@@ -69,9 +72,11 @@ export const financialRouter = router({
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const expense = (await db.select({ status: expenses.status }).from(expenses).where(and(eq(expenses.id, input.expenseId), eq(expenses.tenantId, input.tenantId), eq(expenses.status, "planned"))).limit(1))[0];
+      if (!expense) throw new TRPCError({ code: "NOT_FOUND", message: "Despesa planejada não encontrada nesta oficina." });
       const result = await db.update(expenses).set({ status: "paid" }).where(and(eq(expenses.id, input.expenseId), eq(expenses.tenantId, input.tenantId), eq(expenses.status, "planned")));
       if (!result[0].affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "Despesa planejada não encontrada nesta oficina." });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "expense.paid", entityType: "expense", entityId: input.expenseId, after: { status: "paid" } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "expense.paid", entityType: "expense", entityId: input.expenseId, before: { status: expense.status }, after: { status: "paid" } });
       return { success: true };
     }),
   }),
