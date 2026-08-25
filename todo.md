@@ -44,9 +44,9 @@
 - [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
 - [x] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
 - [ ] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
-- [ ] Completar os dados cadastrais e de contato da tela de configuração da oficina.
-- [ ] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
-- [ ] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
+- [x] Completar os dados cadastrais e de contato da tela de configuração da oficina.
+- [x] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
+- [x] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
 - [ ] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
 - [x] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
 - [ ] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
@@ -71,3 +71,4 @@
 - [x] Auditar alterações de componentes de serviços e criação de kits, com testes de bloqueio para componentes de outro tenant.
 - [x] Cobrir explicitamente o bloqueio de `serviceId` de outro tenant na criação de kits.
 - [x] Auditar alterações de checklist de OS e reforçar o escopo de tenant nos joins de agenda e pátio.
+- [x] Expor taxa-hora e margem padrão de peças na configuração e testar o upsert de settings e branding sem registro prévio.
