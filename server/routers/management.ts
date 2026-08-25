@@ -65,8 +65,9 @@ export const financialRouter = router({
       await requireTenantPermission(ctx.user, input.tenantId, "financial.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      await db.update(expenses).set({ status: "paid" }).where(and(eq(expenses.id, input.expenseId), eq(expenses.tenantId, input.tenantId)));
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "expense.paid", entityType: "expense", entityId: input.expenseId });
+      const result = await db.update(expenses).set({ status: "paid" }).where(and(eq(expenses.id, input.expenseId), eq(expenses.tenantId, input.tenantId), eq(expenses.status, "planned")));
+      if (!result[0].affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "Despesa planejada não encontrada nesta oficina." });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "expense.paid", entityType: "expense", entityId: input.expenseId, after: { status: "paid" } });
       return { success: true };
     }),
   }),
