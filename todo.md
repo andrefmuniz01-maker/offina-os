@@ -119,3 +119,4 @@
 - [x] Impedir filtros e consultas de relatórios acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
 - [x] Cobrir o bloqueio de solicitação pública quando o slug não estiver vinculado a uma oficina ativa, antes de qualquer transação.
 - [x] Cobrir a ausência de identidade e catálogo públicos quando o slug não estiver vinculado a uma oficina ativa.
+- [x] Expor criação e consulta de categorias de produtos e serviços em rota protegida por tenant, com cobertura de criação.

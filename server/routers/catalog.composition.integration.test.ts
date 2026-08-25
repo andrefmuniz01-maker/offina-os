@@ -32,13 +32,16 @@ function chain(result: unknown) {
 }
 
 function buildDb(selectResults: unknown[], insertIds: number[] = []) {
+  const inserts: unknown[] = [];
   const tx = {
     delete: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: insertIds.shift() ?? 1 }]) })),
   };
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
+    insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: insertIds.shift() ?? 1 }]; }) })),
     transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    inserts: () => inserts,
   };
 }
 
@@ -97,5 +100,14 @@ describe("catalog — composição segura por tenant", () => {
 
     await expect(caller.kits.create({ tenantId: 4, name: "Kit escape", salePriceOverride: 350, items: [{ productId: 12, quantity: 1 }] })).resolves.toEqual({ id: 501 });
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "kit.created", entityType: "kit", entityId: 501, after: { name: "Kit escape", categoryId: null, salePriceOverride: 350, items: [{ productId: 12, serviceId: null, quantity: 1 }] } }));
+  });
+
+  it("cria categoria de produto somente no tenant autorizado", async () => {
+    mocks.db = buildDb([], [71]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.createProduct({ tenantId: 4, name: "Performance", description: "Peças de preparação" })).resolves.toEqual({ id: 71 });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "catalog.manage");
+    expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, name: "Performance", description: "Peças de preparação" })]);
   });
 });

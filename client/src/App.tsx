@@ -14,6 +14,7 @@ import Inventory from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import Platform from "./pages/Platform";
 import Catalog from "./pages/Catalog";
+import Categories from "./pages/Categories";
 import Purchases from "./pages/Purchases";
 import WorkOrder from "./pages/WorkOrder";
 import Finance from "./pages/Finance";
@@ -37,6 +38,7 @@ function Router() {
       <Route path={"/configuracoes"} component={Settings} />
       <Route path={"/plataforma"} component={Platform} />
       <Route path={"/cadastros"} component={Catalog} />
+      <Route path={"/categorias"} component={Categories} />
       <Route path={"/compras"} component={Purchases} />
       <Route path={"/os/:id/anotacoes"} component={WorkOrderNotes} />
       <Route path={"/os/:id"} component={WorkOrder} />
