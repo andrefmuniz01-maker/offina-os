@@ -139,9 +139,11 @@ export const tenantRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const target = (await db.select().from(users).where(eq(users.email, input.email)).limit(1))[0];
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Este usuário precisa acessar a plataforma uma vez antes de ser adicionado." });
+      const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
+        .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, target.id))).limit(1))[0] ?? null;
       await db.insert(tenantMembers).values({ tenantId: input.tenantId, userId: target.id, role: input.role })
         .onDuplicateKeyUpdate({ set: { role: input.role, active: true } });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_added", entityType: "tenant_member", entityId: target.id, after: { role: input.role } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_added", entityType: "tenant_member", entityId: target.id, before: previous ? { role: previous.role, active: previous.active } : undefined, after: { role: input.role, active: true } });
       return { success: true };
     }),
     updateRole: protectedProcedure.input(tenantIdInput.extend({ userId: z.number().int().positive(), role: roleInput, active: z.boolean().optional() }))

@@ -39,6 +39,7 @@ function buildDb(selectResults: unknown[]) {
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
     update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    insert: vi.fn(() => ({ values: vi.fn(() => ({ onDuplicateKeyUpdate: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
   };
 }
 
@@ -100,6 +101,17 @@ describe("platform — ciclo administrativo de tenants", () => {
 
     await expect(caller.members.updateRole({ tenantId: 41, userId: 999, role: "attendant" })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("registra o estado anterior ao reativar um membro já vinculado à oficina", async () => {
+    mocks.db = buildDb([[{ id: 19 }], [{ role: "technician", active: false }]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.addExistingUser({ tenantId: 41, email: "tecnico@example.com", role: "attendant" })).resolves.toEqual({ success: true });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 41, actorUserId: 7, action: "tenant.member_added", entityType: "tenant_member", entityId: 19,
+      before: { role: "technician", active: false }, after: { role: "attendant", active: true },
+    }));
   });
 
   it("pagina a trilha de auditoria sem atravessar o tenant consultado", async () => {
