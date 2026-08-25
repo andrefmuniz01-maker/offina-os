@@ -397,17 +397,21 @@ export const quoteRouter = router({
     if (!row || !row.tenant.active) return null;
     if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && isQuoteTransitionAllowed(row.quote.status, "expired")) {
       await db.update(quotes).set({ status: "expired" }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId)));
+      await writeAuditLog({ tenantId: row.quote.tenantId, action: "quote.expired_public", entityType: "quote", entityId: row.quote.id, before: { status: row.quote.status }, after: { status: "expired" }, metadata: { source: "public_link_expiration" } });
       return { expired: true as const };
     }
     if (row.quote.status === "expired") return { expired: true as const };
     const items = await db.select().from(quoteItems).where(and(eq(quoteItems.quoteId, row.quote.id), eq(quoteItems.tenantId, row.quote.tenantId))).orderBy(asc(quoteItems.sortOrder));
+    let publicStatus = row.quote.status;
     if (!row.quote.viewedAt && isQuoteTransitionAllowed(row.quote.status, "viewed")) {
       await db.transaction(async (tx) => {
         await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId)));
         await tx.insert(quoteEvents).values({ tenantId: row.quote.tenantId, quoteId: row.quote.id, type: "viewed" });
       });
+      publicStatus = "viewed";
+      await writeAuditLog({ tenantId: row.quote.tenantId, action: "quote.viewed_public", entityType: "quote", entityId: row.quote.id, before: { status: row.quote.status }, after: { status: "viewed" }, metadata: { source: "public_link" } });
     }
-    return { workshop: { name: row.tenant.name, whatsapp: null, branding: row.branding }, quote: { number: row.quote.number, status: row.quote.status, total: Number(row.quote.total), validUntil: row.quote.validUntil, notes: row.quote.notes, terms: row.quote.terms }, customer: { name: row.customer.name }, vehicle: { make: row.vehicle.make, model: row.vehicle.model, modelYear: row.vehicle.modelYear }, items: publicQuoteItems(items) };
+    return { workshop: { name: row.tenant.name, whatsapp: null, branding: row.branding }, quote: { number: row.quote.number, status: publicStatus, total: Number(row.quote.total), validUntil: row.quote.validUntil, notes: row.quote.notes, terms: row.quote.terms }, customer: { name: row.customer.name }, vehicle: { make: row.vehicle.make, model: row.vehicle.model, modelYear: row.vehicle.modelYear }, items: publicQuoteItems(items) };
   }),
 
   publicDecision: publicProcedure.input(z.object({ token: z.string().min(1).max(96), decision: z.enum(["approved", "rejected"]) })).mutation(async ({ input }) => {
