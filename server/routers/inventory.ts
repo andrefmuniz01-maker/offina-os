@@ -112,6 +112,10 @@ export const inventoryRouter = router({
       if (!hasPermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode registrar custos de compra." });
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      if (input.supplierId) {
+        const supplier = (await db.select({ id: suppliers.id }).from(suppliers).where(and(eq(suppliers.id, input.supplierId), eq(suppliers.tenantId, input.tenantId))).limit(1))[0];
+        if (!supplier) throw new TRPCError({ code: "BAD_REQUEST", message: "O fornecedor não pertence a esta oficina." });
+      }
       const productRows = await db.select({ id: products.id }).from(products).where(and(eq(products.tenantId, input.tenantId), inArray(products.id, input.items.map(item => item.productId))));
       if (productRows.length !== input.items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Um ou mais produtos não pertencem a esta oficina." });
       const result = await db.transaction(async (tx) => {

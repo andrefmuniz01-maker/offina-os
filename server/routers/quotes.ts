@@ -48,6 +48,10 @@ export function isRequestTransitionAllowed(current: z.infer<typeof requestStatus
   return current === next || allowedRequestTransitions[current].includes(next);
 }
 
+export function calculateRequestQueueMinutes(createdAt: Date, lastStatusChangedAt: Date | undefined, now = new Date()) {
+  return Math.max(0, Math.floor((now.getTime() - (lastStatusChangedAt ?? createdAt).getTime()) / 60_000));
+}
+
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
 const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
   draft: ["ready", "cancelled"],
@@ -209,7 +213,23 @@ export const quoteRequestRouter = router({
       .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
       .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
       .orderBy(desc(quoteRequests.createdAt));
-    return rows.map(row => ({ ...row, queueMinutes: Math.max(0, Math.floor((Date.now() - row.request.updatedAt.getTime()) / 60_000)) }));
+    const requestIds = rows.map(row => row.request.id);
+    const statusEvents = requestIds.length ? await db.select({ quoteRequestId: quoteRequestEvents.quoteRequestId, createdAt: quoteRequestEvents.createdAt }).from(quoteRequestEvents)
+      .where(and(eq(quoteRequestEvents.tenantId, input.tenantId), inArray(quoteRequestEvents.quoteRequestId, requestIds), eq(quoteRequestEvents.type, "status_changed")))
+      .orderBy(desc(quoteRequestEvents.createdAt)) : [];
+    const lastStatusChangedAt = new Map<number, Date>();
+    for (const event of statusEvents) if (!lastStatusChangedAt.has(event.quoteRequestId)) lastStatusChangedAt.set(event.quoteRequestId, event.createdAt);
+    return rows.map(row => ({ ...row, queueMinutes: calculateRequestQueueMinutes(row.request.createdAt, lastStatusChangedAt.get(row.request.id)) }));
+  }),
+
+  assignees: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
+    await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    return db.select({ id: users.id, name: users.name, role: tenantMembers.role }).from(tenantMembers)
+      .innerJoin(users, eq(users.id, tenantMembers.userId))
+      .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.active, true)))
+      .orderBy(asc(users.name));
   }),
 
   updateStatus: protectedProcedure.input(tenantIdInput.extend({ quoteRequestId: z.number().int().positive(), status: requestStatus, assignedToUserId: z.number().int().positive().nullable().optional(), note: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
@@ -219,14 +239,16 @@ export const quoteRequestRouter = router({
     const request = (await db.select().from(quoteRequests).where(and(eq(quoteRequests.id, input.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId))).limit(1))[0];
     if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Solicitação não encontrada." });
     assertRequestTransition(request.status, input.status);
+    let assignedUserName: string | null = null;
     if (input.assignedToUserId !== undefined && input.assignedToUserId !== null) {
-      const member = (await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.assignedToUserId), eq(tenantMembers.active, true))).limit(1))[0];
+      const member = (await db.select({ userId: tenantMembers.userId, name: users.name }).from(tenantMembers).innerJoin(users, eq(users.id, tenantMembers.userId)).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.assignedToUserId), eq(tenantMembers.active, true))).limit(1))[0];
       if (!member) throw new TRPCError({ code: "BAD_REQUEST", message: "O responsável precisa pertencer a esta oficina." });
+      assignedUserName = member.name;
     }
     await db.transaction(async tx => {
       await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId }).where(eq(quoteRequests.id, request.id));
       if (request.status !== input.status) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "status_changed", actorUserId: ctx.user.id, metadata: { from: request.status, to: input.status } });
-      if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId } });
+      if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId, assignedToUserName: assignedUserName } });
       if (input.note) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "note_added", actorUserId: ctx.user.id, metadata: { note: input.note } });
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote_request.updated", entityType: "quote_request", entityId: request.id, before: { status: request.status, assignedToUserId: request.assignedToUserId }, after: { status: input.status, assignedToUserId: input.assignedToUserId ?? request.assignedToUserId } });

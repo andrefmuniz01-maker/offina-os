@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildReservationPlan, isQuoteTransitionAllowed, isRequestTransitionAllowed, renderQuoteMessage } from "./quotes";
+import { buildReservationPlan, calculateRequestQueueMinutes, isQuoteTransitionAllowed, isRequestTransitionAllowed, renderQuoteMessage } from "./quotes";
 
 describe("transições de solicitação de orçamento", () => {
   it("permite o fluxo comercial principal até envio", () => {
@@ -17,6 +17,20 @@ describe("transições de solicitação de orçamento", () => {
 
   it("permite reabertura de uma solicitação recusada para novo orçamento", () => {
     expect(isRequestTransitionAllowed("rejected", "in_quoting")).toBe(true);
+  });
+});
+
+describe("tempo em fila de solicitação", () => {
+  it("usa a última mudança de status e ignora atualizações posteriores de responsável ou observação", () => {
+    const createdAt = new Date("2026-08-25T10:00:00.000Z");
+    const lastStatusChangedAt = new Date("2026-08-25T11:15:00.000Z");
+    const afterAssignmentOrNote = new Date("2026-08-25T11:55:00.000Z");
+
+    expect(calculateRequestQueueMinutes(createdAt, lastStatusChangedAt, afterAssignmentOrNote)).toBe(40);
+  });
+
+  it("considera a criação como início da fila quando ainda não ocorreu mudança de status", () => {
+    expect(calculateRequestQueueMinutes(new Date("2026-08-25T10:00:00.000Z"), undefined, new Date("2026-08-25T10:07:00.000Z"))).toBe(7);
   });
 });
 

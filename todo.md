@@ -37,8 +37,8 @@
 - [ ] Criar e ativar após publicação o job periódico, persistindo seu identificador e evitando lembretes automáticos.
 - [ ] Executar uma revisão verificável de estados de carregamento, erro e acessibilidade de teclado/foco sem erros pendentes no runtime.
 - [ ] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
-- [ ] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
-- [ ] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
+- [x] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
+- [x] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
 - [ ] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
 - [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
 - [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
@@ -60,7 +60,10 @@
 - [x] Vincular o lembrete de pós-venda a cliente e veículo de forma explícita na API e na interface, com origem da entrega e ação recomendada.
 - [x] Exibir no histórico do cliente e do veículo os eventos de pós-venda sugerido vinculados à entrega da OS.
 - [x] Ampliar as APIs de histórico de cliente e veículo com data da entrega, alerta sugerido, ação recomendada e link relacionado.
-- [ ] Implementar e exibir tempo em fila das solicitações desde a última mudança de status.
-- [ ] Adicionar interface de atribuição de responsável da solicitação com trilha de mudanças visível.
+- [x] Implementar e exibir tempo em fila das solicitações desde a última mudança de status.
+- [x] Adicionar interface de atribuição de responsável da solicitação com trilha de mudanças visível.
 - [x] Criar matriz explícita e testável de transições de orçamento, reutilizada nas mutações públicas e internas.
-- [ ] Cobrir o bloqueio de transições inválidas de solicitações e orçamentos com testes.
+- [x] Cobrir o bloqueio de transições inválidas de solicitações e orçamentos com testes.
+- [x] Exibir responsável por solicitação, permitir atribuição apenas a membros ativos do tenant e registrar sua trilha operacional.
+- [x] Verificar e testar o isolamento de fornecedor em pedidos de compra por tenant.
+- [x] Calcular `queueMinutes` a partir do último evento de mudança de status, sem reinício em atribuição ou observação.
