@@ -84,6 +84,16 @@ describe("platform — ciclo administrativo de tenants", () => {
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 41, actorUserId: 7, action: "platform.tenant_updated", entityType: "tenant", entityId: 41, after: { active: true, status: "active" } }));
   });
 
+  it("bloqueia auditoria quando outra sessão já alterou o tenant", async () => {
+    const tenant = { id: 41, status: "inactive", active: false, planId: null };
+    mocks.db = buildDb([[tenant]], [[{ affectedRows: 0 }]]);
+    const caller = platformRouter.createCaller(createContext());
+
+    await expect(caller.updateTenant({ tenantId: 41, active: true, status: "active" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("registra papel e ativação anteriores e posteriores ao atualizar membro do tenant", async () => {
     mocks.db = buildDb([[{ role: "technician", active: true }]]);
     const caller = tenantRouter.createCaller(createContext());

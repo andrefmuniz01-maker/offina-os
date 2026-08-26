@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { auditLogs, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
@@ -41,7 +41,12 @@ export const platformRouter = router({
       const plan = (await db.select({ id: plans.id }).from(plans).where(and(eq(plans.id, changes.planId), eq(plans.active, true))).limit(1))[0];
       if (!plan) throw new TRPCError({ code: "BAD_REQUEST", message: "Plano indisponível." });
     }
-    await db.update(tenants).set(changes).where(eq(tenants.id, tenantId));
+    const updateConditions = [eq(tenants.id, tenantId)];
+    if (changes.status !== undefined) updateConditions.push(eq(tenants.status, tenant.status));
+    if (changes.active !== undefined) updateConditions.push(eq(tenants.active, tenant.active));
+    if (changes.planId !== undefined) updateConditions.push(tenant.planId === null ? isNull(tenants.planId) : eq(tenants.planId, tenant.planId));
+    const updated = await db.update(tenants).set(changes).where(and(...updateConditions));
+    if (!Number(updated[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este tenant foi alterado em outra sessão. Atualize o painel para consultar o estado atual." });
     await writeAuditLog({ tenantId, actorUserId: ctx.user.id, action: "platform.tenant_updated", entityType: "tenant", entityId: tenantId, before: { status: tenant.status, active: tenant.active, planId: tenant.planId }, after: changes });
     return { success: true };
   }),

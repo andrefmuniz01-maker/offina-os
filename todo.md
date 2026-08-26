@@ -166,3 +166,4 @@
 - [x] Impedir auditorias e efeitos duplicados em mudanças concorrentes de status de ordem de serviço.
 - [x] Impedir atribuições concorrentes e auditorias contraditórias de responsável em solicitações.
 - [x] Impedir alterações concorrentes e auditorias contraditórias de papel ou ativação de membros do tenant.
+- [x] Impedir auditoria contraditória em alterações concorrentes de ativação, plano ou status de tenant pelo Super Admin.
