@@ -28,8 +28,8 @@ function database(results: unknown[], updateResults: unknown[] = []) {
 }
 
 const publicContext: TrpcContext = { user: null, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
-function row(status: "sent" | "viewed" = "sent", expiresAt = new Date("2026-12-01T00:00:00.000Z")) {
-  return { quote: { id: 81, tenantId: 4, number: 12, status, publicTokenExpiresAt: expiresAt, viewedAt: null, total: "1250.00", validUntil: new Date("2026-12-01T00:00:00.000Z"), notes: null, terms: null }, customer: { name: "Marina" }, vehicle: { make: "BMW", model: "320i", modelYear: 2024 }, tenant: { active: true, name: "Oficina Centro" }, branding: null };
+function row(status: "sent" | "viewed" = "sent", expiresAt = new Date("2026-12-01T00:00:00.000Z"), tenantStatus: "trial" | "active" | "suspended" | "inactive" = "active") {
+  return { quote: { id: 81, tenantId: 4, number: 12, status, publicTokenExpiresAt: expiresAt, viewedAt: null, total: "1250.00", validUntil: new Date("2026-12-01T00:00:00.000Z"), notes: null, terms: null }, customer: { name: "Marina" }, vehicle: { make: "BMW", model: "320i", modelYear: 2024 }, tenant: { active: true, status: tenantStatus, name: "Oficina Centro" }, branding: null };
 }
 
 describe("quotes.publicView — auditoria de transições públicas", () => {
@@ -49,6 +49,16 @@ describe("quotes.publicView — auditoria de transições públicas", () => {
 
     await expect(caller.publicView({ token: "token-publico" })).resolves.toEqual({ expired: true });
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "quote.expired_public", entityType: "quote", entityId: 81, before: { status: "sent" }, after: { status: "expired" }, metadata: { source: "public_link_expiration" } }));
+  });
+
+  it("não expõe nem expira orçamento público de tenant suspenso", async () => {
+    const db = database([[row("sent", new Date("2026-01-01T00:00:00.000Z"), "suspended")]]);
+    mocks.db = db;
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicView({ token: "token-publico" })).resolves.toBeNull();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 
   it("não duplica evento nem auditoria quando outra sessão já marcou a visualização", async () => {

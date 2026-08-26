@@ -65,3 +65,7 @@ A camada compartilhada de autorização passou a aceitar somente oficinas ativas
 ## 26/08/2026 — Proteção do proprietário primário
 
 As mutações internas de equipe agora impedem rebaixar, desativar ou reativar o proprietário primário com um papel inferior a dono. O bloqueio acontece antes de escrita e auditoria, preservando o controle da oficina mesmo quando a ação parte de outro perfil com gestão de equipe. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 163 testes Vitest aprovados.
+
+## 26/08/2026 — Links públicos de tenant operacional
+
+A visualização pública de orçamento agora exige que a oficina esteja ativa e em período de teste ou ativa comercialmente. Links de tenants suspensos ou inativos não expõem dados, não alteram o status para expirado e não produzem auditoria. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 164 testes Vitest aprovados.

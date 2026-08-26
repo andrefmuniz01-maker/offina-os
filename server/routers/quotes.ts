@@ -426,7 +426,7 @@ export const quoteRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const row = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles, tenant: tenants, branding: tenantBranding }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).innerJoin(tenants, eq(tenants.id, quotes.tenantId)).leftJoin(tenantBranding, eq(tenantBranding.tenantId, tenants.id)).where(eq(quotes.publicToken, input.token)).limit(1))[0];
-    if (!row || !row.tenant.active) return null;
+    if (!row || !row.tenant.active || !["trial", "active"].includes(row.tenant.status)) return null;
     if (row.quote.publicTokenExpiresAt.getTime() < Date.now() && isQuoteTransitionAllowed(row.quote.status, "expired")) {
       const expired = await db.update(quotes).set({ status: "expired" }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId), eq(quotes.status, row.quote.status)));
       if (Number(expired[0]?.affectedRows ?? 0)) await writeAuditLog({ tenantId: row.quote.tenantId, action: "quote.expired_public", entityType: "quote", entityId: row.quote.id, before: { status: row.quote.status }, after: { status: "expired" }, metadata: { source: "public_link_expiration" } });
