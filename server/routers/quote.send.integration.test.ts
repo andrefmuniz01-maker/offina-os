@@ -19,9 +19,9 @@ function query(result: unknown) {
   return builder;
 }
 
-function database(results: unknown[]) {
+function database(results: unknown[], updateResults: unknown[] = []) {
   const tx = {
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: 1 }] ) })),
   };
   return { select: vi.fn(() => query(results.shift() ?? [])), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), tx };
@@ -50,5 +50,17 @@ describe("quotes.send — auditoria da transição comercial", () => {
       tenantId: 4, actorUserId: 7, action: "quote.sent", entityType: "quote", entityId: 81,
       before: { status: "ready" }, after: { status: "sent" }, metadata: { channel: "manual_whatsapp_preparation" },
     }));
+  });
+
+  it("bloqueia o evento de envio quando outra sessão já mudou o status", async () => {
+    mocks.db = database([
+      [{ quote: { id: 81, tenantId: 4, quoteRequestId: 9, status: "ready", publicToken: "token-publico", total: "1250.00" }, customer: { name: "Marina" }, vehicle: { make: "BMW", model: "320i" } }],
+    ], [[{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(context());
+
+    await expect(caller.send({ tenantId: 4, quoteId: 81 })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.tx.insert).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });

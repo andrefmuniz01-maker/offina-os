@@ -320,7 +320,8 @@ export const quoteRouter = router({
     const quote = (await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId))).limit(1))[0];
     if (!quote || !isQuoteTransitionAllowed(quote.quote.status, "sent")) throw new TRPCError({ code: "BAD_REQUEST", message: "Este orçamento não pode ser enviado." });
     await db.transaction(async (tx) => {
-      await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId)));
+      const sent = await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId), eq(quotes.status, quote.quote.status)));
+      if (!Number(sent[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este orçamento foi alterado antes do envio. Atualize a fila para consultar o estado atual." });
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
       if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(and(eq(quoteRequests.id, quote.quote.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId)));
     });
