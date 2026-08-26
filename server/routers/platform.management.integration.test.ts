@@ -142,3 +142,16 @@ describe("platform — ciclo administrativo de tenants", () => {
     await expect(caller.audit.list({ tenantId: 41, page: 1, pageSize: 1 })).resolves.toEqual({ items: [newest], page: 1, pageSize: 1, hasMore: true });
   });
 });
+
+describe("tenant.audit.list — busca paginada", () => {
+  beforeEach(() => mocks.requirePermission.mockResolvedValue({ permissions: ["tenant.manage"] }));
+
+  it("busca ação ou entidade mantendo o tenant, a permissão e a paginação", async () => {
+    const rows = [{ id: 81, tenantId: 4, action: "inventory.adjusted", entityType: "product", entityId: 12 }];
+    mocks.db = buildDb([rows]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.audit.list({ tenantId: 4, search: "product", page: 1, pageSize: 10 })).resolves.toEqual({ items: rows, page: 1, pageSize: 10, hasMore: false });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "tenant.manage");
+  });
+});
