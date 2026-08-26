@@ -291,11 +291,12 @@ export const tenantRouter = router({
       email: z.string().email(),
       role: roleInput,
     })).mutation(async ({ ctx, input }) => {
-      await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
+      const access = await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const target = (await db.select().from(users).where(eq(users.email, input.email)).limit(1))[0];
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Este usuário precisa acessar a plataforma uma vez antes de ser adicionado." });
+      if (access.tenant?.primaryOwnerUserId === target.id && input.role !== "owner") throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário deve permanecer com o papel de dono." });
       const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
         .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, target.id))).limit(1))[0] ?? null;
       if (!previous || !previous.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
@@ -306,7 +307,8 @@ export const tenantRouter = router({
     }),
     updateRole: protectedProcedure.input(tenantIdInput.extend({ userId: z.number().int().positive(), role: roleInput, active: z.boolean().optional() }))
       .mutation(async ({ ctx, input }) => {
-        await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
+        const access = await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
+        if (access.tenant?.primaryOwnerUserId === input.userId && (input.role !== "owner" || input.active === false)) throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário não pode ser rebaixado ou desativado por esta operação." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
         const member = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)

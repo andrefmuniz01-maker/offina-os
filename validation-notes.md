@@ -61,3 +61,7 @@ As atualizações de custo, preço e margem de produtos e serviços passaram a c
 ## 26/08/2026 — Barreira central para tenants suspensos
 
 A camada compartilhada de autorização passou a aceitar somente oficinas ativas em período de teste ou ativas comercialmente. Tenants suspensos, inativos ou marcados como inativos são rejeitados antes da consulta de vínculo, inclusive em chamadas internas feitas por Super Admin. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 161 testes Vitest aprovados.
+
+## 26/08/2026 — Proteção do proprietário primário
+
+As mutações internas de equipe agora impedem rebaixar, desativar ou reativar o proprietário primário com um papel inferior a dono. O bloqueio acontece antes de escrita e auditoria, preservando o controle da oficina mesmo quando a ação parte de outro perfil com gestão de equipe. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 163 testes Vitest aprovados.

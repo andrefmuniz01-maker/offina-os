@@ -114,6 +114,25 @@ describe("platform — ciclo administrativo de tenants", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("impede que a gestão interna rebaixe ou desative o proprietário primário", async () => {
+    mocks.requirePermission.mockResolvedValue({ tenant: { primaryOwnerUserId: 19 }, permissions: ["team.manage"] });
+    mocks.db = buildDb([]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.updateRole({ tenantId: 41, userId: 19, role: "admin", active: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.db.update).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("impede reativar o proprietário primário com papel inferior", async () => {
+    mocks.requirePermission.mockResolvedValue({ tenant: { primaryOwnerUserId: 19 }, permissions: ["team.manage"] });
+    mocks.db = buildDb([[{ id: 19 }]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.addExistingUser({ tenantId: 41, email: "dono@example.com", role: "admin" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("bloqueia auditoria quando outra sessão já alterou o papel ou a ativação do membro", async () => {
     mocks.db = buildDb([[{ role: "technician", active: true }]], [[{ affectedRows: 0 }]]);
     const caller = tenantRouter.createCaller(createContext());

@@ -193,3 +193,4 @@
 - [ ] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
 - [x] Tornar condicionais as alterações financeiras de produtos e serviços antes de registrar auditoria.
 - [x] Bloquear centralmente acessos internos a tenants suspensos, incluindo Super Admin em operações do tenant.
+- [x] Impedir rebaixamento ou desativação do proprietário primário nas mutações internas de equipe.
