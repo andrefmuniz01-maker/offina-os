@@ -85,3 +85,7 @@ Os uploads públicos de solicitação e os anexos de execução de OS agora acei
 ## 26/08/2026 — Fila comercial de solicitações
 
 A interface de solicitações passou a destacar o trabalho pendente na página atual, itens sem responsável, filas em atenção e a próxima ação de cada solicitação. Filtros rápidos, limpeza de filtros e estado vazio contextual foram adicionados sem alterar o contrato operacional. A tela foi conferida em desktop e mobile; TypeScript e a suíte completa aprovaram 47 arquivos e 171 testes Vitest.
+
+## 26/08/2026 — Central de orçamentos
+
+A fila de orçamentos agora evidencia propostas em preparação, respostas aguardadas e validade em atenção, além de orientar o próximo passo comercial por status. Filtros rápidos, indicadores contextualizados à página, estados vazios e cartões de proposta foram validados em desktop e mobile. TypeScript e a suíte completa aprovaram 48 arquivos e 173 testes Vitest.
