@@ -138,3 +138,4 @@
 - [x] Validar explicitamente o produto no tenant antes de consultar seu histórico de movimentações de estoque.
 - [x] Validar explicitamente o cliente no tenant antes de listar seus veículos associados.
 - [x] Tornar a seleção de cliente para veículos explicitamente focável e não acionável durante carregamento ou falha.
+- [x] Cobrir auditoria de edição e bloqueio de exclusão referenciada também para categorias de serviço.

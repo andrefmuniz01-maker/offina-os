@@ -186,11 +186,29 @@ describe("catalog — composição segura por tenant", () => {
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "product_category.updated", entityId: 71, before: { name: "Performance", description: "Anterior" }, after: { name: "Peças performance", description: "Preparação" } }));
   });
 
+  it("atualiza categoria de serviço somente dentro do tenant e registra antes e depois", async () => {
+    mocks.db = buildDb([[{ id: 82, name: "Instalação", description: "Anterior" }]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.updateService({ tenantId: 4, categoryId: 82, name: "Instalação performance", description: "Montagem" })).resolves.toEqual({ success: true });
+    expect(mocks.db.updates()).toEqual([{ name: "Instalação performance", description: "Montagem" }]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "service_category.updated", entityId: 82, before: { name: "Instalação", description: "Anterior" }, after: { name: "Instalação performance", description: "Montagem" } }));
+  });
+
   it("impede excluir categoria de produto ainda referenciada pelo catálogo", async () => {
     mocks.db = buildDb([[{ id: 71, name: "Performance", description: null }], [{ id: 12 }]]);
     const caller = catalogRouter.createCaller(createContext());
 
     await expect(caller.categories.deleteProduct({ tenantId: 4, categoryId: 71 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.db.deletes()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("impede excluir categoria de serviço ainda referenciada pelo catálogo", async () => {
+    mocks.db = buildDb([[{ id: 82, name: "Instalação", description: null }], [{ id: 41 }]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.deleteService({ tenantId: 4, categoryId: 82 })).rejects.toMatchObject({ code: "CONFLICT" });
     expect(mocks.db.deletes()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
