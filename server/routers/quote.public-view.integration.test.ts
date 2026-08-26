@@ -24,7 +24,7 @@ function database(results: unknown[], updateResults: unknown[] = []) {
     update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: 1 }]) })),
   };
-  return { select: vi.fn(() => query(results.shift() ?? [])), update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)) };
+  return { select: vi.fn(() => query(results.shift() ?? [])), update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)) };
 }
 
 const publicContext: TrpcContext = { user: null, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
@@ -59,6 +59,15 @@ describe("quotes.publicView — auditoria de transições públicas", () => {
     await expect(caller.publicView({ token: "token-publico" })).resolves.toMatchObject({ quote: { status: "sent" } });
 
     expect(db.transaction).toHaveBeenCalledOnce();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("não duplica auditoria quando outra sessão já expirou o orçamento", async () => {
+    mocks.db = database([[row("sent", new Date("2026-01-01T00:00:00.000Z"))]], [[{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicView({ token: "token-publico" })).resolves.toEqual({ expired: true });
+
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
