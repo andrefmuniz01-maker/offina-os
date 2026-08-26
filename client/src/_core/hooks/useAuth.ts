@@ -1,91 +1,76 @@
-import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { supabase } from "@/lib/supabase";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseAuthOptions = {
   redirectOnUnauthenticated?: boolean;
   redirectPath?: string;
 };
 
+export type SupabaseSignOut = () => PromiseLike<{ error: Error | null }>;
+
+export async function signOutSupabaseSession(signOut: SupabaseSignOut) {
+  const { error } = await signOut();
+
+  if (error) {
+    throw error;
+  }
+}
+
 export function useAuth(options?: UseAuthOptions) {
-  // Login is started via startLogin() in the effect below, only when we actually
-  // navigate — never during render. startLogin() mints a one-time nonce + writes
-  // the state cookie, so calling it per render would overwrite the cookie and
-  // desync it from an in-flight login's `state`.
   const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
   const utils = trpc.useUtils();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<Error | null>(null);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      utils.auth.me.setData(undefined, null);
-    },
-  });
-
   const logout = useCallback(async () => {
+    setIsSigningOut(true);
+    setLogoutError(null);
+
     try {
-      await logoutMutation.mutateAsync();
-    } catch (error: unknown) {
-      if (
-        error instanceof TRPCClientError &&
-        error.data?.code === "UNAUTHORIZED"
-      ) {
-        return;
-      }
-      throw error;
-    } finally {
-      // Clear the Preview auto-login token mirrored into sessionStorage, so
-      // header-based sessions (Safari ITP / WebView) are logged out too. The
-      // backend cookie is cleared by the logout mutation.
-      try {
-        sessionStorage.removeItem("manus-cookie");
-      } catch {}
+      await signOutSupabaseSession(supabase.auth.signOut.bind(supabase.auth));
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
+    } catch (error: unknown) {
+      setLogoutError(error instanceof Error ? error : new Error("Não foi possível encerrar a sessão."));
+      throw error;
+    } finally {
+      setIsSigningOut(false);
     }
-  }, [logoutMutation, utils]);
+  }, [utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
     return {
       user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
-      error: meQuery.error ?? logoutMutation.error ?? null,
+      loading: meQuery.isLoading || isSigningOut,
+      error: meQuery.error ?? logoutError,
       isAuthenticated: Boolean(meQuery.data),
     };
   }, [
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
-    logoutMutation.error,
-    logoutMutation.isPending,
+    isSigningOut,
+    logoutError,
   ]);
 
   useEffect(() => {
     if (!redirectOnUnauthenticated) return;
-    if (meQuery.isLoading || logoutMutation.isPending) return;
+    if (meQuery.isLoading || isSigningOut) return;
     if (state.user) return;
     if (typeof window === "undefined") return;
     if (redirectPath && window.location.pathname === redirectPath) return;
 
-    // Navigate at this moment only. startLogin() mints the nonce + cookie itself.
-    if (redirectPath) {
-      window.location.href = redirectPath;
-    } else {
-      startLogin();
-    }
+    window.location.href = redirectPath ?? "/";
   }, [
     redirectOnUnauthenticated,
     redirectPath,
-    logoutMutation.isPending,
+    isSigningOut,
     meQuery.isLoading,
     state.user,
   ]);

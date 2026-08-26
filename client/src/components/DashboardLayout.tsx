@@ -19,12 +19,12 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
+import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -44,6 +44,48 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+function MagicLinkAccess() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const requestMagicLink = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("sending");
+    const redirectTo = new URL("/auth/callback", window.location.origin).toString();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+    });
+    setStatus(error ? "error" : "sent");
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <form onSubmit={requestMagicLink} className="flex flex-col items-center gap-6 p-8 max-w-md w-full">
+        <div className="flex flex-col items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-center">Entre para continuar</h1>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">Informe seu e-mail cadastrado para receber um link de acesso seguro.</p>
+        </div>
+        <input
+          aria-label="E-mail de acesso"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          type="email"
+          value={email}
+          onChange={event => setEmail(event.target.value)}
+          required
+          autoComplete="email"
+          placeholder="voce@empresa.com"
+        />
+        <Button type="submit" disabled={status === "sending"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
+          {status === "sending" ? "Enviando…" : "Enviar link de acesso"}
+        </Button>
+        {status === "sent" && <p className="text-center text-sm text-muted-foreground">Verifique sua caixa de entrada para concluir o acesso.</p>}
+        {status === "error" && <p className="text-center text-sm text-destructive">Não foi possível iniciar o acesso. Use um e-mail já autorizado.</p>}
+      </form>
+    </div>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -70,25 +112,7 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Entre para continuar
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              O acesso a este painel requer autenticação. Continue para iniciar o acesso seguro.
-            </p>
-          </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
-          </Button>
-        </div>
-      </div>
+      <MagicLinkAccess />
     );
   }
 

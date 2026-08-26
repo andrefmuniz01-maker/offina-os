@@ -52,6 +52,12 @@ export async function getUserByOpenId(openId: string) {
   return (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  return (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
+}
+
 export async function listUserTenants(userId: number) {
   const db = await getDb();
   if (!db) return [];

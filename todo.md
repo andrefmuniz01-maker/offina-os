@@ -48,3 +48,29 @@
 - [x] Documentar o mapeamento MySQL → PostgreSQL/Supabase sem criar identidades fictícias nem remover dados da origem.
 - [x] Criar e aplicar a foundation versionada no projeto Supabase gratuito, com 39 tabelas públicas protegidas por RLS e bucket privado.
 - [ ] Concluir a troca integral de Manus OAuth/MySQL após o primeiro login real de um Super Admin no Supabase e validação de corte sem fonte paralela.
+- [ ] Configurar Magic Link do Supabase Auth como único fluxo de login e sessão da aplicação.
+- [ ] Remover o uso de Manus OAuth, cookies JWT próprios e credenciais de sessão paralelas do cliente e backend.
+- [ ] Associar identidades Supabase Auth reais de Felipe e André por e-mail, sem UUIDs ou perfis fictícios.
+- [ ] Validar a cadeia Supabase Auth → profile → tenant_members → tenant → role → permissões → RLS para administradores.
+- [ ] Testar login, logout, rotas protegidas, impedimento de autoelevação, RLS e isolamento Tenant A × Tenant B antes de avançar.
+- [ ] Substituir o fluxo planejado de Magic Link por Google OAuth via Supabase Auth como único login da aplicação.
+- [ ] Auditar e corrigir Site URL, Redirect URLs e callback reais antes de ativar o provider Google.
+- [ ] Configurar o provider Google no Supabase somente com Client ID e Client Secret mantidos em secrets de servidor.
+- [ ] Validar redirecionamento pós-login por papel e tenant, sem permitir autoalteração de role, tenant ou permissões.
+- [x] Entregar passo a passo operacional para configurar Google OAuth no Supabase e explicar o limite do conector disponível.
+- [ ] Comprovar a elegibilidade gratuita do Google OAuth antes de criar recursos, sem ativar teste, créditos ou faturamento.
+- [ ] Bloquear explicitamente qualquer ação que crie cobrança, projeto pago ou ativação de billing durante a configuração de OAuth.
+- [x] Registrar a evidência oficial de criação de projeto sem billing automático e o bloqueio atual por MFA antes do OAuth.
+- [ ] Corrigir o cadastro do cliente Google OAuth usando somente campos de origem e callback aceitos por domínios gratuitos, sem comprar domínio.
+- [ ] Abandonar a ativação do Google OAuth após falha externa do Google Cloud, sem criar contas, billing ou domínios adicionais.
+- [ ] Implementar exclusivamente o Magic Link nativo do Supabase Auth como login e sessão oficiais do OficinaOS.
+- [x] Validar o provider nativo de e-mail e configurar Site URL e callbacks de produção e prévia para o Magic Link.
+- [ ] Provisionar as identidades Supabase Auth reais de Felipe e André por fluxo administrativo controlado antes de enviar Magic Links de teste.
+- [ ] Migrar a autenticação do Heartbeat agendado para uma credencial de serviço compatível com a arquitetura Supabase antes de reativar tarefas recorrentes.
+- [x] Documentar a separação entre domínio de branding, origem JavaScript, callback Google/Supabase e redirect da aplicação.
+- [x] Fazer o logout do cliente encerrar explicitamente a sessão Supabase e invalidar o estado tRPC sem usar cookies de sessão próprios.
+- [x] Validar o convite real de Felipe, seu profile automático e a promoção administrativa inicial sem provisionar André antes de uma identidade verificável.
+- [x] Desativar autoinscrição pública no Supabase Auth, mantendo o e-mail/Magic Link habilitado para identidades provisionadas por convite.
+- [x] Confirmar e registrar o estado persistido do Supabase Auth: autoinscrição pública desativada e provider de e-mail/Magic Link habilitado.
+- [x] Diagnosticar a não entrega do Magic Link de Felipe no Supabase, verificando logs, template, limites e configuração de e-mail antes de novo reenvio.
+- [ ] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.

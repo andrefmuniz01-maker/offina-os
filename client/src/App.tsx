@@ -24,6 +24,7 @@ import WorkOrderNotes from "./pages/WorkOrderNotes";
 import Notifications from "./pages/Notifications";
 import Team from "./pages/Team";
 import Audit from "./pages/Audit";
+import AuthCallback from "./pages/AuthCallback";
 import Reports from "./pages/Reports";
 import { operationsRoutePaths } from "./lib/operationsRoutes";
 
@@ -31,6 +32,7 @@ function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
+      <Route path={"/auth/callback"} component={AuthCallback} />
       <Route path={"/"} component={Home} />
       <Route path={"/solicitar/:slug"} component={PublicQuoteRequest} />
       <Route path={"/solicitacoes"} component={Requests} />
