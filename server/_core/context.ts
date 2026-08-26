@@ -10,6 +10,7 @@ import {
 
 export type SupabaseSessionUser = {
   id: string;
+  name: string | null;
   email: string | null;
   platformRole: "platform_user" | "super_admin";
   accessToken: string;
@@ -44,6 +45,13 @@ function normalizeEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() ?? null;
 }
 
+function getSupabaseDisplayName(identity: Awaited<ReturnType<typeof getSupabaseAuthUser>>) {
+  const metadata = identity?.user_metadata;
+  const candidates = [metadata?.full_name, metadata?.name, metadata?.display_name];
+  const name = candidates.find(candidate => typeof candidate === "string" && candidate.trim().length > 0);
+  return typeof name === "string" ? name.trim() : null;
+}
+
 export function isSupabaseProfileIdentityMatch(
   identity: SupabaseAuthenticatedIdentity,
   profile: SupabaseProfile | null,
@@ -69,6 +77,7 @@ export async function createContext(
           const email = normalizeEmail(profile.email);
           supabaseUser = {
             id: profile.id,
+            name: getSupabaseDisplayName(authenticatedIdentity),
             email,
             platformRole: profile.platformRole,
             accessToken,
