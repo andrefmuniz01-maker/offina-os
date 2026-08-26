@@ -95,3 +95,7 @@
 - [x] Validar automaticamente o inventário de portabilidade contra os caminhos e documentos versionados antes da publicação final.
 - [x] Commitar e publicar no GitHub os novos arquivos de portabilidade e ajustes correlatos.
 - [x] Fazer a checagem de portabilidade confirmar que cada artefato obrigatório está rastreado pelo Git, não apenas presente no diretório local.
+- [x] Consolidar o contrato do painel global de Super Admin, incluindo contexto global, fontes de dados reais, estados vazios e limites de segurança.
+- [x] Auditar as rotas, componentes, routers e modelos existentes de plataforma antes de criar novas telas ou ações administrativas.
+- [x] Testar diretamente a guarda de Super Admin para comprovar que usuário comum e admin de tenant não acessam procedures globais.
+- [x] Adicionar barreira visual de Super Admin em `/plataforma`, mantendo as procedures do backend como fonte autoritativa de autorização.

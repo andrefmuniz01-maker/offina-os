@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import { PlatformTenantAuditCard } from "@/components/PlatformTenantAuditCard";
 import { PlatformUserManagementCard } from "@/components/PlatformUserManagementCard";
 import { PlatformReportCard } from "@/components/PlatformReportCard";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { CheckCircle2, Pencil, Plus, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -19,7 +20,31 @@ const emptyPlanForm: PlanForm = { code: "", name: "", description: "", maxUsers:
 function normalizeSlug(value: string) { return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
 function toPlanForm(plan: { code: string; name: string; description: string | null; maxUsers: number; maxCustomers: number | null; active: boolean }): PlanForm { return { code: plan.code, name: plan.name, description: plan.description ?? "", maxUsers: String(plan.maxUsers), maxCustomers: plan.maxCustomers === null ? "" : String(plan.maxCustomers), active: plan.active }; }
 
+export function getPlatformAccessState(user: { platformRole?: string | null } | null, loading: boolean) {
+  if (loading) return "loading" as const;
+  if (!user) return "unauthenticated" as const;
+  return user.platformRole === "super_admin" ? "granted" as const : "forbidden" as const;
+}
+
 export default function Platform() {
+  const { user, loading } = useAuth();
+  const accessState = getPlatformAccessState(user, loading);
+
+  if (accessState === "loading") {
+    return <main className="min-h-screen bg-[#fafaf9] p-5 sm:p-10"><div className="mx-auto max-w-7xl space-y-5"><Skeleton className="h-20 w-full" /><Skeleton className="h-28 w-full" /><Skeleton className="h-72 w-full" /></div></main>;
+  }
+
+  if (accessState !== "granted") {
+    const message = accessState === "unauthenticated"
+      ? "Entre com uma identidade autorizada para acessar a administração da plataforma."
+      : "Seu perfil não possui acesso à administração global da plataforma.";
+    return <main className="grid min-h-screen place-items-center bg-[#fafaf9] p-5"><Card className="w-full max-w-md border-slate-200 shadow-sm"><CardHeader><div className="mb-2 grid h-10 w-10 place-items-center rounded-xl bg-slate-950 text-orange-400"><ShieldCheck className="h-5 w-5" /></div><CardTitle>Acesso restrito</CardTitle><CardDescription>{message}</CardDescription></CardHeader><CardContent><Link href="/"><a><Button variant="outline">Voltar à operação</Button></a></Link></CardContent></Card></main>;
+  }
+
+  return <PlatformDashboard />;
+}
+
+function PlatformDashboard() {
   const metrics = trpc.platform.metrics.useQuery();
   const tenants = trpc.platform.overview.useQuery();
   const usage = trpc.platform.usage.useQuery();
