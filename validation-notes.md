@@ -45,3 +45,7 @@ A central de suporte do Super Admin foi verificada em desktop e mobile. A seleç
 ## 26/08/2026 — Gestão global de usuários
 
 A gestão global de usuários foi verificada em desktop e mobile. A busca, os vínculos por oficina, a identificação do proprietário primário protegido e a paginação permanecem legíveis. A versão móvel empilha as ações de vínculo sem corte; os controles mantêm a distinção entre alteração auditável de um vínculo comum e o bloqueio explícito do proprietário primário.
+
+## 26/08/2026 — Associação global de usuários a tenants
+
+A central de gestão de usuários foi revisada após incluir a associação de usuário existente a uma nova oficina com papel inicial. Os controles preservam o vínculo primário protegido e ficam disponíveis apenas para oficinas ainda não associadas ao usuário. A página continua responsiva em desktop e mobile; o estado atual com um único tenant não exibe a ação adicional, como esperado.

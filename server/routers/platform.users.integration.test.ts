@@ -48,4 +48,15 @@ describe("platform.users — gestão global auditável", () => {
     mocks.db = { select: vi.fn(() => chain([{ id: 4, primaryOwnerUserId: 7 }])) };
     await expect(caller.users.updateMembership({ tenantId: 4, userId: 7, role: "owner", active: true })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("associa usuário existente a tenant com papel inicial não proprietário e audita o vínculo", async () => {
+    const select = vi.fn().mockReturnValueOnce(chain([{ id: 4 }])).mockReturnValueOnce(chain([{ id: 12 }])).mockReturnValueOnce(chain([]));
+    const onDuplicateKeyUpdate = vi.fn(async () => [{ affectedRows: 1 }]);
+    const values = vi.fn(() => ({ onDuplicateKeyUpdate }));
+    mocks.db = { select, insert: vi.fn(() => ({ values })) };
+
+    await expect(platformRouter.createCaller(context()).users.addMembership({ tenantId: 4, userId: 12, role: "attendant" })).resolves.toEqual({ success: true });
+    expect(values).toHaveBeenCalledWith({ tenantId: 4, userId: 12, role: "attendant", active: true });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "platform.user_membership_added", entityType: "tenant_member", entityId: 12, after: { role: "attendant", active: true } }));
+  });
 });

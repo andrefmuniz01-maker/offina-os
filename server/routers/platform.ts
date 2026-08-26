@@ -77,6 +77,21 @@ export const platformRouter = router({
         .from(tenantMembers).innerJoin(tenants, eq(tenants.id, tenantMembers.tenantId)).where(inArray(tenantMembers.userId, ids)) : [];
       return { items: pageRows.map(user => ({ ...user, memberships: memberships.filter(row => row.membership.userId === user.id).map(row => ({ tenantId: row.tenant.id, tenantName: row.tenant.name, tenantSlug: row.tenant.slug, role: row.membership.role, active: row.membership.active, primaryOwner: row.tenant.primaryOwnerUserId === user.id })) })), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
+    addMembership: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), userId: z.number().int().positive(), role: z.enum(["admin", "attendant", "technician"]) })).mutation(async ({ ctx, input }) => {
+      assertPlatformSuperAdmin(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const [tenant, user] = await Promise.all([
+        db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1),
+        db.select({ id: users.id }).from(users).where(eq(users.id, input.userId)).limit(1),
+      ]);
+      if (!tenant[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+      if (!user[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
+      const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0] ?? null;
+      await db.insert(tenantMembers).values({ tenantId: input.tenantId, userId: input.userId, role: input.role, active: true }).onDuplicateKeyUpdate({ set: { role: input.role, active: true } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "platform.user_membership_added", entityType: "tenant_member", entityId: input.userId, before: previous ?? undefined, after: { role: input.role, active: true } });
+      return { success: true };
+    }),
     updateMembership: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), userId: z.number().int().positive(), role: roleInput, active: z.boolean() })).mutation(async ({ ctx, input }) => {
       assertPlatformSuperAdmin(ctx.user);
       const db = await getDb();
