@@ -344,11 +344,22 @@ export const quoteRouter = router({
     return { preparedMessage: renderQuoteMessage(settings[0]?.quoteMessageTemplate, { client: quote.customer.name, vehicle: `${quote.vehicle.make} ${quote.vehicle.model}`, total: `R$ ${Number(quote.quote.total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, link: publicUrl, workshop: tenant[0]?.name ?? "Oficina" }), publicUrl };
   }),
 
-  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     const access = await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    const filter = input.status ? and(eq(quotes.tenantId, input.tenantId), eq(quotes.status, input.status)) : eq(quotes.tenantId, input.tenantId);
+    const search = input.search ? `%${input.search}%` : null;
+    const filter = and(
+      eq(quotes.tenantId, input.tenantId),
+      ...(input.status ? [eq(quotes.status, input.status)] : []),
+      ...(search ? [or(
+        like(customers.name, search),
+        like(vehicles.plate, search),
+        like(vehicles.make, search),
+        like(vehicles.model, search),
+        sql`CAST(${quotes.number} AS CHAR) LIKE ${search}`,
+      )] : []),
+    );
     const rows = await db.select({ quote: quotes, customer: customers, vehicle: vehicles }).from(quotes).innerJoin(customers, and(eq(customers.id, quotes.customerId), eq(customers.tenantId, quotes.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, quotes.vehicleId), eq(vehicles.tenantId, quotes.tenantId))).where(filter).orderBy(desc(quotes.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
     const financial = hasPermission(access, "financial.view");
     return { items: rows.slice(0, input.pageSize).map(row => financial ? row : { ...row, quote: (({ estimatedCostTotal, estimatedMarginPercent, ...safe }) => safe)(row.quote) }), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };

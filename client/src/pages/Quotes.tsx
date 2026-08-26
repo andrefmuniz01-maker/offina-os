@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, FileText, Send, Tag } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, FileText, Search, Send, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -27,12 +27,13 @@ export default function Quotes() {
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [status, setStatus] = useState<(typeof statuses)[number] | "all">("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [editingQuoteId, setEditingQuoteId] = useState<number | null>(null);
   const [discounts, setDiscounts] = useState<Record<number, string>>({});
   const [overrideReason, setOverrideReason] = useState("");
 
-  const listInput = useMemo(() => ({ tenantId, page, pageSize: 10, ...(status === "all" ? {} : { status }) }), [tenantId, page, status]);
+  const listInput = useMemo(() => ({ tenantId, page, pageSize: 10, ...(status === "all" ? {} : { status }), ...(search.trim() ? { search: search.trim() } : {}) }), [tenantId, page, search, status]);
   const detailInput = useMemo(() => ({ tenantId, quoteId: editingQuoteId ?? 0 }), [tenantId, editingQuoteId]);
   const list = trpc.quotes.list.useQuery(listInput, { enabled: Boolean(tenantId) });
   const detail = trpc.quotes.detail.useQuery(detailInput, { enabled: Boolean(tenantId && editingQuoteId) });
@@ -67,7 +68,8 @@ export default function Quotes() {
     if (!tenant || !editingQuoteId || !detail.data) return;
     applyDiscounts.mutate({ tenantId: tenant.id, quoteId: editingQuoteId, items: detail.data.items.map(item => ({ quoteItemId: item.id, discount: Number(discounts[item.id] || 0) })), overrideReason: overrideReason.trim() || undefined });
   };
-  const changeStatus = (value: (typeof statuses)[number] | "all") => { setStatus(value); setPage(1); };
+  const resetQueuePage = () => { setPage(1); setEditingQuoteId(null); };
+  const changeStatus = (value: (typeof statuses)[number] | "all") => { setStatus(value); resetQueuePage(); };
 
   if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-6xl"><Skeleton className="h-96" /></main></DashboardLayout>;
   if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-3xl"><Card><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Orçamentos, descontos e mensagens preparadas só podem ser gerenciados dentro de uma oficina ativa.</CardDescription></CardHeader></Card></main></DashboardLayout>;
@@ -80,12 +82,12 @@ export default function Quotes() {
       </header>
 
       <Card className="border-slate-200">
-        <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle className="text-lg">Fila de orçamentos</CardTitle><CardDescription>Listagem paginada por tenant. Custos e margens só são retornados para perfis financeiros.</CardDescription></div><div className="grid gap-1"><Label htmlFor="quote-status" className="text-xs">Status</Label><select id="quote-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")} aria-busy={list.isLoading} aria-invalid={list.isError} disabled={list.isLoading || list.isError}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div></CardHeader>
+        <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle className="text-lg">Fila de orçamentos</CardTitle><CardDescription>Busque por número, cliente, placa ou veículo. Custos e margens só são retornados para perfis financeiros.</CardDescription></div><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1"><Label htmlFor="quote-search" className="text-xs">Buscar</Label><div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" /><Input id="quote-search" className="h-9 min-w-0 pl-8" value={search} onChange={event => { setSearch(event.target.value); resetQueuePage(); }} placeholder="Número, cliente ou placa" aria-describedby="quote-search-help" disabled={list.isLoading || list.isError} /></div><span id="quote-search-help" className="sr-only">Busca por número do orçamento, cliente, placa, marca ou modelo do veículo.</span></div><div className="grid gap-1"><Label htmlFor="quote-status" className="text-xs">Status</Label><select id="quote-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")} aria-busy={list.isLoading} aria-invalid={list.isError} disabled={list.isLoading || list.isError}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div></div></CardHeader>
         <CardContent>
           {list.isLoading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-24" key={index} />)}</div> : list.isError ? <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700" role="alert">Não foi possível carregar os orçamentos. Atualize a página e tente novamente.</div> : list.data?.items.length ? <div className="space-y-3">
             {list.data.items.map(({ quote, customer, vehicle }) => <Card key={quote.id} className="border-slate-200"><CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-950">Orçamento #{String(quote.number).padStart(6, "0")}</p><Badge variant="outline">{labels[quote.status] ?? quote.status}</Badge></div><p className="mt-1 text-sm text-slate-600">{customer.name} · {vehicle.make} {vehicle.model} · <strong>{money.format(Number(quote.total))}</strong></p><p className="mt-1 text-xs text-slate-500">Válido até {new Date(quote.validUntil).toLocaleDateString("pt-BR")}</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!['draft', 'ready'].includes(quote.status)} onClick={() => setEditingQuoteId(quote.id)}><Tag className="mr-2 h-4 w-4" />Desconto</Button><Button disabled={send.isPending || ["approved", "rejected", "expired", "cancelled"].includes(quote.status)} onClick={() => send.mutate({ tenantId, quoteId: quote.id })}><Send className="mr-2 h-4 w-4" />{send.isPending ? "Preparando…" : "Preparar envio"}</Button></div></CardContent></Card>)}
             <div className="flex items-center justify-between border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Página {list.data.page}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(current => current - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" size="sm" disabled={!list.data.hasMore} onClick={() => setPage(current => current + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
-          </div> : <div className="py-12 text-center"><div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-orange-50 text-orange-700"><FileText className="h-6 w-6" /></div><p className="mt-4 font-medium text-slate-900">Nenhum orçamento encontrado</p><p className="mt-1 text-sm text-slate-500">Ajuste o filtro ou gere um orçamento a partir de uma solicitação com serviço vinculado.</p></div>}
+          </div> : <div className="py-12 text-center"><div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-orange-50 text-orange-700"><FileText className="h-6 w-6" /></div><p className="mt-4 font-medium text-slate-900">Nenhum orçamento neste filtro</p><p className="mt-1 text-sm text-slate-500">Ajuste a busca ou o status, ou gere um orçamento a partir de uma solicitação com serviço vinculado.</p></div>}
         </CardContent>
       </Card>
       <p className="flex items-center gap-2 text-xs text-slate-500"><Copy className="h-3.5 w-3.5" />Ao preparar o envio, o texto é apenas copiado para revisão no WhatsApp; o sistema não dispara mensagens.</p>

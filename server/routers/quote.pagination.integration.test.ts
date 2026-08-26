@@ -50,4 +50,17 @@ describe("quotes.list — paginação e dados financeiros", () => {
 
     await expect(caller.list({ tenantId: 4, page: 1, pageSize: 10 })).resolves.toEqual({ items: [{ quote: financialQuote, customer: { id: 21, name: "Marina" }, vehicle: { id: 31, make: "BMW", model: "320i" } }], page: 1, pageSize: 10, hasMore: false });
   });
+
+  it("aceita busca operacional junto de status e paginação sem devolver dados de outro tenant", async () => {
+    mocks.hasPermission.mockReturnValue(false);
+    const quote = { id: 91, tenantId: 4, number: 104, status: "sent", total: "1800.00", estimatedCostTotal: "900.00", estimatedMarginPercent: "50.00" };
+    mocks.db = { select: vi.fn(() => query([{ quote, customer: { id: 27, name: "Marina" }, vehicle: { id: 37, make: "BMW", model: "320i", plate: "ABC1D23" } }])) };
+    const caller = quoteRouter.createCaller(context());
+
+    await expect(caller.list({ tenantId: 4, status: "sent", search: "ABC1D23", page: 1, pageSize: 10 })).resolves.toEqual({
+      items: [{ quote: { id: 91, tenantId: 4, number: 104, status: "sent", total: "1800.00" }, customer: { id: 27, name: "Marina" }, vehicle: { id: 37, make: "BMW", model: "320i", plate: "ABC1D23" } }],
+      page: 1, pageSize: 10, hasMore: false,
+    });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "quotes.manage");
+  });
 });

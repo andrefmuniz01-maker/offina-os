@@ -172,3 +172,4 @@
 - [x] Validar todos os produtos de um pedido de compra no tenant antes de criar seus itens.
 - [ ] Ampliar busca, filtros, paginação e estados de interface nas filas operacionais priorizadas.
 - [x] Adicionar busca por cliente, WhatsApp, placa ou veículo à fila paginada de solicitações.
+- [x] Adicionar busca por cliente, placa ou veículo à fila paginada de orçamentos.
