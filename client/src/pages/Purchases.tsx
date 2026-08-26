@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardPlus, PackageCheck, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardPlus, PackageCheck, Search, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -32,13 +32,14 @@ export default function Purchases() {
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [status, setStatus] = useState<(typeof statuses)[number] | "all">("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [form, setForm] = useState({ productId: "", quantity: "1", unitCost: "0", notes: "" });
 
   const productQueryInput = useMemo(() => ({ tenantId, page: 1, pageSize: 100 }), [tenantId]);
   const orderQueryInput = useMemo(
-    () => ({ tenantId, page, pageSize: 10, ...(status === "all" ? {} : { status }) }),
-    [tenantId, page, status],
+    () => ({ tenantId, page, pageSize: 10, ...(status === "all" ? {} : { status }), ...(search.trim() ? { search: search.trim() } : {}) }),
+    [tenantId, page, search, status],
   );
   const products = trpc.catalog.products.list.useQuery(productQueryInput, { enabled: Boolean(tenantId) });
   const orders = trpc.inventory.purchaseOrders.list.useQuery(orderQueryInput, { enabled: Boolean(tenantId) });
@@ -61,10 +62,8 @@ export default function Purchases() {
     onError: error => toast.error(error.message),
   });
 
-  const changeStatus = (value: (typeof statuses)[number] | "all") => {
-    setStatus(value);
-    setPage(1);
-  };
+  const resetOrderPage = () => setPage(1);
+  const changeStatus = (value: (typeof statuses)[number] | "all") => { setStatus(value); resetOrderPage(); };
 
   if (mine.isLoading) {
     return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-6xl"><Skeleton className="h-96" /></main></DashboardLayout>;
@@ -110,8 +109,8 @@ export default function Purchases() {
 
           <Card className="border-slate-200">
             <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div><CardTitle className="text-lg">Pedidos de compra</CardTitle><CardDescription>Histórico deste tenant. O recebimento baixa o pedido e aumenta o saldo físico.</CardDescription></div>
-              <div className="grid gap-1"><Label htmlFor="purchase-status" className="text-xs">Status</Label><select id="purchase-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")} aria-busy={orders.isLoading} aria-invalid={orders.isError} disabled={orders.isLoading || orders.isError}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div>
+              <div><CardTitle className="text-lg">Pedidos de compra</CardTitle><CardDescription>Busque por número, fornecedor ou observação. O recebimento baixa o pedido e aumenta o saldo físico.</CardDescription></div>
+              <div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1"><Label htmlFor="purchase-search" className="text-xs">Buscar</Label><div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" /><Input id="purchase-search" className="h-9 min-w-0 pl-8" value={search} onChange={event => { setSearch(event.target.value); resetOrderPage(); }} placeholder="Número ou fornecedor" aria-describedby="purchase-search-help" disabled={orders.isLoading || orders.isError} /></div><span id="purchase-search-help" className="sr-only">Busca por número do pedido, fornecedor ou observação.</span></div><div className="grid gap-1"><Label htmlFor="purchase-status" className="text-xs">Status</Label><select id="purchase-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")} aria-busy={orders.isLoading} aria-invalid={orders.isError} disabled={orders.isLoading || orders.isError}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div></div>
             </CardHeader>
             <CardContent>
               {orders.isLoading ? <Skeleton className="h-52" /> : orders.isError ? <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os pedidos. Atualize a página e tente novamente.</div> : orders.data?.items.length ? <div className="space-y-2">
@@ -120,7 +119,7 @@ export default function Purchases() {
                   <div className="flex items-center gap-2"><Badge variant="outline">{labels[order.status] ?? order.status}</Badge>{["draft", "ordered", "partially_received"].includes(order.status) ? <Button size="sm" disabled={receive.isPending} onClick={() => receive.mutate({ tenantId, purchaseOrderId: order.id, items: items.filter(item => Number(item.receivedQuantity) < Number(item.orderedQuantity)).map(item => ({ itemId: item.id, receivedQuantity: Number(item.orderedQuantity) - Number(item.receivedQuantity) })) })}>Receber</Button> : null}</div>
                 </div>)}
                 <div className="flex items-center justify-between border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Página {orders.data.page}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(current => current - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" size="sm" disabled={!orders.data.hasMore} onClick={() => setPage(current => current + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
-              </div> : <div className="py-12 text-center text-sm text-slate-500"><PackageCheck className="mx-auto mb-3 h-6 w-6 text-slate-400" />Nenhum pedido de compra encontrado para este filtro.</div>}
+              </div> : <div className="py-12 text-center text-sm text-slate-500"><PackageCheck className="mx-auto mb-3 h-6 w-6 text-slate-400" />Nenhum pedido de compra neste filtro. Ajuste a busca ou o status.</div>}
             </CardContent>
           </Card>
         </div>

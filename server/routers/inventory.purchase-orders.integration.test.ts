@@ -109,6 +109,20 @@ describe("inventory.purchaseOrders.create — isolamento de fornecedor", () => {
     });
   });
 
+  it("aceita busca por número ou fornecedor junto do status e preserva o escopo do tenant", async () => {
+    mocks.hasPermission.mockImplementation((_access: unknown, permission: string) => permission === "purchases.manage");
+    const order = { id: 63, tenantId: 4, number: 104, status: "ordered", createdAt: new Date("2026-08-25T12:00:00.000Z") };
+    const item = { id: 73, tenantId: 4, purchaseOrderId: 63, productId: 12, orderedQuantity: "1.000", receivedQuantity: "0.000", unitCost: "55.00" };
+    mocks.db = buildDb([[{ order, supplier: { id: 18, tenantId: 4, name: "Fornecedor Norte" } }], [item]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.purchaseOrders.list({ tenantId: 4, status: "ordered", search: "Fornecedor Norte", page: 1, pageSize: 10 })).resolves.toEqual({
+      items: [{ order, supplier: { id: 18, tenantId: 4, name: "Fornecedor Norte" }, items: [{ id: 73, tenantId: 4, purchaseOrderId: 63, productId: 12, orderedQuantity: "1.000", receivedQuantity: "0.000" }] }],
+      page: 1, pageSize: 10, hasMore: false,
+    });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "purchases.manage");
+  });
+
   it("bloqueia o recebimento quando o item foi atualizado antes da baixa concorrente", async () => {
     const order = { id: 61, tenantId: 4, number: 12, status: "ordered" };
     const item = { id: 71, tenantId: 4, purchaseOrderId: 61, productId: 12, orderedQuantity: "2.000", receivedQuantity: "1.000", unitCost: "45.00" };
