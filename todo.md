@@ -204,3 +204,4 @@
 - [x] Reestruturar agenda e pátio para destacar planejamento, capacidade e próxima ação operacional.
 - [x] Reestruturar estoque para destacar disponibilidade, reservas, criticidade e decisão de reposição.
 - [x] Reestruturar clientes e veículos para acelerar atendimento, histórico e continuidade comercial.
+- [x] Reestruturar financeiro para destacar realização, previsão e prioridades sem ampliar permissões.

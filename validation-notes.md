@@ -101,3 +101,7 @@ O estoque agora destaca criticidade, itens indisponíveis, reservas e necessidad
 ## 26/08/2026 — Clientes e veículos
 
 A jornada de atendimento passou a destacar a seleção segura de cliente, veículos vinculados e a próxima ação para avançar no histórico operacional. A interface conecta cadastro, consulta de veículos, histórico de OS e pós-venda em um mesmo contexto do tenant. A tela foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 51 arquivos e 178 testes Vitest.
+
+## 26/08/2026 — Painel financeiro
+
+O painel financeiro agora evidencia recebimentos pendentes, despesas planejadas e a próxima ação sem alterar a política de permissão nem expor valores a perfis restritos. Receitas e despesas preservam filtros, paginação e confirmações manuais. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 52 arquivos e 179 testes Vitest.
