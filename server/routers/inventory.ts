@@ -50,6 +50,8 @@ export const inventoryRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "inventory.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const product = (await db.select({ id: products.id }).from(products).where(and(eq(products.id, input.productId), eq(products.tenantId, input.tenantId))).limit(1))[0];
+    if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado nesta oficina." });
     return db.select().from(inventoryMovements).where(and(eq(inventoryMovements.tenantId, input.tenantId), eq(inventoryMovements.productId, input.productId))).orderBy(sql`${inventoryMovements.createdAt} desc`).limit(input.limit);
   }),
 

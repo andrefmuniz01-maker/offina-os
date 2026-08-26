@@ -17,12 +17,13 @@ function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
   query.where = vi.fn(() => query);
+  query.orderBy = vi.fn(() => query);
   query.limit = vi.fn(async () => result);
   query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
 
-function buildDb(transactionResults: unknown[]) {
+function buildDb(transactionResults: unknown[], readResults: unknown[] = []) {
   const updates: unknown[] = [];
   const inserts: unknown[] = [];
   const tx = {
@@ -30,7 +31,7 @@ function buildDb(transactionResults: unknown[]) {
     update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return [{ affectedRows: 1 }]; }) })) })),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 1 }]; }) })),
   };
-  return { transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), updates, inserts };
+  return { select: vi.fn(() => chain(readResults.shift() ?? [])), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), updates, inserts };
 }
 
 function createContext(): TrpcContext {
@@ -54,6 +55,22 @@ describe("inventory — auditoria de ajuste e recebimento", () => {
 
     await expect(caller.adjust({ tenantId: 4, productId: 12, quantityDelta: -2, notes: "Contagem física" })).resolves.toEqual({ success: true });
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "inventory.adjusted", entityId: 12, before: { physicalQuantity: 10 }, after: { physicalQuantity: 8 }, metadata: { quantityDelta: -2, notes: "Contagem física" } }));
+  });
+
+  it("bloqueia movimentos quando o produto não pertence à oficina informada", async () => {
+    mocks.db = buildDb([], [[]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.movements({ tenantId: 4, productId: 99 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("retorna movimentos apenas depois de validar o produto no tenant", async () => {
+    const movement = { id: 71, tenantId: 4, productId: 12, type: "adjustment", quantity: "2.000" };
+    mocks.db = buildDb([], [[{ id: 12 }], [movement]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.movements({ tenantId: 4, productId: 12 })).resolves.toEqual([movement]);
   });
 
   it("registra saldo e custo médio antes/depois ao receber compra no tenant", async () => {
