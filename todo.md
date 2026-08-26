@@ -12,4 +12,25 @@
 - [ ] Preparar a configuração do job periódico após publicação, sem habilitar comunicações externas automáticas.
 - [x] Adicionar ou atualizar testes Vitest para a experiência de demonstração, controle de acesso e rotina operacional.
 - [x] Verificar tipos, testes, build, console e visualização responsiva antes da entrega.
-- [ ] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
+- [x] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
+- [ ] Diagnosticar e corrigir o caminho de acesso à prévia navegável do OficinaOS.
+- [ ] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
+- [ ] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
+- [ ] Permitir que o Super Admin abra, de forma controlada, os links públicos de solicitação e orçamento de cada oficina.
+- [ ] Validar visualmente os ambientes do dono e do Super Admin em desktop e mobile, incluindo seus estados de acesso.
+- [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
+- [ ] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
+- [ ] Manter futuras alterações estritamente limitadas ao código e às solicitações explícitas do repositório-fonte.
+- [ ] Comparar o banco com drizzle/schema.ts por tabela, registrando divergências de colunas, índices e constraints além de users.
+- [ ] Identificar os e-mails existentes no banco e conceder o papel de Super Admin ao usuário autenticado, preservando os demais registros.
+- [x] Auditar os quatro registros marcados como Super Admin e confirmar os dois acessos autorizados antes de qualquer rebaixamento.
+- [ ] Manter somente andrefmuniz01@gmail.com e felipefmuniz@gmail.com como Super Admins, rebaixando registros duplicados sem excluir usuários.
+- [x] Auditar por que andrefmuniz01@gmail.com não foi sincronizado pelo OAuth antes de configurar seu Super Admin.
+- [x] Consolidar registros OAuth duplicados sem excluir usuários e restaurar a unicidade de OpenID.
+- [x] Garantir que somente Super Admin concede acesso inicial aos donos e que donos gerenciam apenas funcionários do próprio tenant.
+- [x] Comparar a versão publicada com o ZIP original e auditar a oficina já existente sem alterar dados.
+- [x] Verificar se o repositório contém dump, seed ou configuração de banco para reproduzir a oficina existente.
+- [x] Concluir a validação da integridade de OpenID e da hierarquia Super Admin → donos → funcionários sem criar novas interfaces.
+- [ ] Validar e registrar PKs, FKs e índices únicos críticos do schema após a sincronização, além da tabela users.
+- [ ] Executar uma verificação automatizada ou consultas direcionadas que comprovem o alinhamento completo do schema antes de marcar as auditorias como concluídas.
+- [ ] Validar um login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.

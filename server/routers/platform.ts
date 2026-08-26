@@ -9,6 +9,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const roleInput = z.enum(["owner", "admin", "attendant", "technician"]);
+const employeeRoleInput = z.enum(["admin", "attendant", "technician"]);
 
 export const platformRouter = router({
   overview: protectedProcedure.query(async ({ ctx }) => {
@@ -289,14 +290,14 @@ export const tenantRouter = router({
     }),
     addExistingUser: protectedProcedure.input(tenantIdInput.extend({
       email: z.string().email(),
-      role: roleInput,
+      role: employeeRoleInput,
     })).mutation(async ({ ctx, input }) => {
       const access = await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const target = (await db.select().from(users).where(eq(users.email, input.email)).limit(1))[0];
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Este usuário precisa acessar a plataforma uma vez antes de ser adicionado." });
-      if (access.tenant?.primaryOwnerUserId === target.id && input.role !== "owner") throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário deve permanecer com o papel de dono." });
+      if (access.tenant?.primaryOwnerUserId === target.id) throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário deve permanecer com o papel de dono." });
       const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
         .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, target.id))).limit(1))[0] ?? null;
       if (!previous || !previous.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
@@ -305,10 +306,10 @@ export const tenantRouter = router({
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_added", entityType: "tenant_member", entityId: target.id, before: previous ? { role: previous.role, active: previous.active } : undefined, after: { role: input.role, active: true } });
       return { success: true };
     }),
-    updateRole: protectedProcedure.input(tenantIdInput.extend({ userId: z.number().int().positive(), role: roleInput, active: z.boolean().optional() }))
+    updateRole: protectedProcedure.input(tenantIdInput.extend({ userId: z.number().int().positive(), role: employeeRoleInput, active: z.boolean().optional() }))
       .mutation(async ({ ctx, input }) => {
         const access = await requireTenantPermission(ctx.user, input.tenantId, "team.manage");
-        if (access.tenant?.primaryOwnerUserId === input.userId && (input.role !== "owner" || input.active === false)) throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário não pode ser rebaixado ou desativado por esta operação." });
+        if (access.tenant?.primaryOwnerUserId === input.userId) throw new TRPCError({ code: "FORBIDDEN", message: "O proprietário primário não pode ser rebaixado ou desativado por esta operação." });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
         const member = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)

@@ -4,14 +4,6 @@ import { inventoryBalances, notifications, products, quoteRequests, scheduledTas
 import { getDb } from "./db";
 import { sdk } from "./_core/sdk";
 
-export function shouldCreateInternalNotification(recentNotifications: number) {
-  return recentNotifications === 0;
-}
-
-export function getOperationalScanCutoff(reference: Date) {
-  return new Date(reference.getTime() - 48 * 60 * 60 * 1000);
-}
-
 async function notifyTenantRoles(tenantId: number, type: string, title: string, body: string, link: string) {
   const db = await getDb();
   if (!db) return 0;
@@ -21,28 +13,21 @@ async function notifyTenantRoles(tenantId: number, type: string, title: string, 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recent = await db.select({ id: notifications.id }).from(notifications)
     .where(and(eq(notifications.tenantId, tenantId), eq(notifications.type, type), gte(notifications.createdAt, since))).limit(1);
-  if (!shouldCreateInternalNotification(recent.length)) return 0;
+  if (recent.length) return 0;
   await db.insert(notifications).values(recipients.map(recipient => ({ tenantId, userId: recipient.userId, type, title, body, link })));
   return recipients.length;
 }
 
 export async function runOperationalScan(req: Request, res: Response) {
-  let runner;
   try {
-    runner = await sdk.authenticateRequest(req);
-  } catch {
-    return res.status(403).json({ error: "cron-only" });
-  }
-
-  if (!runner.isCron || !runner.taskUid) return res.status(403).json({ error: "cron-only" });
-
-  try {
+    const runner = await sdk.authenticateRequest(req);
+    if (!runner.isCron || !runner.taskUid) return res.status(403).json({ error: "cron-only" });
     const db = await getDb();
     if (!db) return res.status(500).json({ error: "database-unavailable" });
     const task = (await db.select().from(scheduledTasks).where(and(eq(scheduledTasks.scheduleCronTaskUid, runner.taskUid), eq(scheduledTasks.active, true))).limit(1))[0];
     if (!task) return res.json({ ok: true, skipped: "orphan-or-paused" });
     const tenantRows = task.tenantId ? (await db.select().from(tenants).where(and(eq(tenants.id, task.tenantId), eq(tenants.active, true)))) : await db.select().from(tenants).where(eq(tenants.active, true));
-    const cutoff = getOperationalScanCutoff(new Date());
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
     const result = { tenants: tenantRows.length, inventoryAlerts: 0, commercialAlerts: 0 };
     for (const tenant of tenantRows) {
       const critical = await db.select({ count: sql<number>`count(*)` }).from(inventoryBalances)

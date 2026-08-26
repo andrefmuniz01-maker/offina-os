@@ -133,6 +133,16 @@ describe("platform — ciclo administrativo de tenants", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("impede que a gestão interna atribua o papel de dono", async () => {
+    mocks.db = buildDb([]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect((caller.members.addExistingUser as any)({ tenantId: 41, email: "novo-dono@example.com", role: "owner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect((caller.members.updateRole as any)({ tenantId: 41, userId: 20, role: "owner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.db.insert).not.toHaveBeenCalled();
+    expect(mocks.db.update).not.toHaveBeenCalled();
+  });
+
   it("bloqueia auditoria quando outra sessão já alterou o papel ou a ativação do membro", async () => {
     mocks.db = buildDb([[{ role: "technician", active: true }]], [[{ affectedRows: 0 }]]);
     const caller = tenantRouter.createCaller(createContext());

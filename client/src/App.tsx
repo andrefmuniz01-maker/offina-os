@@ -25,14 +25,12 @@ import Notifications from "./pages/Notifications";
 import Team from "./pages/Team";
 import Audit from "./pages/Audit";
 import Reports from "./pages/Reports";
-import DemoWorkspace from "./pages/DemoWorkspace";
 import { operationsRoutePaths } from "./lib/operationsRoutes";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/demonstracao"} component={DemoWorkspace} />
       <Route path={"/"} component={Home} />
       <Route path={"/solicitar/:slug"} component={PublicQuoteRequest} />
       <Route path={"/solicitacoes"} component={Requests} />
