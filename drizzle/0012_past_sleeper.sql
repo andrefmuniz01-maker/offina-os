@@ -1,0 +1,1 @@
+ALTER TABLE `inventory_reservations` ADD CONSTRAINT `inventory_reservations_tenant_quote_product_unique` UNIQUE(`tenantId`,`quoteId`,`productId`);

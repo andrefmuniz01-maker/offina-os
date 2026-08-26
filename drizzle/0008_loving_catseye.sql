@@ -1,0 +1,1 @@
+ALTER TABLE `appointments` ADD CONSTRAINT `appointments_tenant_quote_unique` UNIQUE(`tenantId`,`quoteId`);

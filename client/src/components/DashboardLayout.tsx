@@ -21,16 +21,24 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
+import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+const defaultMenuItems = [
+  { icon: LayoutDashboard, label: "Visão geral", path: "/" },
 ];
+
+export type DashboardMenuItem = {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+  disabled?: boolean;
+};
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
@@ -39,8 +47,12 @@ const MAX_WIDTH = 480;
 
 export default function DashboardLayout({
   children,
+  menuItems = defaultMenuItems,
+  workspaceName = "OficinaOS",
 }: {
   children: React.ReactNode;
+  menuItems?: DashboardMenuItem[];
+  workspaceName?: string;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -62,10 +74,10 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Sign in to continue
+              Entre para continuar
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access to this dashboard requires authentication. Continue to launch the login flow.
+              O acesso a este painel requer autenticação. Continue para iniciar o acesso seguro.
             </p>
           </div>
           <Button
@@ -88,21 +100,26 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
-        {children}
-      </DashboardLayoutContent>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-slate-950 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white">Pular para o conteúdo principal</a>
+      <DashboardLayoutContent sidebarWidth={sidebarWidth} setSidebarWidth={setSidebarWidth} menuItems={menuItems} workspaceName={workspaceName}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
 }
 
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
-  setSidebarWidth: (width: number) => void;
+  sidebarWidth: number;
+  setSidebarWidth: React.Dispatch<React.SetStateAction<number>>;
+  menuItems: DashboardMenuItem[];
+  workspaceName: string;
 };
 
 function DashboardLayoutContent({
   children,
+  sidebarWidth,
   setSidebarWidth,
+  menuItems,
+  workspaceName,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
@@ -162,14 +179,14 @@ function DashboardLayoutContent({
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                aria-label="Alternar navegação"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    {workspaceName}
                   </span>
                 </div>
               ) : null}
@@ -177,16 +194,17 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+            <nav aria-label="Navegação principal"><SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
                 const isActive = location === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => setLocation(item.path)}
+                      onClick={() => !item.disabled && setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      disabled={item.disabled}
+                      className={`h-10 transition-all font-normal ${item.disabled ? "opacity-45" : ""}`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
@@ -196,7 +214,7 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
+            </SidebarMenu></nav>
           </SidebarContent>
 
           <SidebarFooter className="p-3">
@@ -224,17 +242,24 @@ function DashboardLayoutContent({
                   className="cursor-pointer text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span>Sair</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+        <button
+          type="button"
+          aria-label="Redimensionar navegação lateral"
+          title="Use as setas esquerda e direita para redimensionar"
+          className={`absolute top-0 right-0 h-full w-2 cursor-col-resize border-0 bg-transparent hover:bg-primary/20 focus-visible:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
+          }}
+          onKeyDown={event => {
+            const nextWidth = getSidebarResizeWidth(sidebarWidth, event.key, MIN_WIDTH, MAX_WIDTH);
+            if (nextWidth !== sidebarWidth) { event.preventDefault(); setSidebarWidth(nextWidth); }
           }}
           style={{ zIndex: 50 }}
         />
@@ -255,7 +280,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 p-4 focus:outline-none">{children}</main>
       </SidebarInset>
     </>
   );

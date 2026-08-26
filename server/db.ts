@@ -1,92 +1,127 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import {
+  auditLogs,
+  tenantBranding,
+  tenantMembers,
+  tenantSettings,
+  tenants,
+  type InsertUser,
+  users,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+let database: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!database && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      database = drizzle(process.env.DATABASE_URL);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
+      console.warn("[Database] Falha ao conectar:", error);
+      database = null;
     }
   }
-  return _db;
+  return database;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
+  if (!db) return;
+
+  const values: InsertUser = { openId: user.openId, lastSignedIn: user.lastSignedIn ?? new Date() };
+  const updateSet: Record<string, unknown> = { lastSignedIn: values.lastSignedIn };
+  for (const field of ["name", "email", "loginMethod"] as const) {
+    if (user[field] !== undefined) {
+      values[field] = user[field] ?? null;
+      updateSet[field] = user[field] ?? null;
+    }
   }
+  values.role = user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user");
+  values.platformRole = user.platformRole ?? (user.openId === ENV.ownerOpenId ? "super_admin" : "platform_user");
+  updateSet.role = values.role;
+  updateSet.platformRole = values.platformRole;
 
-  try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
-
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  if (!db) return undefined;
+  return (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function listUserTenants(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ tenant: tenants, membership: tenantMembers })
+    .from(tenantMembers)
+    .innerJoin(tenants, eq(tenantMembers.tenantId, tenants.id))
+    .where(and(eq(tenantMembers.userId, userId), eq(tenantMembers.active, true), eq(tenants.active, true)));
+}
+
+export async function createTenantForOwner(input: {
+  ownerUserId: number;
+  actorUserId: number;
+  name: string;
+  slug: string;
+  whatsapp?: string;
+  primaryColor?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco de dados indisponível");
+
+  return db.transaction(async (tx) => {
+    const result = await tx.insert(tenants).values({
+      name: input.name,
+      slug: input.slug,
+      status: "active",
+      primaryOwnerUserId: input.ownerUserId,
+    });
+    const tenantId = Number(result[0].insertId);
+    await tx.insert(tenantSettings).values({ tenantId, whatsapp: input.whatsapp ?? null });
+    await tx.insert(tenantBranding).values({ tenantId, publicTitle: input.name, primaryColor: input.primaryColor ?? "#E84D1C" });
+    await tx.insert(tenantMembers).values({ tenantId, userId: input.ownerUserId, role: "owner" });
+    await tx.insert(auditLogs).values({
+      tenantId,
+      actorUserId: input.actorUserId,
+      action: "tenant.created",
+      entityType: "tenant",
+      entityId: tenantId,
+      after: { name: input.name, slug: input.slug },
+    });
+    return tenantId;
+  });
+}
+
+export async function writeAuditLog(input: {
+  tenantId?: number | null;
+  actorUserId?: number | null;
+  action: string;
+  entityType: string;
+  entityId?: number | null;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(auditLogs).values({
+    tenantId: input.tenantId ?? null,
+    actorUserId: input.actorUserId ?? null,
+    action: input.action,
+    entityType: input.entityType,
+    entityId: input.entityId ?? null,
+    before: input.before,
+    after: input.after,
+    metadata: input.metadata,
+  });
+}
+
+export async function countTenantRows(table: typeof tenants, tenantId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select({ count: sql<number>`count(*)` }).from(table).where(eq(table.id, tenantId));
+  return Number(result[0]?.count ?? 0);
+}

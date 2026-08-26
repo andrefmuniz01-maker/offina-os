@@ -1,0 +1,20 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
+import { ChevronLeft, ChevronRight, ScrollText, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+
+type TenantOption = { id: number; name: string; slug: string };
+
+export function PlatformTenantAuditCard({ tenants }: { tenants: TenantOption[] }) {
+  const [tenantId, setTenantId] = useState<number | null>(tenants[0]?.id ?? null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const input = useMemo(() => ({ tenantId: tenantId ?? 0, search: search.trim() || undefined, page, pageSize: 10 }), [tenantId, search, page]);
+  const events = trpc.platform.tenantAudit.useQuery(input, { enabled: Boolean(tenantId) });
+  const selectTenant = (id: number) => { setTenantId(id); setPage(1); setSearch(""); };
+
+  return <Card className="border-slate-200"><CardHeader><div className="flex items-center gap-2"><ScrollText className="h-5 w-5 text-orange-700" /><CardTitle className="text-lg">Suporte auditável por oficina</CardTitle></div><CardDescription>Consulte apenas metadados de eventos — ação, entidade e horário — sem abrir clientes, veículos, valores ou conteúdo operacional do tenant.</CardDescription></CardHeader><CardContent className="space-y-4">{tenants.length ? <><div className="grid gap-3 md:grid-cols-[minmax(180px,.5fr)_1fr]"><select aria-label="Oficina para consulta de auditoria" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500" value={tenantId ?? ""} onChange={event => selectTenant(Number(event.target.value))}>{tenants.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" aria-hidden="true" /><Input className="pl-9" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar ação, entidade ou ID" aria-label="Buscar evento auditável" /></div></div>{events.isLoading ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">Carregando eventos auditáveis…</p> : events.isError ? <p className="rounded-lg bg-red-50 p-4 text-sm text-red-900">Não foi possível carregar os eventos deste tenant.</p> : events.data?.items.length ? <><div className="divide-y divide-slate-100 rounded-xl border border-slate-200">{events.data.items.map(event => <article className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between" key={event.id}><div><p className="font-medium text-slate-900">{event.action}</p><p className="mt-1 text-xs text-slate-500">{event.entityType}{event.entityId ? ` #${event.entityId}` : ""} · {new Date(event.createdAt).toLocaleString("pt-BR")}</p></div><Badge variant="outline">Evento #{event.id}</Badge></article>)}</div><div className="flex items-center justify-between"><p className="text-sm text-slate-500">Página {events.data.page}</p><div className="flex gap-2"><Button type="button" size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(current => Math.max(1, current - 1))}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button type="button" size="sm" variant="outline" disabled={!events.data.hasMore} onClick={() => setPage(current => current + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div></> : <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">{search.trim() ? "Nenhum evento neste filtro." : "Nenhum evento auditável para esta oficina."}</p>}</> : <p className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">Cadastre uma oficina para consultar eventos auditáveis.</p>}</CardContent></Card>;
+}

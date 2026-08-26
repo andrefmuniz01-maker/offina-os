@@ -1,5 +1,97 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1787683094932,
+      "tag": "0000_lying_sentinel",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1787683359604,
+      "tag": "0001_uneven_venus",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787685251333,
+      "tag": "0002_tidy_meggan",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787687559853,
+      "tag": "0003_remarkable_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787689336926,
+      "tag": "0004_new_karen_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787690244458,
+      "tag": "0005_right_robbie_robertson",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787696925386,
+      "tag": "0006_noisy_nocturne",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787706717357,
+      "tag": "0007_slim_matthew_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787706925150,
+      "tag": "0008_loving_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787707114258,
+      "tag": "0009_ordinary_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1787707262588,
+      "tag": "0010_gifted_red_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1787707389654,
+      "tag": "0011_glamorous_ego",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1787708511312,
+      "tag": "0012_past_sleeper",
+      "breakpoints": true
+    }
+  ]
 }

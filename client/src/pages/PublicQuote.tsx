@@ -1,0 +1,54 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { getQuoteValidity } from "@/lib/publicQuoteDecision";
+import { trpc } from "@/lib/trpc";
+import { Check, CheckCircle2, CircleAlert, ClipboardCheck, Loader2, MessageCircle, ShieldCheck, XCircle } from "lucide-react";
+import { useState } from "react";
+import { useRoute } from "wouter";
+
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+export default function PublicQuote() {
+  const [, params] = useRoute("/orcamento/:token");
+  const token = params?.token ?? "";
+  const quote = trpc.quotes.publicView.useQuery({ token }, { enabled: Boolean(token), retry: false });
+  const decision = trpc.quotes.publicDecision.useMutation({ onSuccess: () => quote.refetch() });
+  const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
+
+  if (quote.isLoading) {
+    return <main className="grid min-h-screen place-items-center bg-stone-50"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></main>;
+  }
+  if (quote.error || !quote.data || ("expired" in quote.data && quote.data.expired)) {
+    return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="w-full max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle className="mt-3">Orçamento indisponível</CardTitle><p className="text-sm text-slate-500">{"expired" in (quote.data ?? {}) ? "Este link de orçamento expirou." : quote.error?.message ?? "Não foi possível localizar este orçamento."}</p></CardHeader></Card></main>;
+  }
+
+  const data = quote.data;
+  const primaryColor = data.workshop.branding?.primaryColor ?? "#E84D1C";
+  const secondaryColor = data.workshop.branding?.secondaryColor ?? "#171717";
+  const accentColor = data.workshop.branding?.accentColor ?? "#F5B33A";
+  const publicTitle = data.workshop.branding?.publicTitle || data.workshop.name;
+  const finished = data.quote.status === "approved" || data.quote.status === "rejected";
+  const validity = getQuoteValidity(data.quote.validUntil);
+  const validityClass = validity.tone === "urgent" ? "border-red-200 bg-red-50 text-red-800" : validity.tone === "attention" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
+  const confirm = () => { if (pendingDecision) decision.mutate({ token, decision: pendingDecision }); };
+
+  const decisionPanel = finished ? (
+    <section className={`mt-7 rounded-xl p-5 text-center ${data.quote.status === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
+      {data.quote.status === "approved" ? <CheckCircle2 className="mx-auto h-7 w-7" /> : <XCircle className="mx-auto h-7 w-7" />}
+      <p className="mt-2 font-semibold">{data.quote.status === "approved" ? "Orçamento aprovado" : "Orçamento recusado"}</p>
+      <p className="mt-1 text-sm">A oficina foi informada e combinará o próximo passo diretamente com você.</p>
+    </section>
+  ) : pendingDecision ? (
+    <section className={`mt-7 rounded-xl border p-5 ${pendingDecision === "approved" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
+      <p className="font-semibold text-slate-900">{pendingDecision === "approved" ? "Confirmar aprovação?" : "Confirmar recusa?"}</p>
+      <p className="mt-1 text-sm text-slate-600">{pendingDecision === "approved" ? "Ao aprovar, a oficina poderá reservar os itens e entrará em contato para agendar. Essa decisão será registrada." : "A oficina será informada de que você não seguirá com esta proposta."}</p>
+      <div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={decision.isPending} onClick={() => setPendingDecision(null)}>Revisar proposta</Button><Button type="button" disabled={decision.isPending} style={{ backgroundColor: pendingDecision === "approved" ? primaryColor : secondaryColor }} onClick={confirm}>{decision.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Confirmar decisão</Button></div>
+    </section>
+  ) : (
+    <section className="mt-8"><p className="text-sm text-slate-600">Ao decidir, você confirma que leu os itens, total e condições desta proposta.</p><div className="mt-3 grid gap-3 sm:grid-cols-2"><Button type="button" variant="outline" className="h-11" onClick={() => setPendingDecision("rejected")}><XCircle className="mr-2 h-4 w-4" />Recusar proposta</Button><Button type="button" className="h-11" style={{ backgroundColor: primaryColor }} onClick={() => setPendingDecision("approved")}><CheckCircle2 className="mr-2 h-4 w-4" />Aprovar orçamento</Button></div></section>
+  );
+
+  return <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,.16),transparent_30%),#fafaf9] px-4 py-8 sm:p-10"><div className="mx-auto max-w-3xl"><Card className="overflow-hidden border-stone-200 shadow-[0_25px_70px_-38px_rgba(15,23,42,.42)]"><header className="px-6 py-7 text-white sm:px-9" style={{ backgroundColor: secondaryColor }}><div className="flex flex-wrap items-center justify-between gap-3"><Badge className="text-white hover:opacity-100" style={{ backgroundColor: primaryColor }}>Orçamento #{String(data.quote.number).padStart(6, "0")}</Badge><span className="text-xs font-semibold uppercase tracking-[.14em]" style={{ color: accentColor }}>Link seguro da oficina</span></div><h1 className="mt-5 text-3xl font-semibold tracking-tight">Sua proposta está pronta</h1><p className="mt-2 text-sm leading-6 text-slate-300">{publicTitle} preparou esta proposta para {data.vehicle.make} {data.vehicle.model} {data.vehicle.modelYear ?? ""}.</p></header><CardContent className="p-6 sm:p-9"><section className="grid gap-px overflow-hidden rounded-xl border border-stone-100 bg-stone-100 sm:grid-cols-3" aria-label="Etapas da proposta"><div className="bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">1. Revisar</p><p className="mt-2 text-sm font-medium text-slate-900">Confira os itens e condições.</p></div><div className="bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">2. Decidir</p><p className="mt-2 text-sm font-medium text-slate-900">Aprovar ou recusar com confirmação.</p></div><div className="bg-white p-4"><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">3. Próximo passo</p><p className="mt-2 text-sm font-medium text-slate-900">A oficina combinará o agendamento.</p></div></section><div className="mt-6 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-slate-700">Proposta para {data.customer.name}</p><p className="mt-1 text-xs text-slate-500">Valores e disponibilidade serão confirmados pela oficina após a decisão.</p></div><Badge variant="outline" className={validityClass}>{validity.label}</Badge></div><section className="mt-8"><div className="flex items-center gap-2"><ClipboardCheck className="h-5 w-5 text-orange-700" /><h2 className="text-lg font-semibold text-slate-950">Itens do orçamento</h2></div><div className="mt-4 space-y-3">{data.items.map(item => <article key={item.id} className="flex items-start justify-between gap-5 rounded-xl border border-stone-100 bg-stone-50/50 p-4"><div><p className="font-medium text-slate-900">{item.description}</p><p className="mt-1 text-sm text-slate-500">{item.quantity} × {money.format(item.unitPrice)}</p></div><p className="whitespace-nowrap font-semibold text-slate-900">{money.format(item.total)}</p></article>)}</div></section><Separator className="my-7" /><section className="rounded-2xl bg-slate-950 p-5 text-white"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-slate-300">Total da proposta</p><p className="mt-2 text-3xl font-semibold tracking-tight">{money.format(data.quote.total)}</p></div><p className="max-w-sm text-sm leading-6 text-slate-300">{data.quote.notes || "Os detalhes do serviço serão confirmados pela oficina antes do agendamento."}</p></div></section>{data.quote.terms ? <section className="mt-6 rounded-xl border border-stone-100 bg-stone-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-800">Condições:</strong> {data.quote.terms}</section> : null}{decisionPanel}<Button type="button" variant="ghost" className="mt-4 w-full text-slate-600" style={{ color: accentColor }} onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Olá, tenho uma dúvida sobre o orçamento #${data.quote.number}.`)}`, "_blank")}><MessageCircle className="mr-2 h-4 w-4" />Tirar dúvida com a oficina</Button><div className="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500"><ShieldCheck className="h-4 w-4 text-emerald-700" />Este link não exibe custos internos da oficina.</div>{decision.error ? <p className="mt-3 text-center text-sm text-red-600" role="alert">{decision.error.message}</p> : null}</CardContent></Card></div></main>;
+}

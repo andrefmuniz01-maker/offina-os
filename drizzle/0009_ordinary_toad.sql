@@ -1,0 +1,1 @@
+ALTER TABLE `work_orders` ADD CONSTRAINT `work_orders_tenant_quote_unique` UNIQUE(`tenantId`,`quoteId`);

@@ -1,0 +1,1 @@
+ALTER TABLE `tenant_settings` ADD `defaultPartsMarkupPercent` decimal(7,2) DEFAULT '0' NOT NULL;
