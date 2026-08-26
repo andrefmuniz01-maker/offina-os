@@ -66,6 +66,6 @@ A camada compartilhada de autorização passou a aceitar somente oficinas ativas
 
 As mutações internas de equipe agora impedem rebaixar, desativar ou reativar o proprietário primário com um papel inferior a dono. O bloqueio acontece antes de escrita e auditoria, preservando o controle da oficina mesmo quando a ação parte de outro perfil com gestão de equipe. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 163 testes Vitest aprovados.
 
-## 26/08/2026 — Links públicos de tenant operacional
+## 26/08/2026 — Links públicos de tenant comercialmente ativo
 
-A visualização pública de orçamento agora exige que a oficina esteja ativa e em período de teste ou ativa comercialmente. Links de tenants suspensos ou inativos não expõem dados, não alteram o status para expirado e não produzem auditoria. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 164 testes Vitest aprovados.
+A visualização e a decisão públicas de orçamento exigem que a oficina esteja marcada como ativa e com status comercial `active`. Links de tenants em teste, suspensos ou inativos não expõem dados, não alteram o status para expirado e não produzem auditoria. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 165 testes Vitest aprovados.

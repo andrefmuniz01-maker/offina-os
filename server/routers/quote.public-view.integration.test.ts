@@ -61,6 +61,16 @@ describe("quotes.publicView — auditoria de transições públicas", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("não expõe orçamento público de tenant ainda em período de teste", async () => {
+    const db = database([[row("sent", new Date("2026-12-01T00:00:00.000Z"), "trial")]]);
+    mocks.db = db;
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicView({ token: "token-publico" })).resolves.toBeNull();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("não duplica evento nem auditoria quando outra sessão já marcou a visualização", async () => {
     const db = database([[row()], [{ id: 201, itemType: "product", description: "Peça", quantity: "1.000", unitPrice: "1250.00", discount: "0.00" }]], [[{ affectedRows: 0 }]]);
     mocks.db = db;
