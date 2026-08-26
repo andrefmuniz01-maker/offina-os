@@ -197,3 +197,4 @@
 - [x] Bloquear leitura pública e expiração de orçamento quando o tenant estiver suspenso ou inativo.
 - [x] Gerar chaves de armazenamento não enumeráveis para novos anexos de solicitações e ordens de serviço.
 - [x] Tornar condicionais as atualizações de descontos e totais de orçamento antes da auditoria.
+- [x] Restringir anexos de solicitações e OS a tipos MIME de imagem e vídeo explicitamente permitidos.

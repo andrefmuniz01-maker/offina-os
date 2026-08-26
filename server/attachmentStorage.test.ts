@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPrivateAttachmentKey } from "./attachmentStorage";
+import { buildPrivateAttachmentKey, isAllowedAttachmentMimeType } from "./attachmentStorage";
 
 describe("buildPrivateAttachmentKey", () => {
   it("mantém o escopo de tenant e acrescenta um segmento aleatório não enumerável", () => {
@@ -17,5 +17,12 @@ describe("buildPrivateAttachmentKey", () => {
     expect(stored.filename).toBe(".._v_deo__.mp4");
     expect(stored.key).toContain("/quote-requests/12/");
     expect(stored.key).toMatch(/-\.\._v_deo__\.mp4$/);
+  });
+
+  it("aceita somente formatos de imagem e vídeo explicitamente permitidos", () => {
+    expect(isAllowedAttachmentMimeType(" IMAGE/WEBP ")).toBe(true);
+    expect(isAllowedAttachmentMimeType("video/mp4")).toBe(true);
+    expect(isAllowedAttachmentMimeType("image/svg+xml")).toBe(false);
+    expect(isAllowedAttachmentMimeType("application/pdf")).toBe(false);
   });
 });

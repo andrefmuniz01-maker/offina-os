@@ -22,7 +22,7 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
-import { buildPrivateAttachmentKey } from "../attachmentStorage";
+import { buildPrivateAttachmentKey, isAllowedAttachmentMimeType } from "../attachmentStorage";
 import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -173,14 +173,16 @@ export const workOrderRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const order = (await db.select().from(workOrders).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId))).limit(1))[0];
     if (!order || (access.membership?.role === "technician" && order.assignedToUserId !== ctx.user.id)) throw new TRPCError({ code: "FORBIDDEN", message: "OS indisponível para o seu perfil." });
+    const mimeType = input.mimeType.trim().toLowerCase();
+    if (!isAllowedAttachmentMimeType(mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie apenas fotos JPEG, PNG, WEBP, GIF ou vídeos MP4, WEBM e MOV." });
     const base64 = input.base64.includes(",") ? input.base64.split(",").at(-1)! : input.base64;
     const bytes = Buffer.from(base64, "base64");
     if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo precisa ter até 5 MB." });
     const storedFile = buildPrivateAttachmentKey({ tenantId: input.tenantId, scope: "work-orders", recordId: input.workOrderId, filename: input.filename });
-    const stored = await storagePut(storedFile.key, bytes, input.mimeType);
-    const result = await db.insert(attachments).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, storageKey: stored.key, url: stored.url, filename: storedFile.filename, mimeType: input.mimeType, sizeBytes: bytes.length, createdByUserId: ctx.user.id });
+    const stored = await storagePut(storedFile.key, bytes, mimeType);
+    const result = await db.insert(attachments).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, storageKey: stored.key, url: stored.url, filename: storedFile.filename, mimeType, sizeBytes: bytes.length, createdByUserId: ctx.user.id });
     const id = Number(result[0].insertId);
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.execution_attachment_added", entityType: "attachment", entityId: id, metadata: { workOrderId: input.workOrderId, mimeType: input.mimeType } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.execution_attachment_added", entityType: "attachment", entityId: id, metadata: { workOrderId: input.workOrderId, mimeType } });
     return { id, url: stored.url };
   }),
   addNote: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive(), body: z.string().trim().min(1).max(4000) })).mutation(async ({ ctx, input }) => {

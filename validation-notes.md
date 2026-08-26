@@ -77,3 +77,7 @@ Novos anexos de solicitações públicas e de execução de OS recebem um segmen
 ## 26/08/2026 — Integridade concorrente de descontos
 
 As atualizações de desconto agora confirmam os valores anteriores de cada item e dos totais do orçamento no momento da escrita, sempre no tenant correto. Havendo alteração concorrente, a transação retorna conflito e não registra uma auditoria que não corresponda ao estado persistido. A validação completa terminou com TypeScript aprovado e 46 arquivos de teste, totalizando 168 testes Vitest aprovados.
+
+## 26/08/2026 — Tipos de mídia permitidos para anexos
+
+Os uploads públicos de solicitação e os anexos de execução de OS agora aceitam somente JPEG, PNG, WEBP, GIF, MP4, WEBM e MOV. Tipos ativos ou genéricos, como SVG e PDF, são recusados antes do armazenamento; o MIME é normalizado antes da persistência e da auditoria. A validação completa terminou com TypeScript aprovado e 46 arquivos de teste, totalizando 169 testes Vitest aprovados.
