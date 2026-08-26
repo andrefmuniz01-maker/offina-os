@@ -1,7 +1,7 @@
 import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
+import { auditLogs, customers, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -28,6 +28,25 @@ export const platformRouter = router({
       db.select({ total: count() }).from(tenantMembers).where(eq(tenantMembers.active, true)),
     ]);
     return { tenants: Number(tenantCount[0]?.total ?? 0), activeTenants: Number(activeCount[0]?.total ?? 0), users: Number(userCount[0]?.total ?? 0), activeMemberships: Number(memberships[0]?.total ?? 0) };
+  }),
+
+  usage: protectedProcedure.query(async ({ ctx }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const [tenantRows, memberRows, customerRows] = await Promise.all([
+      db.select({ tenant: tenants, plan: plans }).from(tenants).leftJoin(plans, eq(plans.id, tenants.planId)).orderBy(desc(tenants.createdAt)),
+      db.select({ tenantId: tenantMembers.tenantId, total: count() }).from(tenantMembers).where(eq(tenantMembers.active, true)).groupBy(tenantMembers.tenantId),
+      db.select({ tenantId: customers.tenantId, total: count() }).from(customers).groupBy(customers.tenantId),
+    ]);
+    const members = new Map(memberRows.map(row => [row.tenantId, Number(row.total)]));
+    const customersByTenant = new Map(customerRows.map(row => [row.tenantId, Number(row.total)]));
+    return tenantRows.map(({ tenant, plan }) => ({
+      tenantId: tenant.id,
+      memberCount: members.get(tenant.id) ?? 0,
+      customerCount: customersByTenant.get(tenant.id) ?? 0,
+      plan: plan ? { id: plan.id, name: plan.name, maxUsers: plan.maxUsers, maxCustomers: plan.maxCustomers, active: plan.active } : null,
+    }));
   }),
 
   updateTenant: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), status: z.enum(["trial", "active", "suspended", "inactive"]).optional(), active: z.boolean().optional(), planId: z.number().int().positive().nullable().optional() })).mutation(async ({ ctx, input }) => {

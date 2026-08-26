@@ -33,3 +33,7 @@ Foram consolidados controles de busca, filtro, paginação e estados explícitos
 ## 26/08/2026 — Painel de Super Admin e planos
 
 O painel global foi verificado em desktop e mobile após a inclusão do catálogo de planos. Os indicadores globais, a criação de tenant e a área de planos mantêm separação visual clara. No mobile, os indicadores passam para uma coluna sem corte observado; os formulários e a tabela de tenants permanecem abaixo da primeira dobra para navegação vertical natural.
+
+## 26/08/2026 — Consumo por tenant e limites de plano
+
+O painel global agora exibe, para cada tenant, contagens agregadas de membros ativos e clientes diante dos limites do plano atribuído. A revisão em desktop confirma a leitura dos cartões de consumo e a distinção visual de atenção ao atingir 80% de um limite. No mobile, os indicadores continuam em coluna; a seção de consumo permanece acessível por rolagem vertical sem tentar expor dados operacionais internos.
