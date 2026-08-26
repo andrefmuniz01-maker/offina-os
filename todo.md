@@ -216,3 +216,5 @@
 - [x] Remover emojis e ornamentos que reforçam uma aparência genérica das interfaces prioritárias.
 - [x] Simplificar relatórios, notificações e auditoria para consulta rápida no dia a dia.
 - [x] Simplificar painéis operacionais e administrativos restantes com foco em próxima ação e redução de ruído.
+- [x] Simplificar Ordem de Serviço e registros de execução para uso diário da equipe técnica.
+- [x] Simplificar a administração global restante sem ampliar escopo de acesso.

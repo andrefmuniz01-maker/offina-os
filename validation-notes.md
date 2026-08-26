@@ -137,3 +137,7 @@ Configurações da Oficina foi reorganizada em seções diretas para dados, regr
 ## 26/08/2026 — Consulta diária simplificada
 
 Relatórios, notificações, auditoria e painel inicial foram revisados para reduzir elementos decorativos, encurtar a hierarquia e evidenciar somente indicadores, pendências e ações úteis no dia a dia. A auditoria também traduz as ações técnicas mais frequentes para rótulos operacionais. As telas foram conferidas em desktop e mobile; TypeScript e a suíte completa aprovaram 59 arquivos e 186 testes Vitest.
+
+## 26/08/2026 — Execução de OS e administração global objetivas
+
+A Ordem de Serviço passou a priorizar o estado legível, a próxima ação, checklist, itens previstos, consumo reservado e evidências de execução. O fluxo de mutações, reservas, anexos e permissões foi preservado. O painel de Super Admin teve a camada decorativa reduzida: indicadores globais usam uma faixa de leitura única e o cadastro de planos deixa de repetir ícones sem função operacional. A revisão visual do painel global em desktop e mobile confirmou empilhamento natural dos controles e ausência de corte nas ações críticas.
