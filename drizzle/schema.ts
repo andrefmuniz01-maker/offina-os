@@ -552,7 +552,7 @@ export const notifications = mysqlTable("notifications", {
   link: varchar("link", { length: 500 }),
   readAt: timestamp("readAt"),
   createdAt,
-}, (table) => [index("notifications_tenant_user_read_idx").on(table.tenantId, table.userId, table.readAt), index("notifications_tenant_customer_idx").on(table.tenantId, table.customerId), index("notifications_tenant_vehicle_idx").on(table.tenantId, table.vehicleId)]);
+}, (table) => [uniqueIndex("notifications_tenant_order_type_unique").on(table.tenantId, table.workOrderId, table.type), index("notifications_tenant_user_read_idx").on(table.tenantId, table.userId, table.readAt), index("notifications_tenant_customer_idx").on(table.tenantId, table.customerId), index("notifications_tenant_vehicle_idx").on(table.tenantId, table.vehicleId)]);
 
 export const notificationPreferences = mysqlTable("notification_preferences", {
   id: int("id").autoincrement().primaryKey(),

@@ -1,0 +1,1 @@
+ALTER TABLE `notifications` ADD CONSTRAINT `notifications_tenant_order_type_unique` UNIQUE(`tenantId`,`workOrderId`,`type`);

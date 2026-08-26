@@ -78,6 +78,13 @@
       "when": 1787707262588,
       "tag": "0010_gifted_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1787707389654,
+      "tag": "0011_glamorous_ego",
+      "breakpoints": true
     }
   ]
 }

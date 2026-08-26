@@ -150,3 +150,4 @@
 - [x] Impedir agendamento duplicado para o mesmo orçamento dentro da oficina.
 - [x] Garantir no banco a unicidade de ordem de serviço por orçamento dentro do tenant.
 - [x] Garantir no banco a unicidade de receita prevista por ordem de serviço dentro do tenant.
+- [x] Garantir no banco a unicidade de notificação interna de pós-venda por ordem de serviço dentro do tenant.

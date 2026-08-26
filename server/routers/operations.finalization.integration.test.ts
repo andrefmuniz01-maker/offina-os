@@ -59,4 +59,15 @@ describe("operations.updateStatus — finalização integrada", () => {
     expect(existingRevenue.inserted).toEqual([]);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "work_order.status_updated", entityId: 91 }));
   });
+
+  it("não repete a notificação de pós-venda quando a entrega já foi registrada", async () => {
+    const deliveredAgain = buildDb([[{ id: 91, tenantId: 4, number: 12, status: "delivered", customerId: 21, vehicleId: 22, appointmentId: 31, estimatedTotal: "850.00", notes: null }]]);
+    mocks.db = deliveredAgain.db;
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.updateStatus({ tenantId: 4, workOrderId: 91, status: "delivered" })).resolves.toEqual({ success: true });
+
+    expect(deliveredAgain.inserted).toEqual([]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ after: expect.objectContaining({ status: "delivered" }) }));
+  });
 });
