@@ -26,6 +26,10 @@ Os logs do Auth registram `mail.send` para o Magic Link solicitado pelo formulá
 
 Após o primeiro login, confirmou-se que a ponte temporária MySQL ainda associava Felipe ao papel legado `platform_user`, embora seu perfil Supabase real já fosse `super_admin`. O registro legado existente foi atualizado de forma controlada, por e-mail verificado e sem criar identidade, tenant ou permissão nova. A correção definitiva continua sendo a migração integral para `profiles` e `tenant_members` no Supabase.
 
+## Migração para e-mail e senha
+
+Em 26/08/2026, a política do provider **Email** do Supabase foi ajustada no painel sem mudar plano ou faturamento. O provider de e-mail permanece habilitado; **Allow new users to sign up** permanece desligado; **Confirm email** permanece ligado. Para login recorrente, foi configurada senha mínima de **10 caracteres** com **letras minúsculas, maiúsculas e números**. O aplicativo publicado passou a usar `signInWithPassword`; links por e-mail passam a ser usados apenas para criação ou recuperação de senha. O primeiro acesso real por recuperação de senha ainda precisa ser validado com Felipe no domínio publicado.
+
 ## Referências
 
 [1]: https://supabase.com/docs/guides/auth/auth-email-passwordless "Supabase — Passwordless email logins"
