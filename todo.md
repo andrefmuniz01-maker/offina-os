@@ -228,3 +228,4 @@
 - [ ] Validar por papel um fluxo principal de atendente, mecânico e dono em desktop e mobile.
 - [ ] Registrar evidências explícitas de carregamento, vazio e erro nas rotas principais.
 - [ ] Executar revisão documentada de foco visível, labels, landmarks e navegação por teclado nos fluxos principais.
+- [x] Exibir erro explícito ao carregar dados ou identidade na tela de configurações da oficina.

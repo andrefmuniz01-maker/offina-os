@@ -157,3 +157,7 @@ Os painéis de prioridade de solicitações, agenda/pátio, estoque, financeiro 
 ## 26/08/2026 — Consolidação de isolamento e validação de interface
 
 A revisão dos roteadores de catálogo, estoque, compras, orçamento e OS confirmou que as operações críticas consultam a entidade-base com `tenantId`, validam IDs relacionados antes de associá-los e mantêm predicados de tenant nas escritas. As alterações financeiras, estoque, descontos, permissões, agendamento, OS e notificações relevantes contam com auditoria estruturada. A navegação global preserva salto para conteúdo, marco semântico, foco visível e redimensionamento lateral por teclado. As rotas principais foram conferidas em desktop e mobile; o console recente apresenta apenas o aviso de WebSocket do HMR de desenvolvimento, sem erro funcional atual.
+
+## 26/08/2026 — Estado de falha de configurações
+
+A tela de Configurações agora separa carregamento, ausência de vínculo e falha de consulta. Caso a oficina, seus dados ou branding não carreguem, o operador vê uma explicação objetiva e uma ação para refazer as consultas sem aplicar alterações. O estado normal foi revisado em desktop e mobile após a inclusão; TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.
