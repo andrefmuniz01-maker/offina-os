@@ -22,6 +22,7 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { buildPrivateAttachmentKey } from "../attachmentStorage";
 import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -175,8 +176,9 @@ export const workOrderRouter = router({
     const base64 = input.base64.includes(",") ? input.base64.split(",").at(-1)! : input.base64;
     const bytes = Buffer.from(base64, "base64");
     if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo precisa ter até 5 MB." });
-    const stored = await storagePut(`tenants/${input.tenantId}/work-orders/${input.workOrderId}/${input.filename}`, bytes, input.mimeType);
-    const result = await db.insert(attachments).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, storageKey: stored.key, url: stored.url, filename: input.filename, mimeType: input.mimeType, sizeBytes: bytes.length, createdByUserId: ctx.user.id });
+    const storedFile = buildPrivateAttachmentKey({ tenantId: input.tenantId, scope: "work-orders", recordId: input.workOrderId, filename: input.filename });
+    const stored = await storagePut(storedFile.key, bytes, input.mimeType);
+    const result = await db.insert(attachments).values({ tenantId: input.tenantId, workOrderId: input.workOrderId, storageKey: stored.key, url: stored.url, filename: storedFile.filename, mimeType: input.mimeType, sizeBytes: bytes.length, createdByUserId: ctx.user.id });
     const id = Number(result[0].insertId);
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "work_order.execution_attachment_added", entityType: "attachment", entityId: id, metadata: { workOrderId: input.workOrderId, mimeType: input.mimeType } });
     return { id, url: stored.url };

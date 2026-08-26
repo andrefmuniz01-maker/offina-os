@@ -24,6 +24,7 @@ import {
   vehicles,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { buildPrivateAttachmentKey } from "../attachmentStorage";
 import { assertTenantPlanCapacity } from "../planLimits";
 import { calculateQuotePricing, discountPolicyViolation } from "../pricing";
 import { storagePut } from "../storage";
@@ -200,9 +201,9 @@ export const quoteRequestRouter = router({
         if (!file.mimeType.startsWith("image/") && !file.mimeType.startsWith("video/")) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie apenas fotos ou vídeos." });
         const buffer = Buffer.from(file.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
         if (buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada anexo deve ter no máximo 5 MB." });
-        const filename = file.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const uploaded = await storagePut(`tenants/${tenant.id}/quote-requests/${result.requestId}/${filename}`, buffer, file.mimeType);
-        await db.insert(attachments).values({ tenantId: tenant.id, quoteRequestId: result.requestId, storageKey: uploaded.key, url: uploaded.url, filename, mimeType: file.mimeType, sizeBytes: buffer.length });
+        const storedFile = buildPrivateAttachmentKey({ tenantId: tenant.id, scope: "quote-requests", recordId: result.requestId, filename: file.filename });
+        const uploaded = await storagePut(storedFile.key, buffer, file.mimeType);
+        await db.insert(attachments).values({ tenantId: tenant.id, quoteRequestId: result.requestId, storageKey: uploaded.key, url: uploaded.url, filename: storedFile.filename, mimeType: file.mimeType, sizeBytes: buffer.length });
       }
     }
     return { requestId: result.requestId, number: result.number };

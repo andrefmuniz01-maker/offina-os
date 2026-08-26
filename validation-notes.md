@@ -69,3 +69,7 @@ As mutações internas de equipe agora impedem rebaixar, desativar ou reativar o
 ## 26/08/2026 — Links públicos de tenant comercialmente ativo
 
 A visualização e a decisão públicas de orçamento exigem que a oficina esteja marcada como ativa e com status comercial `active`. Links de tenants em teste, suspensos ou inativos não expõem dados, não alteram o status para expirado e não produzem auditoria. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 165 testes Vitest aprovados.
+
+## 26/08/2026 — Chaves privadas para anexos
+
+Novos anexos de solicitações públicas e de execução de OS recebem um segmento aleatório de 24 caracteres em sua chave de armazenamento, preservando o prefixo do tenant e do registro para rastreabilidade. Os nomes são normalizados antes da persistência, e cada upload recebe chave distinta mesmo para o mesmo arquivo. A validação completa terminou com TypeScript aprovado e 46 arquivos de teste, totalizando 167 testes Vitest aprovados.
