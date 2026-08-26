@@ -182,7 +182,7 @@
 - [x] Adicionar busca e paginação às confirmações de produtos e serviços por categoria.
 - [x] Adicionar paginação à lista pesquisável de estoque, preservando saldos e alertas por tenant.
 - [x] Adicionar paginação à fila de notificações internas, preservando preferências e escopo do usuário.
-- [ ] Evoluir o Painel de Super Admin com suporte auditável a tenants, planos, limites e métricas globais.
+- [x] Evoluir o Painel de Super Admin com suporte auditável a tenants, planos, limites e métricas globais.
 - [x] Implementar listagem e manutenção auditável de planos no Painel de Super Admin.
 - [x] Exibir consumo de membros e clientes por tenant frente aos limites do plano no Painel de Super Admin.
 - [x] Permitir ao Super Admin consultar eventos auditáveis de um tenant sem acessar seus dados operacionais.
