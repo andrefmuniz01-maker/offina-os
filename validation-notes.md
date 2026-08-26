@@ -9,3 +9,11 @@ Na agenda, a busca única alcança a agenda e o pátio, preservando o filtro de 
 ## 26/08/2026 — Revisão estática de escopo por tenant
 
 Foi feita uma varredura das operações de escrita e das consultas diretas por identificador nos roteadores. As ocorrências sem `tenantId` na própria linha pertencem ao Super Admin da plataforma ou usam predicados compostos montados previamente; as mutações comerciais revisadas mantêm `tenantId` no predicado final. Não foi identificado um novo ponto de correção nessa amostragem.
+
+## 26/08/2026 — Mapeamento de filas restantes
+
+O inventário das consultas de páginas identificou que solicitações, orçamentos, compras, agenda/pátio, financeiro, auditoria e clientes já possuem controles específicos revisados. As próximas lacunas candidatas são as listas compactas de produtos e serviços no catálogo operacional e o inventário, que hoje privilegiam carregamento integral ou uma lista limitada, sem paginação visível na mesma tela.
+
+## 26/08/2026 — Itens por categoria
+
+As confirmações de produtos e serviços por categoria foram atualizadas com busca independente, paginação de dez itens e estados de vazio/erro por lista. A revisão em desktop e mobile confirmou que os formulários permanecem utilizáveis e que os controles compactos não introduzem sobreposição no início da tela; os campos de busca ficam disponíveis abaixo da área de cadastro.

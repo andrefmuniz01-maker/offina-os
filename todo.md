@@ -5,16 +5,16 @@
 - [x] Modelar membros por tenant, papéis Super Admin/Admin/Atendente/Mecânico e permissões granulares aplicadas no servidor.
 - [ ] Garantir escopo obrigatório por tenant em todas as consultas e mutações de dados comerciais.
 - [ ] Registrar trilha de auditoria para eventos críticos, incluindo alteração de preço/custo, estoque, orçamento, permissões e financeiro.
-- [ ] Implementar painel separado de Super Admin com criação controlada e ativação de oficinas.
-- [ ] Implementar configuração de identidade e dados operacionais por oficina.
+- [x] Implementar painel separado de Super Admin com criação controlada e ativação de oficinas.
+- [x] Implementar configuração de identidade e dados operacionais por oficina.
 - [x] Implementar cadastros de clientes e veículos com histórico vinculado ao tenant.
-- [ ] Implementar categorias, fornecedores, produtos e regras de preço/margem por oficina.
-- [ ] Implementar serviços, perguntas configuráveis de orçamento e kits com expansão de componentes.
-- [ ] Implementar saldos físico, reservado e disponível de estoque por produto.
-- [ ] Implementar movimentações de estoque com origem, responsável e histórico imutável.
+- [x] Implementar categorias, fornecedores, produtos e regras de preço/margem por oficina.
+- [x] Implementar serviços, perguntas configuráveis de orçamento e kits com expansão de componentes.
+- [x] Implementar saldos físico, reservado e disponível de estoque por produto.
+- [x] Implementar movimentações de estoque com origem, responsável e histórico imutável.
 - [x] Implementar compras e entrada de estoque a partir de pedido recebido.
 - [x] Implementar reserva no orçamento aprovado e consumo efetivo na ordem de serviço.
-- [ ] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
+- [x] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
 - [x] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
 - [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
 - [x] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
@@ -30,7 +30,7 @@
 - [ ] Implementar rotinas periódicas idempotentes para recalcular necessidade de estoque e identificar orçamentos sem resposta, sem enviar lembretes automaticamente.
 - [ ] Preparar estrutura para planos, assinaturas, limites, WhatsApp oficial e sugestões futuras limitadas aos dados e permissões do tenant.
 - [ ] Construir experiência desktop-first responsiva e fluxos mobile operacionais para atendente, mecânico e dono.
-- [ ] Criar testes Vitest para isolamento multi-tenant, RBAC, orçamento, reservas, consumo, alertas, auditoria e financeiro.
+- [x] Criar testes Vitest para isolamento multi-tenant, RBAC, orçamento, reservas, consumo, alertas, auditoria e financeiro.
 - [ ] Verificar interface em desktop e mobile, erros de execução, acessibilidade básica e estados de carregamento/erro.
 - [ ] Validar em todas as mutações que IDs relacionados pertencem ao tenant antes de criar ou associar registros.
 - [ ] Cobrir explicitamente em auditoria as alterações de preço/custo e os demais eventos críticos ainda não registrados.
@@ -178,3 +178,5 @@
 - [x] Adicionar busca por descrição às filas paginadas de receitas e despesas, sem ampliar acesso financeiro.
 - [x] Adicionar busca por ação ou entidade à trilha de auditoria paginada por tenant.
 - [x] Cobrir em regressão a auditoria de alteração de custo, preço e margem no catálogo.
+- [ ] Mapear os módulos operacionais restantes sem busca, filtros, paginação ou estados explícitos antes de encerrar a cobertura geral.
+- [x] Adicionar busca e paginação às confirmações de produtos e serviços por categoria.
