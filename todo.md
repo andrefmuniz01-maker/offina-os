@@ -21,7 +21,7 @@
 - [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
 - [ ] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
 - [ ] Manter futuras alterações estritamente limitadas ao código e às solicitações explícitas do repositório-fonte.
-- [ ] Comparar o banco com drizzle/schema.ts por tabela, registrando divergências de colunas, índices e constraints além de users.
+- [ ] Comparar cada tabela de drizzle/schema.ts com information_schema.columns, registrando colunas ausentes, extras, tipos e defaults divergentes.
 - [ ] Identificar os e-mails existentes no banco e conceder o papel de Super Admin ao usuário autenticado, preservando os demais registros.
 - [x] Auditar os quatro registros marcados como Super Admin e confirmar os dois acessos autorizados antes de qualquer rebaixamento.
 - [ ] Manter somente andrefmuniz01@gmail.com e felipefmuniz@gmail.com como Super Admins, rebaixando registros duplicados sem excluir usuários.
@@ -31,6 +31,10 @@
 - [x] Comparar a versão publicada com o ZIP original e auditar a oficina já existente sem alterar dados.
 - [x] Verificar se o repositório contém dump, seed ou configuração de banco para reproduzir a oficina existente.
 - [x] Concluir a validação da integridade de OpenID e da hierarquia Super Admin → donos → funcionários sem criar novas interfaces.
-- [ ] Validar e registrar PKs, FKs e índices únicos críticos do schema após a sincronização, além da tabela users.
-- [ ] Executar uma verificação automatizada ou consultas direcionadas que comprovem o alinhamento completo do schema antes de marcar as auditorias como concluídas.
+- [ ] Validar por tabela os índices únicos e constraints críticas em information_schema, não apenas por contagem agregada.
+- [ ] Executar e registrar uma verificação automatizada completa do schema antes de marcar a auditoria como concluída.
 - [ ] Validar um login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.
+- [x] Auditar a arquitetura atual contra Supabase Auth, PostgreSQL, RLS e Storage sem criar novas telas ou funcionalidades.
+- [x] Inventariar autenticação, banco, migrations, isolamento multi-tenant, permissões, rotas, secrets e serviços externos.
+- [ ] Documentar riscos, incompatibilidades e um plano seguro de migração para Supabase antes de qualquer nova mudança de infraestrutura.
+- [x] Registrar marco de aprovação pré-migração que bloqueia novas alterações estruturais de Supabase até decisão explícita.
