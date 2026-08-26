@@ -43,4 +43,16 @@ describe("quoteRequests.list — paginação integrada", () => {
     expect(output).toEqual(expect.objectContaining({ page: 2, pageSize: 2, hasMore: true, items: [expect.objectContaining({ request: expect.objectContaining({ id: 1 }), queueMinutes: expect.any(Number) }), expect.objectContaining({ request: expect.objectContaining({ id: 2 }), queueMinutes: expect.any(Number) })] }));
     expect(mocks.db.calls).toEqual([{ limit: 3, offset: 2 }]);
   });
+
+  it("aceita busca operacional junto da paginação sem retirar o escopo do tenant", async () => {
+    const createdAt = new Date("2026-08-25T10:00:00.000Z");
+    const rows = [{ request: { id: 7, tenantId: 4, number: 7, createdAt }, customer: { name: "Marina" }, vehicle: { plate: "ABC1D23" }, assignedUser: null }];
+    mocks.db = buildDb([rows, []]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    const output = await caller.list({ tenantId: 4, search: "Marina", page: 1, pageSize: 12 });
+
+    expect(output).toEqual(expect.objectContaining({ page: 1, pageSize: 12, hasMore: false, items: [expect.objectContaining({ request: expect.objectContaining({ tenantId: 4, id: 7 }) })] }));
+    expect(mocks.db.calls).toEqual([{ limit: 13, offset: 0 }]);
+  });
 });

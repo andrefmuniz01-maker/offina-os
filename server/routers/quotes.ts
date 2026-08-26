@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -204,14 +204,15 @@ export const quoteRequestRouter = router({
     return { requestId: result.requestId, number: result.number };
   }),
 
-  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const searchFilter = input.search ? or(like(customers.name, `%${input.search}%`), like(customers.whatsapp, `%${input.search}%`), like(vehicles.plate, `%${input.search}%`), like(vehicles.make, `%${input.search}%`), like(vehicles.model, `%${input.search}%`)) : undefined;
     const rows = await db.select({ request: quoteRequests, customer: customers, vehicle: vehicles, assignedUser: { id: users.id, name: users.name, email: users.email } }).from(quoteRequests)
       .leftJoin(customers, and(eq(customers.id, quoteRequests.customerId), eq(customers.tenantId, quoteRequests.tenantId))).leftJoin(vehicles, and(eq(vehicles.id, quoteRequests.vehicleId), eq(vehicles.tenantId, quoteRequests.tenantId)))
       .leftJoin(users, eq(users.id, quoteRequests.assignedToUserId))
-      .where(input.status ? and(eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, input.status)) : eq(quoteRequests.tenantId, input.tenantId))
+      .where(and(eq(quoteRequests.tenantId, input.tenantId), ...(input.status ? [eq(quoteRequests.status, input.status)] : []), ...(searchFilter ? [searchFilter] : [])))
       .orderBy(desc(quoteRequests.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
     const pageRows = rows.slice(0, input.pageSize);
     const requestIds = pageRows.map(row => row.request.id);

@@ -3,10 +3,11 @@ import { SafeLink as Link } from "@/components/SafeLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, ChevronLeft, ChevronRight, Clock3, FileText, History, PlusCircle, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock3, FileText, History, PlusCircle, Search, Sparkles, UserRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -37,8 +38,9 @@ export default function Requests() {
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const [status, setStatus] = useState<RequestStatus>("all");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const requests = trpc.quoteRequests.list.useQuery({ tenantId, status: status === "all" ? undefined : status, page, pageSize: 12 }, { enabled: Boolean(tenantId) });
+  const requests = trpc.quoteRequests.list.useQuery({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 12 }, { enabled: Boolean(tenantId) });
   const assignees = trpc.quoteRequests.assignees.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
   const [historyRequestId, setHistoryRequestId] = useState<number | null>(null);
   const history = trpc.quoteRequests.history.useQuery({ tenantId, quoteRequestId: historyRequestId ?? 0 }, { enabled: Boolean(tenantId && historyRequestId) });
@@ -57,7 +59,7 @@ export default function Requests() {
         <Badge className="w-fit bg-orange-100 text-orange-800 hover:bg-orange-100">Fluxo comercial</Badge>
       </header>
 
-      <div className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end"><div><p className="text-sm font-medium text-slate-900">Fila comercial</p><p className="mt-1 text-xs text-slate-500">Filtre por etapa para priorizar o próximo atendimento.</p></div><div className="grid gap-1"><label className="text-xs font-medium text-slate-600" htmlFor="request-status">Status</label><select id="request-status" className="h-9 min-w-52 rounded-md border border-slate-200 bg-white px-2 text-sm" value={status} onChange={event => { setStatus(event.target.value as RequestStatus); setPage(1); setHistoryRequestId(null); }}><option value="all">Todos os status</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div>
+      <div className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-end"><div><p className="text-sm font-medium text-slate-900">Fila comercial</p><p className="mt-1 text-xs text-slate-500">Busque por cliente, WhatsApp, placa ou veículo e filtre por etapa.</p></div><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1"><label className="text-xs font-medium text-slate-600" htmlFor="request-search">Buscar</label><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><Input id="request-search" className="h-9 min-w-52 pl-8" value={search} onChange={event => { setSearch(event.target.value); setPage(1); setHistoryRequestId(null); }} placeholder="Cliente, WhatsApp ou placa" /></div></div><div className="grid gap-1"><label className="text-xs font-medium text-slate-600" htmlFor="request-status">Status</label><select id="request-status" className="h-9 min-w-52 rounded-md border border-slate-200 bg-white px-2 text-sm" value={status} onChange={event => { setStatus(event.target.value as RequestStatus); setPage(1); setHistoryRequestId(null); }}><option value="all">Todos os status</option>{Object.entries(labels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div></div></div>
 
       {mine.isLoading || requests.isLoading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-32" key={index} />)}</div> : null}
       {requests.isError ? <Card className="border-red-200 bg-red-50"><CardContent className="p-5 text-sm text-red-900">{requests.error.data?.code === "FORBIDDEN" ? "Seu perfil não possui acesso à fila comercial desta oficina." : "Não foi possível carregar as solicitações. Tente novamente."}</CardContent></Card> : null}
