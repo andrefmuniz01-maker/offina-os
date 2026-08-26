@@ -25,11 +25,11 @@ describe("notification preferences — integração tRPC", () => {
 
   it("faz upsert das preferências internas no tenant do usuário e mantém e-mail desativado", async () => {
     const values = vi.fn(() => ({ onDuplicateKeyUpdate: vi.fn(async () => [{ affectedRows: 1 }]) }));
-    mocks.db = { insert: vi.fn(() => ({ values })) };
+    mocks.db = { select: vi.fn(() => chain([{ tenantId: 4, userId: 7, inAppEnabled: false, enabledTypes: ["quote.sent"] }])), insert: vi.fn(() => ({ values })) };
 
     await expect(notificationRouter.createCaller(context()).updatePreferences({ tenantId: 4, inAppEnabled: true, enabledTypes: ["quote_request.created", "quote_request.created", "post_sale.suggested"] })).resolves.toEqual({ success: true });
     expect(values).toHaveBeenCalledWith({ tenantId: 4, userId: 7, inAppEnabled: true, emailEnabled: false, enabledTypes: ["quote_request.created", "post_sale.suggested"] });
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "notification_preferences.updated", after: { inAppEnabled: true, enabledTypes: ["quote_request.created", "post_sale.suggested"] } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "notification_preferences.updated", before: { inAppEnabled: false, enabledTypes: ["quote.sent"] }, after: { inAppEnabled: true, enabledTypes: ["quote_request.created", "post_sale.suggested"] } }));
   });
 
   it("não retorna avisos internos quando o próprio usuário pausou a visualização no tenant", async () => {

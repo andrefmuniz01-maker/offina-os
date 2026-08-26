@@ -127,8 +127,9 @@ export const notificationRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const enabledTypes = Array.from(new Set(input.enabledTypes));
+    const previous = (await db.select().from(notificationPreferences).where(and(eq(notificationPreferences.tenantId, input.tenantId), eq(notificationPreferences.userId, ctx.user.id))).limit(1))[0] ?? null;
     await db.insert(notificationPreferences).values({ tenantId: input.tenantId, userId: ctx.user.id, inAppEnabled: input.inAppEnabled, emailEnabled: false, enabledTypes }).onDuplicateKeyUpdate({ set: { inAppEnabled: input.inAppEnabled, emailEnabled: false, enabledTypes } });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "notification_preferences.updated", entityType: "notification_preferences", entityId: ctx.user.id, after: { inAppEnabled: input.inAppEnabled, enabledTypes } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "notification_preferences.updated", entityType: "notification_preferences", entityId: ctx.user.id, before: previous ? { inAppEnabled: previous.inAppEnabled, enabledTypes: previous.enabledTypes } : undefined, after: { inAppEnabled: input.inAppEnabled, enabledTypes } });
     return { success: true };
   }),
   listMine: protectedProcedure.input(tenantIdInput.extend({ limit: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
