@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -411,12 +411,16 @@ export const quoteRouter = router({
     const items = await db.select().from(quoteItems).where(and(eq(quoteItems.quoteId, row.quote.id), eq(quoteItems.tenantId, row.quote.tenantId))).orderBy(asc(quoteItems.sortOrder));
     let publicStatus = row.quote.status;
     if (!row.quote.viewedAt && isQuoteTransitionAllowed(row.quote.status, "viewed")) {
-      await db.transaction(async (tx) => {
-        await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId)));
+      const markedViewed = await db.transaction(async (tx) => {
+        const updated = await tx.update(quotes).set({ status: "viewed", viewedAt: new Date() }).where(and(eq(quotes.id, row.quote.id), eq(quotes.tenantId, row.quote.tenantId), eq(quotes.status, row.quote.status), isNull(quotes.viewedAt)));
+        if (!Number(updated[0]?.affectedRows ?? 0)) return false;
         await tx.insert(quoteEvents).values({ tenantId: row.quote.tenantId, quoteId: row.quote.id, type: "viewed" });
+        return true;
       });
-      publicStatus = "viewed";
-      await writeAuditLog({ tenantId: row.quote.tenantId, action: "quote.viewed_public", entityType: "quote", entityId: row.quote.id, before: { status: row.quote.status }, after: { status: "viewed" }, metadata: { source: "public_link" } });
+      if (markedViewed) {
+        publicStatus = "viewed";
+        await writeAuditLog({ tenantId: row.quote.tenantId, action: "quote.viewed_public", entityType: "quote", entityId: row.quote.id, before: { status: row.quote.status }, after: { status: "viewed" }, metadata: { source: "public_link" } });
+      }
     }
     return { workshop: { name: row.tenant.name, whatsapp: null, branding: row.branding }, quote: { number: row.quote.number, status: publicStatus, total: Number(row.quote.total), validUntil: row.quote.validUntil, notes: row.quote.notes, terms: row.quote.terms }, customer: { name: row.customer.name }, vehicle: { make: row.vehicle.make, model: row.vehicle.model, modelYear: row.vehicle.modelYear }, items: publicQuoteItems(items) };
   }),

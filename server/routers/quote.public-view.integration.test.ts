@@ -19,9 +19,9 @@ function query(result: unknown) {
   return builder;
 }
 
-function database(results: unknown[]) {
+function database(results: unknown[], updateResults: unknown[] = []) {
   const tx = {
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: 1 }]) })),
   };
   return { select: vi.fn(() => query(results.shift() ?? [])), update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)) };
@@ -49,5 +49,16 @@ describe("quotes.publicView — auditoria de transições públicas", () => {
 
     await expect(caller.publicView({ token: "token-publico" })).resolves.toEqual({ expired: true });
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "quote.expired_public", entityType: "quote", entityId: 81, before: { status: "sent" }, after: { status: "expired" }, metadata: { source: "public_link_expiration" } }));
+  });
+
+  it("não duplica evento nem auditoria quando outra sessão já marcou a visualização", async () => {
+    const db = database([[row()], [{ id: 201, itemType: "product", description: "Peça", quantity: "1.000", unitPrice: "1250.00", discount: "0.00" }]], [[{ affectedRows: 0 }]]);
+    mocks.db = db;
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicView({ token: "token-publico" })).resolves.toMatchObject({ quote: { status: "sent" } });
+
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
