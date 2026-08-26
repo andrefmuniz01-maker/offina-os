@@ -134,3 +134,4 @@
 - [x] Habilitar o navegador pessoal autorizado para concluir a criação e validação real da oficina.
 - [x] Cadastrar itens explicitamente identificados como demonstração para validar o vínculo de categorias na primeira oficina.
 - [x] Exibir e confirmar na interface a categoria persistida em produtos e serviços cadastrados pelo fluxo operacional.
+- [x] Registrar e cobrir na auditoria a criação de fornecedores por tenant.

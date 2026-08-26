@@ -213,7 +213,9 @@ export const catalogRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const result = await db.insert(suppliers).values({ ...input, document: input.document ?? null, contactName: input.contactName ?? null, phone: input.phone ?? null, email: input.email ?? null, notes: input.notes ?? null });
-      return { id: Number(result[0].insertId) };
+      const id = Number(result[0].insertId);
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "supplier.created", entityType: "supplier", entityId: id, after: { name: input.name, document: input.document ?? null, phone: input.phone ?? null } });
+      return { id };
     }),
   }),
 

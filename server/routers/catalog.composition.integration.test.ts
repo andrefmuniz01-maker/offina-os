@@ -122,6 +122,14 @@ describe("catalog — composição segura por tenant", () => {
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "product_category.created", entityType: "product_category", entityId: 71, after: { name: "Performance", description: "Peças de preparação" } }));
   });
 
+  it("audita a criação de fornecedor no tenant autorizado", async () => {
+    mocks.db = buildDb([], [61]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.suppliers.create({ tenantId: 4, name: "Fornecedor Performance", phone: "11999999999" })).resolves.toEqual({ id: 61 });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "supplier.created", entityType: "supplier", entityId: 61, after: { name: "Fornecedor Performance", document: null, phone: "11999999999" } }));
+  });
+
   it("bloqueia categoria de produto pertencente a outra oficina antes de criar o produto", async () => {
     mocks.db = buildDb([[], []]);
     const caller = catalogRouter.createCaller(createContext());
