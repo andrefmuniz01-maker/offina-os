@@ -148,3 +148,4 @@
 - [x] Impedir a geração de orçamento duplicado para a mesma solicitação dentro da oficina.
 - [x] Garantir no banco a unicidade de orçamento por solicitação dentro do tenant, inclusive sob concorrência.
 - [x] Impedir agendamento duplicado para o mesmo orçamento dentro da oficina.
+- [x] Garantir no banco a unicidade de ordem de serviço por orçamento dentro do tenant.

@@ -79,4 +79,16 @@ describe("appointments.scheduleFromQuote — integração tRPC simulada", () => 
     expect(mocks.db.inserts()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
+
+  it("reaproveita a OS já vinculada ao orçamento sem criar uma segunda ordem", async () => {
+    mocks.db = buildDb([[approvedQuote], [], [{ id: 401 }], [{ value: 14 }]], [901]);
+    const caller = appointmentRouter.createCaller(context());
+
+    const result = await caller.scheduleFromQuote({ tenantId: 4, quoteId: 70, scheduledStart: new Date("2026-09-02T12:00:00.000Z"), scheduledEnd: new Date("2026-09-02T14:00:00.000Z"), bay: "Baia 2" });
+
+    expect(result).toEqual({ appointmentId: 901, workOrderId: 401, workOrderNumber: undefined });
+    expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, quoteId: 70, workOrderId: 401 })]);
+    expect(mocks.db.updates()).toEqual([expect.objectContaining({ appointmentId: 901 })]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ after: expect.objectContaining({ workOrderId: 401, workOrderNumber: null }) }));
+  });
 });

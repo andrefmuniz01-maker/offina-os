@@ -403,7 +403,7 @@ export const workOrders = mysqlTable("work_orders", {
   deliveredAt: timestamp("deliveredAt"),
   createdAt,
   updatedAt,
-}, (table) => [uniqueIndex("work_orders_tenant_number_unique").on(table.tenantId, table.number), index("work_orders_tenant_status_idx").on(table.tenantId, table.status)]);
+}, (table) => [uniqueIndex("work_orders_tenant_number_unique").on(table.tenantId, table.number), uniqueIndex("work_orders_tenant_quote_unique").on(table.tenantId, table.quoteId), index("work_orders_tenant_status_idx").on(table.tenantId, table.status)]);
 
 export const workOrderItems = mysqlTable("work_order_items", {
   id: int("id").autoincrement().primaryKey(),
