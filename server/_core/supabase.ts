@@ -1,12 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
 import { ENV } from "./env";
 
-function createSupabaseAuthClient() {
+export type SupabaseProfile = {
+  id: string;
+  email: string | null;
+  platformRole: "platform_user" | "super_admin";
+};
+
+function createSupabaseAuthClient(accessToken?: string) {
   if (!ENV.supabaseUrl || !ENV.supabasePublishableKey) {
     throw new Error("Supabase Auth não está configurado no servidor.");
   }
 
   return createClient(ENV.supabaseUrl, ENV.supabasePublishableKey, {
+    global: accessToken
+      ? { headers: { Authorization: `Bearer ${accessToken}` } }
+      : undefined,
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -26,4 +35,20 @@ export async function getSupabaseAuthUser(accessToken: string) {
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) return null;
   return data.user;
+}
+
+export async function getSupabaseProfile(accessToken: string): Promise<SupabaseProfile | null> {
+  const supabase = createSupabaseAuthClient(accessToken);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, platform_role")
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    email: data.email,
+    platformRole: data.platform_role,
+  };
 }

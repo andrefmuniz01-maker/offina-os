@@ -77,3 +77,4 @@
 - [ ] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
 - [ ] Corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
 - [ ] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
+- [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
