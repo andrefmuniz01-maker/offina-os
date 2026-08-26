@@ -30,6 +30,8 @@ Após o primeiro login, confirmou-se que a ponte temporária MySQL ainda associa
 
 Em 26/08/2026, a política do provider **Email** do Supabase foi ajustada no painel sem mudar plano ou faturamento. O provider de e-mail permanece habilitado; **Allow new users to sign up** permanece desligado; **Confirm email** permanece ligado. Para login recorrente, foi configurada senha mínima de **10 caracteres** com **letras minúsculas, maiúsculas e números**. O aplicativo publicado passou a usar `signInWithPassword`; links por e-mail passam a ser usados apenas para criação ou recuperação de senha. O primeiro acesso real por recuperação de senha ainda precisa ser validado com Felipe no domínio publicado.
 
+Em teste publicado, uma combinação de e-mail e senha inválidos foi recusada sem emissão de e-mail e exibiu apenas a mensagem genérica **“E-mail ou senha incorretos.”**. Isso evita informar se uma identidade existe na plataforma.
+
 ## Referências
 
 [1]: https://supabase.com/docs/guides/auth/auth-email-passwordless "Supabase — Passwordless email logins"

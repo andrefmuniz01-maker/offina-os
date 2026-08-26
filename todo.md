@@ -87,3 +87,5 @@
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
 - [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para usuário sem vínculo ativo no tenant.
 - [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para técnico tentando ação financeira.
+- [x] Auditar os arquivos versionáveis e confirmar que segredos, dados privados e artefatos temporários não serão publicados no GitHub.
+- [ ] Publicar no repositório o código, migrations Supabase, documentação de arquitetura e testes atualmente validados.
