@@ -145,3 +145,4 @@
 - [x] Registrar descontos anterior e posterior por item na auditoria de orçamentos, sem incluir custos internos.
 - [x] Tornar o filtro de status de orçamentos explicitamente focável e não acionável durante carregamento ou falha.
 - [x] Tornar a seleção de produto e o filtro de pedidos de compra explicitamente focáveis e seguros durante carregamento ou falha.
+- [x] Impedir a geração de orçamento duplicado para a mesma solicitação dentro da oficina.

@@ -296,6 +296,8 @@ export const quoteRouter = router({
     const subtotal = suggested.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
     const estimatedCostTotal = suggested.reduce((sum, item) => sum + item.quantity * item.unitCost, 0);
     const output = await db.transaction(async (tx) => {
+      const existingQuote = (await tx.select({ id: quotes.id, number: quotes.number, status: quotes.status }).from(quotes).where(and(eq(quotes.tenantId, input.tenantId), eq(quotes.quoteRequestId, request.id))).limit(1))[0];
+      if (existingQuote) throw new TRPCError({ code: "CONFLICT", message: `A solicitação já possui o orçamento #${String(existingQuote.number).padStart(6, "0")}.` });
       const next = (await tx.select({ value: sql<number>`coalesce(max(${quotes.number}), 0) + 1` }).from(quotes).where(eq(quotes.tenantId, input.tenantId)))[0]?.value ?? 1;
       const token = nanoid(48);
       const quoteValues: typeof quotes.$inferInsert = { tenantId: input.tenantId, number: Number(next), quoteRequestId: request.id, customerId, vehicleId, status: "ready", subtotal: subtotal.toFixed(2), total: subtotal.toFixed(2), estimatedCostTotal: estimatedCostTotal.toFixed(2), estimatedMarginPercent: (subtotal ? ((subtotal - estimatedCostTotal) / subtotal) * 100 : 0).toFixed(2), validUntil, publicToken: token, publicTokenExpiresAt: validUntil, notes: input.notes ?? null, terms: input.terms ?? null, createdByUserId: ctx.user.id };

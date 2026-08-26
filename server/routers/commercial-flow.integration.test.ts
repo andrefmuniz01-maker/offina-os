@@ -17,6 +17,7 @@ function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
   query.innerJoin = vi.fn(() => query);
+  query.leftJoin = vi.fn(() => query);
   query.where = vi.fn(() => query);
   query.limit = vi.fn(async () => result);
   query.orderBy = vi.fn(async () => result);
@@ -59,5 +60,15 @@ describe("fluxo comercial — aprovação até agenda e OS", () => {
       expect.objectContaining({ tenantId: 4, quoteId: 81, workOrderId: 401, customerId: 20, vehicleId: 31, bay: "Baia 2" }),
     ]));
     expect(mocks.db.updates()).toEqual(expect.arrayContaining([expect.objectContaining({ workOrderId: 401 })]));
+  });
+
+  it("bloqueia um segundo orçamento para a mesma solicitação antes de criar itens ou eventos", async () => {
+    const request = { id: 9, tenantId: 4, serviceId: 5, customerId: 20, vehicleId: 31 };
+    const service = { id: 5, tenantId: 4, active: true, name: "Instalação", laborPrice: "200.00", estimatedCost: "90.00" };
+    mocks.db = buildDb([[request], [service], [], []], [[{ id: 81, number: 14, status: "ready" }]], []);
+
+    await expect(quoteRouter.createCaller(staffContext).createFromSuggestion({ tenantId: 4, quoteRequestId: 9 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
