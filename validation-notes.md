@@ -21,3 +21,7 @@ As confirmações de produtos e serviços por categoria foram atualizadas com bu
 ## 26/08/2026 — Estoque paginado
 
 A lista de inventário foi verificada em desktop e mobile após a paginação no servidor. O desktop preserva a tabela de saldos físico, reservado e disponível; o mobile mantém os cartões rotulados. Os controles de página ficam no mesmo contexto da lista e o filtro por produto ou SKU reinicia a página sem afetar a previsão de necessidade ao lado ou abaixo da lista.
+
+## 26/08/2026 — Notificações internas paginadas
+
+A central de notificações foi verificada em desktop e mobile. As preferências por usuário continuam no topo da tela, e a fila usa paginação sem alterar o escopo individual nem os filtros de tipo escolhidos. Os estados de fila vazia e de preferências pausadas continuam distintos; a captura atual não continha volume suficiente de avisos para exibir os controles de próxima página.

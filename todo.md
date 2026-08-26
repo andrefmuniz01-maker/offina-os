@@ -181,3 +181,4 @@
 - [ ] Mapear os módulos operacionais restantes sem busca, filtros, paginação ou estados explícitos antes de encerrar a cobertura geral.
 - [x] Adicionar busca e paginação às confirmações de produtos e serviços por categoria.
 - [x] Adicionar paginação à lista pesquisável de estoque, preservando saldos e alertas por tenant.
+- [x] Adicionar paginação à fila de notificações internas, preservando preferências e escopo do usuário.

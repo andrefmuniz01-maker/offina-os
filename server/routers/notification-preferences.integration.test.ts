@@ -10,8 +10,11 @@ import { notificationRouter } from "./management";
 function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
+  query.leftJoin = vi.fn(() => query);
   query.where = vi.fn(() => query);
-  query.limit = vi.fn(async () => result);
+  query.orderBy = vi.fn(() => query);
+  query.limit = vi.fn(() => query);
+  query.offset = vi.fn(async () => result);
   query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -36,7 +39,21 @@ describe("notification preferences — integração tRPC", () => {
     const select = vi.fn(() => chain([{ tenantId: 4, userId: 7, inAppEnabled: false, enabledTypes: [] }]));
     mocks.db = { select };
 
-    await expect(notificationRouter.createCaller(context()).listMine({ tenantId: 4 })).resolves.toEqual([]);
+    await expect(notificationRouter.createCaller(context()).listMine({ tenantId: 4 })).resolves.toEqual({ items: [], page: 1, pageSize: 30, hasMore: false });
     expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it("pagina somente avisos visíveis ao usuário dentro do tenant", async () => {
+    const preference = { tenantId: 4, userId: 7, inAppEnabled: true, enabledTypes: [] };
+    const rows = [
+      { notification: { id: 31, tenantId: 4, title: "Estoque crítico", body: "Revisar saldo" }, customer: null, vehicle: null },
+      { notification: { id: 30, tenantId: 4, title: "Orçamento pronto", body: "Enviar proposta" }, customer: null, vehicle: null },
+      { notification: { id: 29, tenantId: 4, title: "Compra recebida", body: "Conferir itens" }, customer: null, vehicle: null },
+    ];
+    const select = vi.fn().mockReturnValueOnce(chain([preference])).mockReturnValueOnce(chain(rows));
+    mocks.db = { select };
+
+    await expect(notificationRouter.createCaller(context()).listMine({ tenantId: 4, page: 2, pageSize: 2 })).resolves.toEqual({ items: rows.slice(0, 2), page: 2, pageSize: 2, hasMore: true });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "customers.manage");
   });
 });

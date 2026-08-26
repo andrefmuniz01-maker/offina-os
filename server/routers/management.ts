@@ -134,19 +134,20 @@ export const notificationRouter = router({
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "notification_preferences.updated", entityType: "notification_preferences", entityId: ctx.user.id, before: previous ? { inAppEnabled: previous.inAppEnabled, enabledTypes: previous.enabledTypes } : undefined, after: { inAppEnabled: input.inAppEnabled, enabledTypes } });
     return { success: true };
   }),
-  listMine: protectedProcedure.input(tenantIdInput.extend({ limit: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
+  listMine: protectedProcedure.input(tenantIdInput.extend({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(30) })).query(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const preference = (await db.select().from(notificationPreferences).where(and(eq(notificationPreferences.tenantId, input.tenantId), eq(notificationPreferences.userId, ctx.user.id))).limit(1))[0];
-    if (preference && !preference.inAppEnabled) return [];
+    if (preference && !preference.inAppEnabled) return { items: [], page: input.page, pageSize: input.pageSize, hasMore: false };
     const enabledTypes = preference?.enabledTypes ?? [];
-    return db.select({ notification: notifications, customer: { id: customers.id, name: customers.name, whatsapp: customers.whatsapp }, vehicle: { id: vehicles.id, make: vehicles.make, model: vehicles.model, plate: vehicles.plate } })
+    const rows = await db.select({ notification: notifications, customer: { id: customers.id, name: customers.name, whatsapp: customers.whatsapp }, vehicle: { id: vehicles.id, make: vehicles.make, model: vehicles.model, plate: vehicles.plate } })
       .from(notifications)
       .leftJoin(customers, and(eq(customers.id, notifications.customerId), eq(customers.tenantId, notifications.tenantId)))
       .leftJoin(vehicles, and(eq(vehicles.id, notifications.vehicleId), eq(vehicles.tenantId, notifications.tenantId)))
       .where(and(eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId)), ...(enabledTypes.length ? [inArray(notifications.type, enabledTypes)] : [])))
-      .orderBy(desc(notifications.createdAt)).limit(input.limit);
+      .orderBy(desc(notifications.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+    return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
   }),
   markRead: protectedProcedure.input(tenantIdInput.extend({ notificationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
