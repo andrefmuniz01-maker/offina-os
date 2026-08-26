@@ -71,6 +71,53 @@ export const platformRouter = router({
     const tenantId = await createTenantForOwner({ ...input, ownerUserId, actorUserId: ctx.user.id });
     return { tenantId };
   }),
+
+  plans: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      assertPlatformSuperAdmin(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      return db.select().from(plans).orderBy(desc(plans.createdAt));
+    }),
+    create: protectedProcedure.input(z.object({
+      code: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use apenas letras minúsculas, números e hífens."),
+      name: z.string().trim().min(2).max(128),
+      description: z.string().trim().max(2000).nullable().optional(),
+      maxUsers: z.number().int().min(1).max(100_000),
+      maxCustomers: z.number().int().min(1).max(10_000_000).nullable().optional(),
+      active: z.boolean().default(true),
+    })).mutation(async ({ ctx, input }) => {
+      assertPlatformSuperAdmin(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const existing = (await db.select({ id: plans.id }).from(plans).where(eq(plans.code, input.code)).limit(1))[0];
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "Este código de plano já está em uso." });
+      const result = await db.insert(plans).values({ code: input.code, name: input.name, description: input.description ?? null, maxUsers: input.maxUsers, maxCustomers: input.maxCustomers ?? null, active: input.active });
+      const planId = Number(result[0].insertId);
+      await writeAuditLog({ actorUserId: ctx.user.id, action: "platform.plan_created", entityType: "plan", entityId: planId, after: { code: input.code, name: input.name, maxUsers: input.maxUsers, maxCustomers: input.maxCustomers ?? null, active: input.active } });
+      return { id: planId };
+    }),
+    update: protectedProcedure.input(z.object({
+      planId: z.number().int().positive(),
+      name: z.string().trim().min(2).max(128).optional(),
+      description: z.string().trim().max(2000).nullable().optional(),
+      maxUsers: z.number().int().min(1).max(100_000).optional(),
+      maxCustomers: z.number().int().min(1).max(10_000_000).nullable().optional(),
+      active: z.boolean().optional(),
+    }).refine(input => input.name !== undefined || input.description !== undefined || input.maxUsers !== undefined || input.maxCustomers !== undefined || input.active !== undefined, "Informe ao menos uma alteração."))
+      .mutation(async ({ ctx, input }) => {
+        assertPlatformSuperAdmin(ctx.user);
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+        const plan = (await db.select().from(plans).where(eq(plans.id, input.planId)).limit(1))[0];
+        if (!plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plano não encontrado." });
+        const { planId, ...changes } = input;
+        const result = await db.update(plans).set(changes).where(and(eq(plans.id, planId), eq(plans.updatedAt, plan.updatedAt)));
+        if (!Number(result[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este plano foi alterado em outra sessão. Atualize o painel para consultar o estado atual." });
+        await writeAuditLog({ actorUserId: ctx.user.id, action: "platform.plan_updated", entityType: "plan", entityId: planId, before: { name: plan.name, description: plan.description, maxUsers: plan.maxUsers, maxCustomers: plan.maxCustomers, active: plan.active }, after: changes });
+        return { success: true };
+      }),
+  }),
 });
 
 export const tenantRouter = router({

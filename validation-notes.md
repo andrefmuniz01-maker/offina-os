@@ -25,3 +25,11 @@ A lista de inventário foi verificada em desktop e mobile após a paginação no
 ## 26/08/2026 — Notificações internas paginadas
 
 A central de notificações foi verificada em desktop e mobile. As preferências por usuário continuam no topo da tela, e a fila usa paginação sem alterar o escopo individual nem os filtros de tipo escolhidos. Os estados de fila vazia e de preferências pausadas continuam distintos; a captura atual não continha volume suficiente de avisos para exibir os controles de próxima página.
+
+## 26/08/2026 — Encerramento do mapeamento de filas prioritárias
+
+Foram consolidados controles de busca, filtro, paginação e estados explícitos para solicitações, orçamentos, compras, agenda/pátio, financeiro, auditoria, catálogo, estoque, notificações e clientes. As telas remanescentes são formulários de configuração, listas de referência de pequeno porte, painéis sumarizados ou detalhes de uma única OS/veículo, e não configuram filas operacionais independentes no escopo atual.
+
+## 26/08/2026 — Painel de Super Admin e planos
+
+O painel global foi verificado em desktop e mobile após a inclusão do catálogo de planos. Os indicadores globais, a criação de tenant e a área de planos mantêm separação visual clara. No mobile, os indicadores passam para uma coluna sem corte observado; os formulários e a tabela de tenants permanecem abaixo da primeira dobra para navegação vertical natural.

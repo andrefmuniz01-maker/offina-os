@@ -178,7 +178,9 @@
 - [x] Adicionar busca por descrição às filas paginadas de receitas e despesas, sem ampliar acesso financeiro.
 - [x] Adicionar busca por ação ou entidade à trilha de auditoria paginada por tenant.
 - [x] Cobrir em regressão a auditoria de alteração de custo, preço e margem no catálogo.
-- [ ] Mapear os módulos operacionais restantes sem busca, filtros, paginação ou estados explícitos antes de encerrar a cobertura geral.
+- [x] Mapear os módulos operacionais restantes sem busca, filtros, paginação ou estados explícitos antes de encerrar a cobertura geral.
 - [x] Adicionar busca e paginação às confirmações de produtos e serviços por categoria.
 - [x] Adicionar paginação à lista pesquisável de estoque, preservando saldos e alertas por tenant.
 - [x] Adicionar paginação à fila de notificações internas, preservando preferências e escopo do usuário.
+- [ ] Evoluir o Painel de Super Admin com suporte auditável a tenants, planos, limites e métricas globais.
+- [x] Implementar listagem e manutenção auditável de planos no Painel de Super Admin.
