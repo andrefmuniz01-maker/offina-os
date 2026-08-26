@@ -149,3 +149,7 @@ Os apontamentos foram organizados como uma superfície direta de registro e hist
 ## 26/08/2026 — Auditoria de leitura de notificações
 
 A confirmação de leitura passou a localizar a notificação pelo tenant e pelo destinatário visível antes da escrita. A atualização só cria evento de auditoria quando a transição de não lida para lida é efetivamente persistida; repetição concorrente permanece idempotente. A trilha registra somente identificador, instante e origem interna, sem título ou conteúdo da notificação. TypeScript e a suíte completa aprovaram 59 arquivos e 187 testes Vitest.
+
+## 26/08/2026 — Painéis operacionais em linguagem neutra
+
+Os painéis de prioridade de solicitações, agenda/pátio, estoque, financeiro e clientes passaram a usar uma superfície branca única, bordas discretas e divisão interna funcional. Gradientes, sombras e fundos temáticos foram removidos sem ocultar métricas, contexto, filtros ou próximas ações. As cinco rotas foram verificadas em desktop e mobile; os indicadores empilham naturalmente no celular sem corte observável. TypeScript e a suíte completa aprovaram 59 arquivos e 187 testes Vitest.
