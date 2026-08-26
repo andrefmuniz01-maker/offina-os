@@ -81,3 +81,7 @@ As atualizações de desconto agora confirmam os valores anteriores de cada item
 ## 26/08/2026 — Tipos de mídia permitidos para anexos
 
 Os uploads públicos de solicitação e os anexos de execução de OS agora aceitam somente JPEG, PNG, WEBP, GIF, MP4, WEBM e MOV. Tipos ativos ou genéricos, como SVG e PDF, são recusados antes do armazenamento; o MIME é normalizado antes da persistência e da auditoria. A validação completa terminou com TypeScript aprovado e 46 arquivos de teste, totalizando 169 testes Vitest aprovados.
+
+## 26/08/2026 — Fila comercial de solicitações
+
+A interface de solicitações passou a destacar o trabalho pendente na página atual, itens sem responsável, filas em atenção e a próxima ação de cada solicitação. Filtros rápidos, limpeza de filtros e estado vazio contextual foram adicionados sem alterar o contrato operacional. A tela foi conferida em desktop e mobile; TypeScript e a suíte completa aprovaram 47 arquivos e 171 testes Vitest.
