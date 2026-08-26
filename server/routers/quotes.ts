@@ -310,7 +310,8 @@ export const quoteRouter = router({
       const quoteId = Number(quote[0].insertId);
       await tx.insert(quoteItems).values(suggested.map((item, sortOrder) => ({ tenantId: input.tenantId, quoteId, productId: item.productId ?? null, serviceId: item.serviceId ?? null, itemType: item.itemType, description: item.description, quantity: item.quantity.toFixed(3), unitPrice: item.unitPrice.toFixed(2), unitCost: item.unitCost.toFixed(2), sortOrder })));
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId, type: "created", actorUserId: ctx.user.id });
-      await tx.update(quoteRequests).set({ status: "ready", assignedToUserId: ctx.user.id }).where(and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId)));
+      const requestUpdate = await tx.update(quoteRequests).set({ status: "ready", assignedToUserId: ctx.user.id }).where(and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, request.status)));
+      if (!Number(requestUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "A solicitação foi alterada em outra sessão. Atualize a fila antes de gerar o orçamento." });
       await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "quote_created", actorUserId: ctx.user.id, metadata: { quoteId } });
       return { id: quoteId, number: Number(next), publicToken: token };
     });
@@ -328,7 +329,10 @@ export const quoteRouter = router({
       const sent = await tx.update(quotes).set({ status: "sent", sentAt: new Date() }).where(and(eq(quotes.id, input.quoteId), eq(quotes.tenantId, input.tenantId), eq(quotes.status, quote.quote.status)));
       if (!Number(sent[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este orçamento foi alterado antes do envio. Atualize a fila para consultar o estado atual." });
       await tx.insert(quoteEvents).values({ tenantId: input.tenantId, quoteId: input.quoteId, type: "sent", actorUserId: ctx.user.id });
-      if (quote.quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "sent" }).where(and(eq(quoteRequests.id, quote.quote.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId)));
+      if (quote.quote.quoteRequestId) {
+        const requestUpdate = await tx.update(quoteRequests).set({ status: "sent" }).where(and(eq(quoteRequests.id, quote.quote.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, "ready")));
+        if (!Number(requestUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "A solicitação foi alterada em outra sessão. Atualize a fila antes de enviar o orçamento." });
+      }
     });
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.sent", entityType: "quote", entityId: input.quoteId, before: { status: quote.quote.status }, after: { status: "sent" }, metadata: { channel: "manual_whatsapp_preparation" } });
     const publicUrl = `/orcamento/${quote.quote.publicToken}`;
@@ -448,7 +452,10 @@ export const quoteRouter = router({
       }
       if (input.decision === "rejected") {
         await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "rejected", metadata: { source: "public_link" } });
-        if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "rejected" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
+        if (quote.quoteRequestId) {
+          const requestUpdate = await tx.update(quoteRequests).set({ status: "rejected" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId), eq(quoteRequests.status, "sent")));
+          if (!Number(requestUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "A solicitação foi alterada em outra sessão. Atualize a página para consultar o estado atual." });
+        }
         return { reservedProductCount: 0, idempotent: false };
       }
       const productItems = await tx.select().from(quoteItems).where(and(eq(quoteItems.tenantId, quote.tenantId), eq(quoteItems.quoteId, quote.id), eq(quoteItems.itemType, "product")));
@@ -463,7 +470,10 @@ export const quoteRouter = router({
         await tx.insert(inventoryMovements).values({ tenantId: quote.tenantId, productId: item.productId, type: "reservation", quantity: item.quantity.toFixed(3), physicalDelta: "0", reservedDelta: item.quantity.toFixed(3), referenceType: "quote", referenceId: quote.id, notes: "Reserva criada por aprovação do orçamento." });
       }
       await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "approved", metadata: { source: "public_link" } });
-      if (quote.quoteRequestId) await tx.update(quoteRequests).set({ status: "approved" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId)));
+      if (quote.quoteRequestId) {
+        const requestUpdate = await tx.update(quoteRequests).set({ status: "approved" }).where(and(eq(quoteRequests.id, quote.quoteRequestId), eq(quoteRequests.tenantId, quote.tenantId), eq(quoteRequests.status, "sent")));
+        if (!Number(requestUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "A solicitação foi alterada em outra sessão. Atualize a página para consultar o estado atual." });
+      }
       return { reservedProductCount: plan.length, idempotent: false };
     });
     if (decisionAudit.idempotent) return { status: input.decision, idempotent: true };

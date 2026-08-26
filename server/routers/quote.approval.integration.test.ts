@@ -98,4 +98,13 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
     expect(mocks.db.inserts()).toHaveLength(0);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
+
+  it("bloqueia a decisão e a auditoria quando a solicitação vinculada mudou em outra sessão", async () => {
+    mocks.db = database([[{ quote }]], [], [[{ affectedRows: 1 }], [{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "rejected" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
 });
