@@ -88,4 +88,10 @@
 - [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para usuário sem vínculo ativo no tenant.
 - [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para técnico tentando ação financeira.
 - [x] Auditar os arquivos versionáveis e confirmar que segredos, dados privados e artefatos temporários não serão publicados no GitHub.
-- [ ] Publicar no repositório o código, migrations Supabase, documentação de arquitetura e testes atualmente validados.
+- [x] Publicar no repositório o código, migrations Supabase, documentação de arquitetura e testes atualmente validados.
+- [x] Adicionar um contrato de portabilidade com variáveis de ambiente, migrations, APIs e passos de execução, sem versionar credenciais ou dados reais.
+- [ ] Verificar que todo arquivo necessário para reconstruir a arquitetura está versionado ou documentado no repositório privado.
+- [x] Criar inventário exaustivo de código, migrations, APIs, ambiente, Supabase/Auth, scheduler, Storage e URLs, vinculando cada item a arquivo ou configuração documentada.
+- [x] Validar automaticamente o inventário de portabilidade contra os caminhos e documentos versionados antes da publicação final.
+- [ ] Commitar e publicar no GitHub os novos arquivos de portabilidade e ajustes correlatos.
+- [x] Fazer a checagem de portabilidade confirmar que cada artefato obrigatório está rastreado pelo Git, não apenas presente no diretório local.
