@@ -450,7 +450,7 @@ export const inventoryReservations = mysqlTable("inventory_reservations", {
   status: mysqlEnum("status", ["active", "consumed", "released"]).notNull().default("active"),
   createdAt,
   releasedAt: timestamp("releasedAt"),
-}, (table) => [index("inventory_reservations_tenant_product_idx").on(table.tenantId, table.productId), index("inventory_reservations_tenant_quote_idx").on(table.tenantId, table.quoteId)]);
+}, (table) => [uniqueIndex("inventory_reservations_tenant_quote_product_unique").on(table.tenantId, table.quoteId, table.productId), index("inventory_reservations_tenant_product_idx").on(table.tenantId, table.productId), index("inventory_reservations_tenant_quote_idx").on(table.tenantId, table.quoteId)]);
 
 export const workOrderConsumption = mysqlTable("work_order_consumption", {
   id: int("id").autoincrement().primaryKey(),

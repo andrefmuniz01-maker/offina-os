@@ -14,12 +14,12 @@ function query(result: unknown) {
   return builder;
 }
 
-function database(globalResults: unknown[], transactionResults: unknown[]) {
+function database(globalResults: unknown[], transactionResults: unknown[], updateResults: unknown[] = []) {
   const inserts: unknown[] = [];
   const tx = {
     select: vi.fn(() => query(transactionResults.shift() ?? [])),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 1 }]; }) })),
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
   };
   return { select: vi.fn(() => query(globalResults.shift() ?? [])), transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), inserts: () => inserts };
 }
@@ -87,5 +87,15 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
 
     await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("trata a aprovação já reivindicada como idempotente sem duplicar reservas", async () => {
+    mocks.db = database([[{ quote }]], [[{ status: "approved" }]], [[{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).resolves.toEqual({ status: "approved", idempotent: true });
+
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
