@@ -379,7 +379,7 @@ export const appointments = mysqlTable("appointments", {
   notes: text("notes"),
   createdAt,
   updatedAt,
-}, (table) => [index("appointments_tenant_start_idx").on(table.tenantId, table.scheduledStart), index("appointments_tenant_status_idx").on(table.tenantId, table.status)]);
+}, (table) => [uniqueIndex("appointments_tenant_quote_unique").on(table.tenantId, table.quoteId), index("appointments_tenant_start_idx").on(table.tenantId, table.scheduledStart), index("appointments_tenant_status_idx").on(table.tenantId, table.status)]);
 
 export const workOrders = mysqlTable("work_orders", {
   id: int("id").autoincrement().primaryKey(),

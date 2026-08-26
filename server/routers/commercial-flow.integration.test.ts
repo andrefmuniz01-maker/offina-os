@@ -48,7 +48,7 @@ describe("fluxo comercial — aprovação até agenda e OS", () => {
   it("preserva o mesmo orçamento, reservas e itens ao criar agendamento e ordem de serviço", async () => {
     const quote = { id: 81, tenantId: 4, quoteRequestId: 9, publicToken: "link-seguro", publicTokenExpiresAt: new Date("2026-12-01T00:00:00.000Z"), status: "sent", customerId: 20, vehicleId: 31, total: "680.00", estimatedCostTotal: "410.00" };
     const quoteItems = [{ tenantId: 4, quoteId: 81, itemType: "product", productId: 55, serviceId: null, quantity: "2.000", description: "Componente", unitPrice: "240.00", unitCost: "160.00" }, { tenantId: 4, quoteId: 81, itemType: "service", productId: null, serviceId: 5, quantity: "1.000", description: "Instalação", unitPrice: "200.00", unitCost: "90.00" }];
-    mocks.db = buildDb([[{ quote }], [{ ...quote, status: "approved" }]], [quoteItems, [{ id: 15, tenantId: 4, productId: 55, physicalQuantity: "8.000", reservedQuantity: "0.000" }], [], [{ value: 14 }], quoteItems], [1, 1, 1, 401, 402, 403, 901]);
+    mocks.db = buildDb([[{ quote }], [{ ...quote, status: "approved" }]], [quoteItems, [{ id: 15, tenantId: 4, productId: 55, physicalQuantity: "8.000", reservedQuantity: "0.000" }], [], [], [{ value: 14 }], quoteItems], [1, 1, 1, 401, 402, 403, 901]);
 
     await expect(quoteRouter.createCaller(publicContext).publicDecision({ token: "link-seguro", decision: "approved" })).resolves.toEqual({ status: "approved", idempotent: false });
     const schedule = await appointmentRouter.createCaller(staffContext).scheduleFromQuote({ tenantId: 4, quoteId: 81, scheduledStart: new Date("2026-09-02T12:00:00.000Z"), scheduledEnd: new Date("2026-09-02T14:00:00.000Z"), bay: "Baia 2" });

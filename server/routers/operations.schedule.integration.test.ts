@@ -47,7 +47,7 @@ describe("appointments.scheduleFromQuote — integração tRPC simulada", () => 
   beforeEach(() => { mocks.audit.mockReset(); mocks.requirePermission.mockResolvedValue({ permissions: ["appointments.manage"] }); });
 
   it("cria OS, checklist, itens herdados e agendamento a partir de orçamento aprovado", async () => {
-    mocks.db = buildDb([[approvedQuote], [], [{ value: 14 }], quoteItems], [401, 402, 403, 901]);
+    mocks.db = buildDb([[approvedQuote], [], [], [{ value: 14 }], quoteItems], [401, 402, 403, 901]);
     const caller = appointmentRouter.createCaller(context());
     const start = new Date("2026-09-02T12:00:00.000Z");
     const end = new Date("2026-09-02T14:00:00.000Z");
@@ -69,5 +69,14 @@ describe("appointments.scheduleFromQuote — integração tRPC simulada", () => 
     const caller = appointmentRouter.createCaller(context());
     await expect(caller.scheduleFromQuote({ tenantId: 4, quoteId: 999, scheduledStart: new Date("2026-09-02T12:00:00.000Z"), scheduledEnd: new Date("2026-09-02T14:00:00.000Z") })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia um novo agendamento quando o orçamento já está na agenda", async () => {
+    mocks.db = buildDb([[approvedQuote], [{ id: 501 }]], []);
+    const caller = appointmentRouter.createCaller(context());
+
+    await expect(caller.scheduleFromQuote({ tenantId: 4, quoteId: 70, scheduledStart: new Date("2026-09-02T12:00:00.000Z"), scheduledEnd: new Date("2026-09-02T14:00:00.000Z") })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });

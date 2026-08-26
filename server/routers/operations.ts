@@ -59,6 +59,8 @@ export const appointmentRouter = router({
       if (!assignee) throw new TRPCError({ code: "BAD_REQUEST", message: "O profissional selecionado não pertence a esta oficina ou está inativo." });
     }
     const result = await db.transaction(async (tx) => {
+      const existingAppointment = (await tx.select({ id: appointments.id }).from(appointments).where(and(eq(appointments.tenantId, input.tenantId), eq(appointments.quoteId, quote.id))).limit(1))[0];
+      if (existingAppointment) throw new TRPCError({ code: "CONFLICT", message: "Este orçamento já possui um agendamento nesta oficina." });
       const existing = (await tx.select({ id: workOrders.id }).from(workOrders).where(and(eq(workOrders.tenantId, input.tenantId), eq(workOrders.quoteId, quote.id))).limit(1))[0];
       const next = (await tx.select({ value: sql<number>`coalesce(max(${workOrders.number}), 0) + 1` }).from(workOrders).where(eq(workOrders.tenantId, input.tenantId)))[0]?.value ?? 1;
       const workOrderId = existing?.id ?? Number((await tx.insert(workOrders).values({ tenantId: input.tenantId, number: Number(next), quoteId: quote.id, customerId: quote.customerId, vehicleId: quote.vehicleId, assignedToUserId: input.assignedToUserId ?? null, estimatedTotal: quote.total, estimatedCostTotal: quote.estimatedCostTotal, notes: input.notes ?? null }))[0].insertId);
