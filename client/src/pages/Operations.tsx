@@ -5,30 +5,192 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SafeLink as Link } from "@/components/SafeLink";
 import { trpc } from "@/lib/trpc";
+import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
 import { ArrowLeft, CalendarClock, CarFront, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
-import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
-const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: CalendarClock, label: "Agenda & pátio", path: "/operacao" }];
+const menu: DashboardMenuItem[] = [
+  { icon: ArrowLeft, label: "Visão geral", path: "/" },
+  { icon: CalendarClock, label: "Agenda & pátio", path: "/operacao" },
+];
+
 const columns = ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed"] as const;
-const labels: Record<string, string> = { scheduled: "Agendado", received: "Recebido", diagnosis: "Diagnóstico", awaiting_approval: "Aguardando aprovação", awaiting_part: "Aguardando peça", in_service: "Em serviço", completed: "Finalizado", confirmed: "Confirmado", delivered: "Entregue" };
+const labels: Record<string, string> = {
+  scheduled: "Agendado",
+  received: "Recebido",
+  diagnosis: "Diagnóstico",
+  awaiting_approval: "Aguardando aprovação",
+  awaiting_part: "Aguardando peça",
+  in_service: "Em serviço",
+  completed: "Finalizado",
+  confirmed: "Confirmado",
+  delivered: "Entregue",
+};
+
 const dateInput = (date: Date) => date.toISOString().slice(0, 10);
-function defaultAgendaEnd() { const date = new Date(); date.setUTCDate(date.getUTCDate() + 30); return dateInput(date); }
+
+function defaultAgendaEnd() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + 30);
+  return dateInput(date);
+}
 
 export default function Operations() {
-  const mine = trpc.tenant.mine.useQuery(); const tenant = mine.data?.[0]?.tenant; const tenantId = tenant?.id ?? 0; const utils = trpc.useUtils();
-  const [agendaFrom, setAgendaFrom] = useState(() => dateInput(new Date())); const [agendaTo, setAgendaTo] = useState(defaultAgendaEnd);
-  const agendaRange = useMemo(() => ({ from: new Date(`${agendaFrom}T00:00:00.000Z`), to: new Date(`${agendaTo}T23:59:59.999Z`) }), [agendaFrom, agendaTo]);
-  const appointments = trpc.appointments.list.useQuery({ tenantId, ...agendaRange }, { enabled: Boolean(tenantId) && agendaRange.to >= agendaRange.from });
+  const mine = trpc.tenant.mine.useQuery();
+  const tenant = mine.data?.[0]?.tenant;
+  const tenantId = tenant?.id ?? 0;
+  const utils = trpc.useUtils();
+
+  const [agendaFrom, setAgendaFrom] = useState(() => dateInput(new Date()));
+  const [agendaTo, setAgendaTo] = useState(defaultAgendaEnd);
+  const [quoteId, setQuoteId] = useState("");
+  const [date, setDate] = useState("");
+  const [bay, setBay] = useState("");
+  const [assignedToUserId, setAssignedToUserId] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("60");
+
+  const agendaRange = useMemo(
+    () => ({ from: new Date(`${agendaFrom}T00:00:00.000Z`), to: new Date(`${agendaTo}T23:59:59.999Z`) }),
+    [agendaFrom, agendaTo],
+  );
+  const appointments = trpc.appointments.list.useQuery(
+    { tenantId, ...agendaRange },
+    { enabled: Boolean(tenantId) && agendaRange.to >= agendaRange.from },
+  );
   const yard = trpc.workOrders.kanban.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
   const quotes = trpc.quotes.list.useQuery({ tenantId, status: "approved", page: 1, pageSize: 100 }, { enabled: Boolean(tenantId) });
   const members = trpc.tenant.members.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const [quoteId, setQuoteId] = useState(""); const [date, setDate] = useState(""); const [bay, setBay] = useState(""); const [assignedToUserId, setAssignedToUserId] = useState(""); const [durationMinutes, setDurationMinutes] = useState("60");
-  const schedule = trpc.appointments.scheduleFromQuote.useMutation({ onSuccess: data => { toast.success(`Agendamento criado e OS #${String(data.workOrderNumber ?? "").padStart(6, "0")} vinculada.`); setQuoteId(""); setDate(""); setBay(""); setAssignedToUserId(""); setDurationMinutes("60"); utils.appointments.list.invalidate(); utils.workOrders.kanban.invalidate(); }, onError: error => toast.error(error.message) });
+
+  const schedule = trpc.appointments.scheduleFromQuote.useMutation({
+    onSuccess: data => {
+      toast.success(`Agendamento criado e OS #${String(data.workOrderNumber ?? "").padStart(6, "0")} vinculada.`);
+      setQuoteId("");
+      setDate("");
+      setBay("");
+      setAssignedToUserId("");
+      setDurationMinutes("60");
+      utils.appointments.list.invalidate();
+      utils.workOrders.kanban.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+
   const approved = quotes.data?.items ?? [];
-  const submit = () => { const start = new Date(date); const duration = Number(durationMinutes); if (!quoteId || Number.isNaN(start.getTime()) || !Number.isFinite(duration) || duration < 5) return toast.error("Selecione um orçamento aprovado, uma data e uma duração válida."); const end = new Date(start.getTime() + duration * 60 * 1000); schedule.mutate({ tenantId, quoteId: Number(quoteId), scheduledStart: start, scheduledEnd: end, assignedToUserId: assignedToUserId ? Number(assignedToUserId) : undefined, bay: bay || undefined }); };
-  if (!mine.isLoading && !tenant) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-7xl space-y-7"><header className="border-b border-slate-200 pb-6"><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Agenda e pátio</h1></header><Card className="border-dashed border-slate-300"><CardContent className="p-8 text-center text-sm text-slate-600">Seu acesso ainda não está vinculado a uma oficina. Peça a um Super Admin para associá-lo ao tenant correto antes de agendar serviços ou consultar o pátio.</CardContent></Card></main></DashboardLayout>;
-  return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><main className="mx-auto max-w-7xl space-y-7"><header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end"><div><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Agenda e pátio</h1><p className="mt-1 text-sm text-slate-500">Acompanhe compromissos, veículos e execução sem duplicar dados do orçamento.</p></div><Badge className="w-fit bg-orange-100 text-orange-800 hover:bg-orange-100">Operação conectada</Badge></header><Card className="border-orange-100 bg-orange-50/40"><CardHeader><CardTitle className="text-lg">Agendar orçamento aprovado</CardTitle><CardDescription>O agendamento cria ou reutiliza a OS e herda cliente, veículo, itens e reserva sem redigitação.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-[1.4fr_1fr_.7fr_.8fr_.7fr_auto]"><div className="grid gap-2"><Label>Orçamento aprovado</Label><select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={quoteId} onChange={event => setQuoteId(event.target.value)}><option value="">Selecione</option>{approved.map(({ quote, customer, vehicle }) => <option key={quote.id} value={quote.id}>#{String(quote.number).padStart(6, "0")} · {customer.name} · {vehicle.make} {vehicle.model}</option>)}</select></div><div className="grid gap-2"><Label>Início</Label><Input type="datetime-local" value={date} onChange={event => setDate(event.target.value)} /></div><div className="grid gap-2"><Label>Duração (min.)</Label><Input type="number" min="5" step="5" value={durationMinutes} onChange={event => setDurationMinutes(event.target.value)} /></div><div className="grid gap-2"><Label>Profissional</Label><select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={assignedToUserId} onChange={event => setAssignedToUserId(event.target.value)}><option value="">A definir</option>{members.data?.filter(item => item.member.active).map(item => <option key={item.user.id} value={item.user.id}>{item.user.name ?? item.user.email ?? `Usuário ${item.user.id}`}</option>)}</select></div><div className="grid gap-2"><Label>Baia</Label><Input value={bay} onChange={event => setBay(event.target.value)} placeholder="Ex.: 02" /></div><div className="flex items-end"><Button className="w-full" disabled={schedule.isPending || !quoteId || !date} onClick={submit}>{schedule.isPending ? "Agendando…" : "Agendar"}</Button></div></CardContent>{!approved.length && !quotes.isLoading ? <p className="px-6 pb-5 text-xs text-slate-500">Não há orçamento aprovado disponível para agendar.</p> : null}</Card><section><div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Próximos agendamentos</h2></div><div className="grid gap-2 sm:grid-cols-2"><div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-from">De</Label><Input id="agenda-from" type="date" value={agendaFrom} onChange={event => setAgendaFrom(event.target.value)} /></div><div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-to">Até</Label><Input id="agenda-to" type="date" min={agendaFrom} value={agendaTo} onChange={event => setAgendaTo(event.target.value)} /></div></div></div>{agendaRange.to < agendaRange.from ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">A data final precisa ser igual ou posterior à data inicial.</CardContent></Card> : appointments.isLoading ? <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 2 }).map((_, index) => <Skeleton className="h-24" key={index} />)}</div> : appointments.isError ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">Não foi possível carregar os agendamentos desta oficina.</CardContent></Card> : appointments.data?.length ? <div className="grid gap-3 md:grid-cols-2">{appointments.data.map(({ appointment, customer, vehicle, workOrder }) => <Card key={appointment.id} className="border-slate-200"><CardContent className="p-4"><div className="flex justify-between gap-3"><div><p className="font-medium text-slate-950">{customer.name} · {vehicle.make} {vehicle.model}</p><p className="mt-1 text-sm text-slate-500">{new Date(appointment.scheduledStart).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}{appointment.bay ? ` · Baia ${appointment.bay}` : ""}</p></div><Badge variant="outline">{labels[appointment.status] ?? appointment.status}</Badge></div>{workOrder ? <Link href={`/os/${workOrder.id}`}><a className="mt-3 inline-block text-xs font-medium text-orange-700 hover:text-orange-900">Abrir OS #{String(workOrder.number).padStart(6, "0")} →</a></Link> : null}</CardContent></Card>)}</div> : <Card className="border-dashed border-slate-300"><CardHeader><CardTitle className="text-base">Nenhum agendamento encontrado no período</CardTitle><CardDescription>Após a aprovação de um orçamento, o agendamento cria ou reutiliza a OS vinculada sem redigitação.</CardDescription></CardHeader></Card>}</section><section><div className="mb-3 flex items-center gap-2"><Wrench className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Pátio operacional</h2></div>{yard.isLoading ? <div className="flex gap-3 overflow-hidden">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-52 min-w-56" key={index} />)}</div> : <div className="flex gap-3 overflow-x-auto pb-3">{columns.map(status => { const orders = yard.data?.filter(item => item.workOrder.status === status) ?? []; return <div className="w-60 shrink-0" key={status}><div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-[.1em] text-slate-500">{labels[status]}</p><Badge variant="secondary">{orders.length}</Badge></div><div className="min-h-40 space-y-2 rounded-xl bg-slate-100/70 p-2">{orders.map(({ workOrder, vehicle, customer }) => <Link href={`/os/${workOrder.id}`} key={workOrder.id}><a className="block rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-orange-200"><CardContent className="p-3"><p className="text-xs text-slate-500">OS #{String(workOrder.number).padStart(6, "0")}</p><p className="mt-1 font-medium text-slate-900">{vehicle.make} {vehicle.model}</p><p className="mt-1 text-xs text-slate-500">{customer.name}</p></CardContent></a></Link>)}{!orders.length ? <div className="grid min-h-24 place-items-center text-center text-xs text-slate-400"><CarFront className="mb-1 h-4 w-4" />Sem veículos</div> : null}</div></div>; })}</div>}</section></main></DashboardLayout>;
+  const submit = () => {
+    const start = new Date(date);
+    const duration = Number(durationMinutes);
+    if (!quoteId || Number.isNaN(start.getTime()) || !Number.isFinite(duration) || duration < 5) {
+      toast.error("Selecione um orçamento aprovado, uma data e uma duração válida.");
+      return;
+    }
+    const end = new Date(start.getTime() + duration * 60 * 1000);
+    schedule.mutate({
+      tenantId,
+      quoteId: Number(quoteId),
+      scheduledStart: start,
+      scheduledEnd: end,
+      assignedToUserId: assignedToUserId ? Number(assignedToUserId) : undefined,
+      bay: bay || undefined,
+    });
+  };
+
+  if (!mine.isLoading && !tenant) {
+    return (
+      <DashboardLayout menuItems={menu} workspaceName="OficinaOS">
+        <main className="mx-auto max-w-7xl space-y-7">
+          <header className="border-b border-slate-200 pb-6">
+            <Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Agenda e pátio</h1>
+          </header>
+          <Card className="border-dashed border-slate-300">
+            <CardContent className="p-8 text-center text-sm text-slate-600">
+              Seu acesso ainda não está vinculado a uma oficina. Peça a um Super Admin para associá-lo ao tenant correto antes de agendar serviços ou consultar o pátio.
+            </CardContent>
+          </Card>
+        </main>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}>
+      <main className="mx-auto max-w-7xl space-y-7">
+        <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+          <div>
+            <Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Agenda e pátio</h1>
+            <p className="mt-1 text-sm text-slate-500">Acompanhe compromissos, veículos e execução sem duplicar dados do orçamento.</p>
+          </div>
+          <Badge className="w-fit bg-orange-100 text-orange-800 hover:bg-orange-100">Operação conectada</Badge>
+        </header>
+
+        <Card className="border-orange-100 bg-orange-50/40">
+          <CardHeader>
+            <CardTitle className="text-lg">Agendar orçamento aprovado</CardTitle>
+            <CardDescription>O agendamento cria ou reutiliza a OS e herda cliente, veículo, itens e reserva sem redigitação.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-[1.4fr_1fr_.7fr_.8fr_.7fr_auto]">
+            <div className="grid gap-2">
+              <Label htmlFor="approved-quote">Orçamento aprovado</Label>
+              <select id="approved-quote" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={quoteId} onChange={event => setQuoteId(event.target.value)}>
+                <option value="">Selecione</option>
+                {approved.map(({ quote, customer, vehicle }) => <option key={quote.id} value={quote.id}>#{String(quote.number).padStart(6, "0")} · {customer.name} · {vehicle.make} {vehicle.model}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appointment-start">Início</Label>
+              <Input id="appointment-start" type="datetime-local" value={date} onChange={event => setDate(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appointment-duration">Duração (min.)</Label>
+              <Input id="appointment-duration" type="number" min="5" step="5" value={durationMinutes} onChange={event => setDurationMinutes(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appointment-assignee">Profissional</Label>
+              <select id="appointment-assignee" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={assignedToUserId} onChange={event => setAssignedToUserId(event.target.value)}>
+                <option value="">A definir</option>
+                {members.data?.filter(item => item.member.active).map(item => <option key={item.user.id} value={item.user.id}>{item.user.name ?? item.user.email ?? `Usuário ${item.user.id}`}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="appointment-bay">Baia</Label>
+              <Input id="appointment-bay" value={bay} onChange={event => setBay(event.target.value)} placeholder="Ex.: 02" />
+            </div>
+            <div className="flex items-end">
+              <Button className="w-full" disabled={schedule.isPending || !quoteId || !date} onClick={submit}>{schedule.isPending ? "Agendando…" : "Agendar"}</Button>
+            </div>
+          </CardContent>
+          {!approved.length && !quotes.isLoading ? <p className="px-6 pb-5 text-xs text-slate-500">Não há orçamento aprovado disponível para agendar.</p> : null}
+        </Card>
+
+        <section>
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Próximos agendamentos</h2></div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-from">De</Label><Input id="agenda-from" type="date" value={agendaFrom} onChange={event => setAgendaFrom(event.target.value)} /></div>
+              <div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-to">Até</Label><Input id="agenda-to" type="date" min={agendaFrom} value={agendaTo} onChange={event => setAgendaTo(event.target.value)} /></div>
+            </div>
+          </div>
+          {agendaRange.to < agendaRange.from ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">A data final precisa ser igual ou posterior à data inicial.</CardContent></Card> : null}
+          {agendaRange.to >= agendaRange.from && appointments.isLoading ? <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 2 }).map((_, index) => <Skeleton className="h-24" key={index} />)}</div> : null}
+          {agendaRange.to >= agendaRange.from && appointments.isError ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">Não foi possível carregar os agendamentos desta oficina.</CardContent></Card> : null}
+          {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && appointments.data?.length ? <div className="grid gap-3 md:grid-cols-2">{appointments.data.map(({ appointment, customer, vehicle, workOrder }) => <Card key={appointment.id} className="border-slate-200"><CardContent className="p-4"><div className="flex justify-between gap-3"><div><p className="font-medium text-slate-950">{customer.name} · {vehicle.make} {vehicle.model}</p><p className="mt-1 text-sm text-slate-500">{new Date(appointment.scheduledStart).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}{appointment.bay ? ` · Baia ${appointment.bay}` : ""}</p></div><Badge variant="outline">{labels[appointment.status] ?? appointment.status}</Badge></div>{workOrder ? <Link href={`/os/${workOrder.id}`}><a className="mt-3 inline-block text-xs font-medium text-orange-700 hover:text-orange-900">Abrir OS #{String(workOrder.number).padStart(6, "0")} →</a></Link> : null}</CardContent></Card>)}</div> : null}
+          {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && !appointments.data?.length ? <Card className="border-dashed border-slate-300"><CardHeader><CardTitle className="text-base">Nenhum agendamento encontrado no período</CardTitle><CardDescription>Após a aprovação de um orçamento, o agendamento cria ou reutiliza a OS vinculada sem redigitação.</CardDescription></CardHeader></Card> : null}
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center gap-2"><Wrench className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Pátio operacional</h2></div>
+          <p className="mb-2 text-xs text-slate-500 sm:hidden">{yardMobileScrollHint}</p>
+          {yard.isLoading ? <div className="flex gap-3 overflow-hidden">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-52 min-w-56" key={index} />)}</div> : null}
+          {!yard.isLoading ? <div className="flex gap-3 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" tabIndex={0} role="region" aria-label={yardRegionLabel}>{columns.map(status => {
+            const orders = yard.data?.filter(item => item.workOrder.status === status) ?? [];
+            return <div className="w-60 shrink-0" key={status}><div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-[.1em] text-slate-500">{labels[status]}</p><Badge variant="secondary">{orders.length}</Badge></div><div className="min-h-40 space-y-2 rounded-xl bg-slate-100/70 p-2">{orders.map(({ workOrder, vehicle, customer }) => <Link href={`/os/${workOrder.id}`} key={workOrder.id}><a className="block rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-orange-200"><CardContent className="p-3"><p className="text-xs text-slate-500">OS #{String(workOrder.number).padStart(6, "0")}</p><p className="mt-1 font-medium text-slate-900">{vehicle.make} {vehicle.model}</p><p className="mt-1 text-xs text-slate-500">{customer.name}</p></CardContent></a></Link>)}{!orders.length ? <div className="grid min-h-24 place-items-center text-center text-xs text-slate-400"><CarFront className="mb-1 h-4 w-4" />Sem veículos</div> : null}</div></div>;
+          })}</div> : null}
+        </section>
+      </main>
+    </DashboardLayout>
+  );
 }
