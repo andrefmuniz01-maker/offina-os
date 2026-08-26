@@ -153,7 +153,13 @@ export const notificationRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, input.notificationId), eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId))));
-    return { success: true };
+    const notification = (await db.select({ id: notifications.id, readAt: notifications.readAt }).from(notifications).where(and(eq(notifications.id, input.notificationId), eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId)))).limit(1))[0];
+    if (!notification) throw new TRPCError({ code: "NOT_FOUND", message: "Notificação não encontrada para este usuário." });
+    if (notification.readAt) return { success: true, idempotent: true };
+    const readAt = new Date();
+    const updated = await db.update(notifications).set({ readAt }).where(and(eq(notifications.id, notification.id), eq(notifications.tenantId, input.tenantId), or(eq(notifications.userId, ctx.user.id), isNull(notifications.userId)), isNull(notifications.readAt)));
+    if (!Number(updated[0]?.affectedRows ?? 0)) return { success: true, idempotent: true };
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "notification.read", entityType: "notification", entityId: notification.id, before: { readAt: null }, after: { readAt }, metadata: { source: "in_app" } });
+    return { success: true, idempotent: false };
   }),
 });

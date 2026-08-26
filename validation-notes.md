@@ -145,3 +145,7 @@ A Ordem de Serviço passou a priorizar o estado legível, a próxima ação, che
 ## 26/08/2026 — Apontamentos técnicos de OS
 
 Os apontamentos foram organizados como uma superfície direta de registro e histórico: o formulário descreve o tipo de informação esperado, o contador permanece próximo ao comando e os registros usam uma única linha do tempo sem cartões repetidos. A tela conserva estados de carregamento, ausência de tenant e OS indisponível. A validação em rota móvel confirmou o estado de acesso negado para uma OS não pertencente ao contexto selecionado; a consulta não encontrou outra OS disponível no tenant de demonstração para inspecionar registros preenchidos. TypeScript e a suíte completa permanecem aprovados com 59 arquivos e 186 testes Vitest.
+
+## 26/08/2026 — Auditoria de leitura de notificações
+
+A confirmação de leitura passou a localizar a notificação pelo tenant e pelo destinatário visível antes da escrita. A atualização só cria evento de auditoria quando a transição de não lida para lida é efetivamente persistida; repetição concorrente permanece idempotente. A trilha registra somente identificador, instante e origem interna, sem título ou conteúdo da notificação. TypeScript e a suíte completa aprovaram 59 arquivos e 187 testes Vitest.

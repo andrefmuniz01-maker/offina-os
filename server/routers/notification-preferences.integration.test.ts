@@ -56,4 +56,15 @@ describe("notification preferences — integração tRPC", () => {
     await expect(notificationRouter.createCaller(context()).listMine({ tenantId: 4, page: 2, pageSize: 2 })).resolves.toEqual({ items: rows.slice(0, 2), page: 2, pageSize: 2, hasMore: true });
     expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "customers.manage");
   });
+
+  it("audita a leitura confirmada sem incluir o conteúdo da notificação", async () => {
+    const where = vi.fn(async () => [{ affectedRows: 1 }]);
+    const set = vi.fn(() => ({ where }));
+    mocks.db = { select: vi.fn(() => chain([{ id: 31, readAt: null }])), update: vi.fn(() => ({ set })) };
+
+    await expect(notificationRouter.createCaller(context()).markRead({ tenantId: 4, notificationId: 31 })).resolves.toEqual({ success: true, idempotent: false });
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "notification.read", entityType: "notification", entityId: 31, before: { readAt: null }, metadata: { source: "in_app" } }));
+    expect(mocks.audit.mock.calls[0][0]).not.toHaveProperty("body");
+    expect(mocks.audit.mock.calls[0][0]).not.toHaveProperty("title");
+  });
 });

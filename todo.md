@@ -190,7 +190,7 @@
 - [x] Permitir ao Super Admin associar um usuário existente a um tenant com papel inicial auditável.
 - [x] Aplicar efetivamente limites de plano para membros ativos e clientes por tenant.
 - [x] Implementar relatórios consolidados de uso e desempenho por tenant no Painel de Super Admin.
-- [ ] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
+- [x] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
 - [x] Tornar condicionais as alterações financeiras de produtos e serviços antes de registrar auditoria.
 - [x] Bloquear centralmente acessos internos a tenants suspensos, incluindo Super Admin em operações do tenant.
 - [x] Impedir rebaixamento ou desativação do proprietário primário nas mutações internas de equipe.
@@ -198,7 +198,7 @@
 - [x] Gerar chaves de armazenamento não enumeráveis para novos anexos de solicitações e ordens de serviço.
 - [x] Tornar condicionais as atualizações de descontos e totais de orçamento antes da auditoria.
 - [x] Restringir anexos de solicitações e OS a tipos MIME de imagem e vídeo explicitamente permitidos.
-- [ ] Evoluir interfaces operacionais prioritárias com foco em clareza, responsividade, acessibilidade e estados reais.
+- [x] Evoluir interfaces operacionais prioritárias com foco em clareza, responsividade, acessibilidade e estados reais.
 - [x] Reestruturar a fila de solicitações para priorizar próxima ação, status e operação em desktop e mobile.
 - [x] Reestruturar a fila de orçamentos para orientar decisão comercial, acompanhamento e próximos passos.
 - [x] Reestruturar agenda e pátio para destacar planejamento, capacidade e próxima ação operacional.
@@ -206,7 +206,7 @@
 - [x] Reestruturar clientes e veículos para acelerar atendimento, histórico e continuidade comercial.
 - [x] Reestruturar financeiro para destacar realização, previsão e prioridades sem ampliar permissões.
 - [x] Reestruturar compras para destacar reposição, recebimento e prioridades de pedido.
-- [ ] Evoluir a jornada pública de solicitação e decisão de orçamento com foco em clareza e confiança do cliente.
+- [x] Evoluir a jornada pública de solicitação e decisão de orçamento com foco em clareza e confiança do cliente.
 - [x] Reestruturar o formulário público de solicitação com etapas, progresso e validação orientada ao cliente.
 - [x] Reestruturar a visualização pública do orçamento para clareza de itens, validade e decisão segura.
 - [x] Reestruturar catálogo e cadastros para acelerar descoberta, composição e decisão operacional.
@@ -220,3 +220,4 @@
 - [x] Simplificar a administração global restante sem ampliar escopo de acesso.
 - [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
 - [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
+- [x] Auditar a confirmação de leitura de notificações sem expor conteúdo operacional na trilha global.
