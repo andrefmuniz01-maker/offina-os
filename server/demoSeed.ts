@@ -192,7 +192,7 @@ const DEMO_CHILD_TABLES = [
   "audit_logs", "notifications", "work_order_consumption", "work_order_notes", "work_order_checklists", "work_order_items", "work_orders", "appointments", "quote_events", "quote_items", "quotes", "attachments", "quote_request_events", "quote_requests", "inventory_reservations", "inventory_movements", "purchase_order_items", "purchase_orders", "service_products", "kit_items", "kits", "services", "products", "inventory_balances", "vehicles", "customers", "suppliers", "product_categories", "service_categories",
 ] as const;
 
-export async function resetDemoTenant() {
+export async function resetDemoTenant(actorUserId?: number) {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_URL é obrigatório para resetar a demonstração.");
   const tenant = (await db.select({ id: tenants.id, isDemo: tenants.isDemo }).from(tenants).where(eq(tenants.slug, DEMO_SLUG)).limit(1))[0];
@@ -200,7 +200,7 @@ export async function resetDemoTenant() {
   if (!tenant.isDemo) throw new Error("Reset bloqueado: o slug informado não está marcado como ambiente demonstrativo.");
 
   await db.transaction(async tx => {
-    await tx.insert(auditLogs).values({ tenantId: tenant.id, action: "demo.reset", entityType: "tenant", entityId: tenant.id, before: { isDemo: true }, after: { reset: true, isDemo: true }, metadata: { scope: "demo-only", tables: DEMO_CHILD_TABLES } });
+    await tx.insert(auditLogs).values({ tenantId: tenant.id, actorUserId: actorUserId ?? null, action: "demo.reset", entityType: "tenant", entityId: tenant.id, before: { isDemo: true }, after: { reset: true, isDemo: true }, metadata: { scope: "demo-only", tables: DEMO_CHILD_TABLES } });
     for (const table of DEMO_CHILD_TABLES) {
       await tx.execute(sql.raw(`DELETE FROM \`${table}\` WHERE \`tenantId\` = ${tenant.id}`));
     }

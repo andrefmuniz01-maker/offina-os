@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { auditLogs, customers, plans, quotes, revenues, tenantBranding, tenantMembers, tenantSettings, tenants, users, workOrders } from "../../drizzle/schema";
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
+import { resetDemoTenant } from "../demoSeed";
 import { assertTenantPlanCapacity } from "../planLimits";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -175,6 +176,15 @@ export const platformRouter = router({
 
     const tenantId = await createTenantForOwner({ ...input, ownerUserId, actorUserId: ctx.user.id });
     return { tenantId };
+  }),
+
+  resetDemo: protectedProcedure.mutation(async ({ ctx }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    try {
+      return await resetDemoTenant(ctx.user.id);
+    } catch (error) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Não foi possível resetar a demonstração." });
+    }
   }),
 
   plans: router({
