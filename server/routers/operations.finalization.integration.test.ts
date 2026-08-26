@@ -17,9 +17,9 @@ function chain(result: unknown) {
 }
 
 function updateChain() { const query: any = {}; query.set = vi.fn(() => query); query.where = vi.fn(async () => [{ affectedRows: 1 }]); return query; }
-function buildDb(results: unknown[]) {
+function buildDb(results: unknown[], updateResults: unknown[] = []) {
   const inserted: unknown[] = [];
-  const tx = { select: vi.fn(() => chain(results.shift() ?? [])), update: vi.fn(() => updateChain()), insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserted.push(value); return [{ insertId: inserted.length }]; }) })) };
+  const tx = { select: vi.fn(() => chain(results.shift() ?? [])), update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })), insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserted.push(value); return [{ insertId: inserted.length }]; }) })) };
   return { db: { select: vi.fn(() => chain(results.shift() ?? [])), transaction: vi.fn(async (callback: (value: typeof tx) => Promise<unknown>) => callback(tx)) }, inserted, tx };
 }
 
@@ -69,5 +69,19 @@ describe("operations.updateStatus — finalização integrada", () => {
 
     expect(deliveredAgain.inserted).toEqual([]);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ after: expect.objectContaining({ status: "delivered" }) }));
+  });
+
+  it("não libera saldo nem registra movimento quando outra sessão já liberou a reserva", async () => {
+    const concurrentRelease = buildDb([
+      [{ id: 91, tenantId: 4, number: 12, status: "completed", customerId: 21, vehicleId: 22, appointmentId: 31, estimatedTotal: "850.00", notes: null }],
+      [{ id: 63, tenantId: 4, productId: 8, quantity: "2.000", status: "active" }],
+    ], [[{ affectedRows: 1 }], [{ affectedRows: 1 }], [{ affectedRows: 0 }]]);
+    mocks.db = concurrentRelease.db;
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.updateStatus({ tenantId: 4, workOrderId: 91, status: "delivered" })).resolves.toEqual({ success: true });
+
+    expect(concurrentRelease.inserted).toContainEqual(expect.objectContaining({ type: "post_sale_suggested", workOrderId: 91 }));
+    expect(concurrentRelease.inserted).not.toContainEqual(expect.objectContaining({ type: "reservation_release", referenceId: 91 }));
   });
 });

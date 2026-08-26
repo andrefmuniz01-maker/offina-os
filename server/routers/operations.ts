@@ -139,9 +139,10 @@ export const workOrderRouter = router({
       if (["delivered", "cancelled"].includes(input.status) && order.status !== input.status) {
         const activeReservations = await tx.select().from(inventoryReservations).where(and(eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.workOrderId, input.workOrderId), eq(inventoryReservations.status, "active")));
         for (const reservation of activeReservations) {
+          const release = await tx.update(inventoryReservations).set({ status: "released", releasedAt: new Date() }).where(and(eq(inventoryReservations.id, reservation.id), eq(inventoryReservations.tenantId, input.tenantId), eq(inventoryReservations.status, "active")));
+          if (!Number(release[0]?.affectedRows ?? 0)) continue;
           const balance = (await tx.select().from(inventoryBalances).where(and(eq(inventoryBalances.tenantId, input.tenantId), eq(inventoryBalances.productId, reservation.productId))).limit(1))[0];
           if (!balance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Saldo de estoque não encontrado para liberar a reserva." });
-          await tx.update(inventoryReservations).set({ status: "released", releasedAt: new Date() }).where(and(eq(inventoryReservations.id, reservation.id), eq(inventoryReservations.tenantId, input.tenantId)));
           await tx.update(inventoryBalances).set({ reservedQuantity: sql`greatest(${inventoryBalances.reservedQuantity} - ${reservation.quantity}, 0)` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
           await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: reservation.productId, type: "reservation_release", quantity: reservation.quantity, physicalDelta: "0", reservedDelta: sql`-${reservation.quantity}`, referenceType: "work_order", referenceId: input.workOrderId, createdByUserId: ctx.user.id, notes: "Reserva liberada no encerramento da ordem de serviço." });
         }

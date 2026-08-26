@@ -157,3 +157,4 @@
 - [x] Corrigir a rota interna da agenda e pátio que retorna página 404 em vez do fluxo operacional.
 - [x] Tornar o pátio horizontalmente rolável no mobile explícito e acessível por foco de teclado.
 - [x] Impedir reservas de estoque duplicadas sob concorrência na aprovação pública de orçamento.
+- [x] Impedir liberação duplicada de reservas sob concorrência na entrega ou cancelamento de OS.
