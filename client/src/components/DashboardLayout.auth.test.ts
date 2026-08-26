@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getMagicLinkErrorMessage } from "./DashboardLayout";
+import { getPasswordAuthErrorMessage } from "./DashboardLayout";
 
-describe("getMagicLinkErrorMessage", () => {
+describe("getPasswordAuthErrorMessage", () => {
   it("explica o limite temporário de envio sem expor detalhes internos", () => {
     expect(
-      getMagicLinkErrorMessage({
+      getPasswordAuthErrorMessage({
         code: "over_email_send_rate_limit",
         message: "email rate limit exceeded",
         status: 429,
@@ -14,7 +14,7 @@ describe("getMagicLinkErrorMessage", () => {
 
   it("informa que a identidade ainda precisa de autorização quando o Supabase bloqueia OTP", () => {
     expect(
-      getMagicLinkErrorMessage({
+      getPasswordAuthErrorMessage({
         code: "otp_disabled",
         message: "Signups not allowed for otp",
         status: 422,
@@ -23,8 +23,12 @@ describe("getMagicLinkErrorMessage", () => {
   });
 
   it("usa uma mensagem segura para erros não reconhecidos", () => {
-    expect(getMagicLinkErrorMessage({ message: "unexpected" })).toBe(
-      "Não foi possível iniciar o acesso seguro. Tente novamente mais tarde.",
+    expect(getPasswordAuthErrorMessage({ message: "unexpected" })).toBe(
+      "Não foi possível concluir o acesso seguro. Tente novamente mais tarde.",
     );
+  });
+
+  it("não expõe detalhes para credenciais inválidas", () => {
+    expect(getPasswordAuthErrorMessage({ code: "invalid_credentials" })).toBe("E-mail ou senha incorretos.");
   });
 });

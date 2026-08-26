@@ -45,13 +45,13 @@ const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
-type MagicLinkError = {
+type SupabaseAuthError = {
   code?: string;
   message?: string;
   status?: number;
 };
 
-export function getMagicLinkErrorMessage(error: MagicLinkError) {
+export function getPasswordAuthErrorMessage(error: SupabaseAuthError) {
   const message = error.message?.toLowerCase() ?? "";
 
   if (
@@ -63,40 +63,65 @@ export function getMagicLinkErrorMessage(error: MagicLinkError) {
   }
 
   if (error.code === "otp_disabled" || message.includes("signups not allowed")) {
-    return "Este e-mail ainda não está autorizado para receber um link de acesso. Solicite o provisionamento a um Super Admin.";
+    return "Este e-mail ainda não está autorizado. Solicite o provisionamento a um Super Admin.";
   }
 
-  return "Não foi possível iniciar o acesso seguro. Tente novamente mais tarde.";
+  if (error.code === "invalid_credentials" || message.includes("invalid login credentials")) {
+    return "E-mail ou senha incorretos.";
+  }
+
+  if (error.code === "email_not_confirmed" || message.includes("email not confirmed")) {
+    return "Confirme seu e-mail antes de entrar ou solicite uma redefinição de senha.";
+  }
+
+  return "Não foi possível concluir o acesso seguro. Tente novamente mais tarde.";
 }
 
-function MagicLinkAccess() {
+function PasswordAccess() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "signing-in" | "resetting" | "reset-sent" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const requestMagicLink = async (event: FormEvent<HTMLFormElement>) => {
+  const signInWithPassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatus("sending");
+    setStatus("signing-in");
     setErrorMessage(null);
-    const redirectTo = new URL("/auth/callback", window.location.origin).toString();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setErrorMessage(getMagicLinkErrorMessage(error));
+      setErrorMessage(getPasswordAuthErrorMessage(error));
       setStatus("error");
       return;
     }
-    setStatus("sent");
+
+    window.location.assign("/auth/callback");
+  };
+
+  const requestPasswordSetup = async () => {
+    if (!email) {
+      setErrorMessage("Informe seu e-mail para criar ou redefinir a senha.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("resetting");
+    setErrorMessage(null);
+    const redirectTo = new URL("/auth/callback", window.location.origin).toString();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      setErrorMessage(getPasswordAuthErrorMessage(error));
+      setStatus("error");
+      return;
+    }
+    setStatus("reset-sent");
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <form onSubmit={requestMagicLink} className="flex flex-col items-center gap-6 p-8 max-w-md w-full">
+      <form onSubmit={signInWithPassword} className="flex flex-col items-center gap-5 p-8 max-w-md w-full">
         <div className="flex flex-col items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-center">Entre para continuar</h1>
-          <p className="text-sm text-muted-foreground text-center max-w-sm">Informe seu e-mail cadastrado para receber um link de acesso seguro.</p>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">Use seu e-mail autorizado e sua senha para acessar o OficinaOS.</p>
         </div>
         <input
           aria-label="E-mail de acesso"
@@ -108,10 +133,29 @@ function MagicLinkAccess() {
           autoComplete="email"
           placeholder="voce@empresa.com"
         />
-        <Button type="submit" disabled={status === "sending"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
-          {status === "sending" ? "Enviando…" : "Enviar link de acesso"}
+        <input
+          aria-label="Senha"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          type="password"
+          value={password}
+          onChange={event => setPassword(event.target.value)}
+          required
+          minLength={10}
+          autoComplete="current-password"
+          placeholder="Sua senha"
+        />
+        <Button type="submit" disabled={status === "signing-in" || status === "resetting"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
+          {status === "signing-in" ? "Entrando…" : "Entrar"}
         </Button>
-        {status === "sent" && <p className="text-center text-sm text-muted-foreground">Verifique sua caixa de entrada para concluir o acesso.</p>}
+        <button
+          type="button"
+          onClick={requestPasswordSetup}
+          disabled={status === "signing-in" || status === "resetting"}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+        >
+          {status === "resetting" ? "Preparando redefinição…" : "Criar ou redefinir senha"}
+        </button>
+        {status === "reset-sent" && <p className="text-center text-sm text-muted-foreground">Se este e-mail estiver autorizado, envie a definição de senha pelo e-mail recebido.</p>}
         {status === "error" && <p className="text-center text-sm text-destructive">{errorMessage}</p>}
       </form>
     </div>
@@ -143,7 +187,7 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <MagicLinkAccess />
+      <PasswordAccess />
     );
   }
 

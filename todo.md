@@ -74,7 +74,9 @@
 - [x] Confirmar e registrar o estado persistido do Supabase Auth: autoinscrição pública desativada e provider de e-mail/Magic Link habilitado.
 - [x] Diagnosticar a não entrega do Magic Link de Felipe no Supabase, verificando logs, template, limites e configuração de e-mail antes de novo reenvio.
 - [x] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.
-- [ ] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
+- [x] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
 - [ ] Corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
-- [ ] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
+- [x] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
 - [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
+- [ ] Repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
+- [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
