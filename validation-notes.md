@@ -37,3 +37,7 @@ O painel global foi verificado em desktop e mobile após a inclusão do catálog
 ## 26/08/2026 — Consumo por tenant e limites de plano
 
 O painel global agora exibe, para cada tenant, contagens agregadas de membros ativos e clientes diante dos limites do plano atribuído. A revisão em desktop confirma a leitura dos cartões de consumo e a distinção visual de atenção ao atingir 80% de um limite. No mobile, os indicadores continuam em coluna; a seção de consumo permanece acessível por rolagem vertical sem tentar expor dados operacionais internos.
+
+## 26/08/2026 — Suporte auditável por tenant
+
+A central de suporte do Super Admin foi verificada em desktop e mobile. A seleção de oficina, a busca por metadados e o estado vazio de eventos permanecem separados da operação do tenant. No mobile, o seletor e a busca ficam empilhados; a tela conserva a distinção entre metadados de auditoria permitidos e dados operacionais não acessados.

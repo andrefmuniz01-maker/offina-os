@@ -49,6 +49,20 @@ export const platformRouter = router({
     }));
   }),
 
+  tenantAudit: protectedProcedure.input(tenantIdInput.extend({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(50).default(10) })).query(async ({ ctx, input }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const tenant = (await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1))[0];
+    if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+    const search = input.search ? `%${input.search}%` : null;
+    const rows = await db.select({ id: auditLogs.id, actorUserId: auditLogs.actorUserId, action: auditLogs.action, entityType: auditLogs.entityType, entityId: auditLogs.entityId, createdAt: auditLogs.createdAt })
+      .from(auditLogs)
+      .where(and(eq(auditLogs.tenantId, input.tenantId), ...(search ? [or(like(auditLogs.action, search), like(auditLogs.entityType, search), sql`CAST(${auditLogs.entityId} AS CHAR) LIKE ${search}`)] : [])))
+      .orderBy(desc(auditLogs.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+    return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
+  }),
+
   updateTenant: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), status: z.enum(["trial", "active", "suspended", "inactive"]).optional(), active: z.boolean().optional(), planId: z.number().int().positive().nullable().optional() })).mutation(async ({ ctx, input }) => {
     assertPlatformSuperAdmin(ctx.user);
     const db = await getDb();

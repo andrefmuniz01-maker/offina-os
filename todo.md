@@ -185,3 +185,4 @@
 - [ ] Evoluir o Painel de Super Admin com suporte auditável a tenants, planos, limites e métricas globais.
 - [x] Implementar listagem e manutenção auditável de planos no Painel de Super Admin.
 - [x] Exibir consumo de membros e clientes por tenant frente aos limites do plano no Painel de Super Admin.
+- [x] Permitir ao Super Admin consultar eventos auditáveis de um tenant sem acessar seus dados operacionais.
