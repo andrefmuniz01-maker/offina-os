@@ -201,3 +201,4 @@
 - [ ] Evoluir interfaces operacionais prioritárias com foco em clareza, responsividade, acessibilidade e estados reais.
 - [x] Reestruturar a fila de solicitações para priorizar próxima ação, status e operação em desktop e mobile.
 - [x] Reestruturar a fila de orçamentos para orientar decisão comercial, acompanhamento e próximos passos.
+- [x] Reestruturar agenda e pátio para destacar planejamento, capacidade e próxima ação operacional.

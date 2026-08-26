@@ -89,3 +89,7 @@ A interface de solicitações passou a destacar o trabalho pendente na página a
 ## 26/08/2026 — Central de orçamentos
 
 A fila de orçamentos agora evidencia propostas em preparação, respostas aguardadas e validade em atenção, além de orientar o próximo passo comercial por status. Filtros rápidos, indicadores contextualizados à página, estados vazios e cartões de proposta foram validados em desktop e mobile. TypeScript e a suíte completa aprovaram 48 arquivos e 173 testes Vitest.
+
+## 26/08/2026 — Agenda e pátio operacional
+
+Agenda e pátio passaram a expor pulso operacional por período, capacidade atribuída, OS em execução e bloqueios de avanço. Os cards da agenda e as colunas do pátio agora mostram próxima ação contextual, mantendo a rolagem horizontal acessível no mobile. A validação visual ocorreu em desktop e mobile; TypeScript e a suíte completa aprovaram 49 arquivos e 175 testes Vitest.
