@@ -17,3 +17,7 @@ O inventário das consultas de páginas identificou que solicitações, orçamen
 ## 26/08/2026 — Itens por categoria
 
 As confirmações de produtos e serviços por categoria foram atualizadas com busca independente, paginação de dez itens e estados de vazio/erro por lista. A revisão em desktop e mobile confirmou que os formulários permanecem utilizáveis e que os controles compactos não introduzem sobreposição no início da tela; os campos de busca ficam disponíveis abaixo da área de cadastro.
+
+## 26/08/2026 — Estoque paginado
+
+A lista de inventário foi verificada em desktop e mobile após a paginação no servidor. O desktop preserva a tabela de saldos físico, reservado e disponível; o mobile mantém os cartões rotulados. Os controles de página ficam no mesmo contexto da lista e o filtro por produto ou SKU reinicia a página sem afetar a previsão de necessidade ao lado ou abaixo da lista.

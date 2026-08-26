@@ -27,15 +27,16 @@ function availableQuantity(physical: string | number, reserved: string | number)
 }
 
 export const inventoryRouter = router({
-  list: protectedProcedure.input(tenantIdInput.extend({ search: z.string().trim().max(120).optional() })).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(tenantIdInput.extend({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     const access = await requireTenantPermission(ctx.user, input.tenantId, "inventory.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const search = input.search ? `%${input.search}%` : null;
     const rows = await db.select({ product: products, balance: inventoryBalances }).from(products)
       .innerJoin(inventoryBalances, and(eq(inventoryBalances.tenantId, products.tenantId), eq(inventoryBalances.productId, products.id)))
-      .where(eq(products.tenantId, input.tenantId)).orderBy(asc(products.name));
+      .where(and(eq(products.tenantId, input.tenantId), ...(search ? [or(like(products.name, search), like(products.sku, search))] : []))).orderBy(asc(products.name)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
     const financial = hasPermission(access, "financial.view");
-    return rows.filter(row => !input.search || row.product.name.toLowerCase().includes(input.search.toLowerCase()) || row.product.sku?.toLowerCase().includes(input.search.toLowerCase())).map(({ product, balance }) => {
+    return { items: rows.slice(0, input.pageSize).map(({ product, balance }) => {
       const physical = Number(balance.physicalQuantity);
       const reserved = Number(balance.reservedQuantity);
       return {
@@ -43,7 +44,7 @@ export const inventoryRouter = router({
         physicalQuantity: physical, reservedQuantity: reserved, availableQuantity: physical - reserved,
         ...(financial ? { currentCost: Number(product.currentCost), averageCost: Number(product.averageCost), salePrice: Number(product.salePrice) } : {}),
       };
-    });
+    }), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
   }),
 
   movements: protectedProcedure.input(tenantIdInput.extend({ productId: z.number().int().positive(), limit: z.number().int().min(1).max(100).default(50) })).query(async ({ ctx, input }) => {

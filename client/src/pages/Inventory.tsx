@@ -1,12 +1,13 @@
 import DashboardLayout, { type DashboardMenuItem } from "@/components/DashboardLayout";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { inventoryBalanceLabels } from "@/lib/inventoryView";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ArrowLeft, CalendarRange, PackageSearch, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarRange, ChevronLeft, ChevronRight, PackageSearch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const menu: DashboardMenuItem[] = [
@@ -24,9 +25,11 @@ export default function Inventory() {
   const mine = trpc.tenant.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [forecastUntil, setForecastUntil] = useState(defaultForecastDate);
   const until = useMemo(() => new Date(`${forecastUntil}T23:59:59.999Z`), [forecastUntil]);
-  const stock = trpc.inventory.list.useQuery({ tenantId: tenant?.id ?? 0, search: search || undefined }, { enabled: Boolean(tenant?.id) });
+  const stockInput = useMemo(() => ({ tenantId: tenant?.id ?? 0, search: search.trim() || undefined, page, pageSize: 20 }), [tenant?.id, search, page]);
+  const stock = trpc.inventory.list.useQuery(stockInput, { enabled: Boolean(tenant?.id) });
   const forecast = trpc.inventory.forecast.useQuery({ tenantId: tenant?.id ?? 0, until }, { enabled: Boolean(tenant?.id) });
 
   if (!mine.isLoading && !tenant) {
@@ -49,21 +52,21 @@ export default function Inventory() {
           <Card className="border-slate-200">
             <CardHeader>
               <CardTitle className="text-lg">Inventário por produto</CardTitle>
-              <div className="relative mt-2"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input className="pl-9" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por produto ou SKU" aria-label="Buscar produto no estoque" /></div>
+              <div className="relative mt-2"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" aria-hidden="true" /><Input className="pl-9" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Buscar por produto ou SKU" aria-label="Buscar produto no estoque" aria-describedby="inventory-search-help" /></div><span id="inventory-search-help" className="sr-only">A busca consulta apenas os produtos desta oficina e reinicia a página.</span>
             </CardHeader>
             <CardContent>
               {stock.isLoading ? <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : null}
               {stock.isError ? <p className="rounded-lg bg-red-50 p-4 text-sm text-red-900">Não foi possível carregar o inventário desta oficina.</p> : null}
-              {!stock.isLoading && !stock.isError && stock.data?.length ? <>
+              {!stock.isLoading && !stock.isError && stock.data?.items.length ? <>
                 <div className="space-y-3 md:hidden">
-                  {stock.data.map(item => {
+                  {stock.data.items.map(item => {
                     const values = [item.physicalQuantity, item.reservedQuantity, item.availableQuantity];
                     return <article className="rounded-xl border border-slate-200 p-3" key={item.id}><div><p className="font-medium text-slate-900">{item.name}</p><p className="text-xs text-slate-500">{item.sku || "Sem SKU"} · {item.unit}</p></div><dl className="mt-3 grid grid-cols-3 gap-2"><div><dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{inventoryBalanceLabels[0]}</dt><dd className="mt-1 font-semibold text-slate-700">{values[0]}</dd></div><div><dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{inventoryBalanceLabels[1]}</dt><dd className="mt-1 font-semibold text-slate-700">{values[1]}</dd></div><div><dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{inventoryBalanceLabels[2]}</dt><dd className={`mt-1 font-semibold ${item.availableQuantity <= item.minStock ? "text-red-600" : "text-emerald-700"}`}>{values[2]}</dd></div></dl></article>;
                   })}
                 </div>
-                <div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><thead className="border-b text-xs uppercase tracking-[.08em] text-slate-500"><tr><th className="pb-3 font-medium">Produto</th><th className="pb-3 text-right font-medium">Físico</th><th className="pb-3 text-right font-medium">Reservado</th><th className="pb-3 text-right font-medium">Disponível</th></tr></thead><tbody>{stock.data.map(item => <tr className="border-b border-slate-100 last:border-0" key={item.id}><td className="py-3"><p className="font-medium text-slate-900">{item.name}</p><p className="text-xs text-slate-500">{item.sku || "Sem SKU"} · {item.unit}</p></td><td className="py-3 text-right text-slate-600">{item.physicalQuantity}</td><td className="py-3 text-right text-slate-600">{item.reservedQuantity}</td><td className={`py-3 text-right font-semibold ${item.availableQuantity <= item.minStock ? "text-red-600" : "text-emerald-700"}`}>{item.availableQuantity}</td></tr>)}</tbody></table></div>
+                <div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><thead className="border-b text-xs uppercase tracking-[.08em] text-slate-500"><tr><th className="pb-3 font-medium">Produto</th><th className="pb-3 text-right font-medium">Físico</th><th className="pb-3 text-right font-medium">Reservado</th><th className="pb-3 text-right font-medium">Disponível</th></tr></thead><tbody>{stock.data.items.map(item => <tr className="border-b border-slate-100 last:border-0" key={item.id}><td className="py-3"><p className="font-medium text-slate-900">{item.name}</p><p className="text-xs text-slate-500">{item.sku || "Sem SKU"} · {item.unit}</p></td><td className="py-3 text-right text-slate-600">{item.physicalQuantity}</td><td className="py-3 text-right text-slate-600">{item.reservedQuantity}</td><td className={`py-3 text-right font-semibold ${item.availableQuantity <= item.minStock ? "text-red-600" : "text-emerald-700"}`}>{item.availableQuantity}</td></tr>)}</tbody></table></div><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3"><p className="text-xs text-slate-500">Página {stock.data.page}</p><div className="flex gap-2"><Button type="button" size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(current => Math.max(1, current - 1))}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button type="button" size="sm" variant="outline" disabled={!stock.data.hasMore} onClick={() => setPage(current => current + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
               </> : null}
-              {!stock.isLoading && !stock.isError && !stock.data?.length ? <p className="py-10 text-center text-sm text-slate-500">Nenhum produto cadastrado nesta oficina.</p> : null}
+              {!stock.isLoading && !stock.isError && !stock.data?.items.length ? <p className="py-10 text-center text-sm text-slate-500">{search.trim() ? "Nenhum produto neste filtro." : "Nenhum produto cadastrado nesta oficina."}</p> : null}
             </CardContent>
           </Card>
 
