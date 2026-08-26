@@ -209,3 +209,6 @@
 - [ ] Evoluir a jornada pública de solicitação e decisão de orçamento com foco em clareza e confiança do cliente.
 - [x] Reestruturar o formulário público de solicitação com etapas, progresso e validação orientada ao cliente.
 - [x] Reestruturar a visualização pública do orçamento para clareza de itens, validade e decisão segura.
+- [x] Reestruturar catálogo e cadastros para acelerar descoberta, composição e decisão operacional.
+- [x] Reestruturar equipe e permissões para clareza de papéis, acessos e próximas ações administrativas.
+- [x] Executar revisão transversal de acessibilidade, teclado, foco e estados prioritários após as evoluções de interface.

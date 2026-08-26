@@ -49,13 +49,15 @@ function CategoryPanel({ title, description, icon: Icon, form, setForm, categori
     setEditingForm({ name: category.name, description: category.description ?? "" });
   };
 
-  return <Card className="border-slate-200">
+  const count = categories?.length ?? 0;
+  return <Card className="border-slate-200 shadow-sm">
     <CardHeader>
-      <div className="flex items-center gap-2"><Icon className="h-5 w-5 text-orange-700" /><CardTitle className="text-lg">{title}</CardTitle></div>
+      <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><span className="grid h-9 w-9 place-items-center rounded-xl bg-orange-50 text-orange-700"><Icon className="h-5 w-5" /></span><CardTitle className="text-lg">{title}</CardTitle></div><Badge variant="secondary">{count} {count === 1 ? "categoria" : "categorias"}</Badge></div>
       <CardDescription>{description}</CardDescription>
     </CardHeader>
     <CardContent className="space-y-5">
-      <div className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+      <div className="grid gap-3 rounded-xl border border-orange-100 bg-orange-50/40 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[.14em] text-orange-700">Novo agrupamento</p>
         <div className="grid gap-2"><Label htmlFor={`${title}-name`}>Nome</Label><Input id={`${title}-name`} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Ex.: Performance" /></div>
         <div className="grid gap-2"><Label htmlFor={`${title}-description`}>Descrição opcional</Label><Textarea id={`${title}-description`} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} maxLength={1000} rows={3} placeholder="Agrupamento interno para o catálogo." /></div>
         <Button disabled={creating || form.name.trim().length < 2} onClick={onCreate}><Plus className="mr-2 h-4 w-4" />{creating ? "Criando…" : "Criar categoria"}</Button>
@@ -66,11 +68,11 @@ function CategoryPanel({ title, description, icon: Icon, form, setForm, categori
           <div className="grid gap-2"><Label htmlFor={`${title}-edit-${category.id}`}>Nome da categoria</Label><Input id={`${title}-edit-${category.id}`} value={editingForm.name} onChange={event => setEditingForm({ ...editingForm, name: event.target.value })} /></div>
           <div className="grid gap-2"><Label htmlFor={`${title}-edit-description-${category.id}`}>Descrição</Label><Textarea id={`${title}-edit-description-${category.id}`} value={editingForm.description} onChange={event => setEditingForm({ ...editingForm, description: event.target.value })} maxLength={1000} rows={2} /></div>
           <div className="flex flex-wrap gap-2"><Button size="sm" disabled={updating || editingForm.name.trim().length < 2} onClick={() => onUpdate(category.id, editingForm)}><Save className="mr-2 h-3.5 w-3.5" />{updating ? "Salvando…" : "Salvar"}</Button><Button size="sm" variant="outline" onClick={() => setEditingId(null)}><X className="mr-2 h-3.5 w-3.5" />Cancelar</Button></div>
-        </div> : <div className="flex flex-col gap-3 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-start sm:justify-between" key={category.id}>
+        </div> : <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-3 shadow-sm sm:flex-row sm:items-start sm:justify-between" key={category.id}>
           <div><p className="font-medium text-slate-900">{category.name}</p>{category.description ? <p className="mt-1 text-sm text-slate-500">{category.description}</p> : <p className="mt-1 text-xs text-slate-400">Sem descrição.</p>}</div>
           <div className="flex shrink-0 gap-2"><Button size="sm" variant="outline" onClick={() => startEdit(category)}><Pencil className="mr-2 h-3.5 w-3.5" />Editar</Button><AlertDialog><AlertDialogTrigger asChild><Button size="sm" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"><Trash2 className="mr-2 h-3.5 w-3.5" />Excluir</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Excluir categoria?</AlertDialogTitle><AlertDialogDescription>Esta ação só será concluída se a categoria não estiver vinculada a nenhum item do catálogo.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction disabled={deleting} onClick={() => onDelete(category.id)} className="bg-red-700 hover:bg-red-800">{deleting ? "Excluindo…" : "Excluir categoria"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div>
         </div>)}
-      </div> : <p className="py-6 text-center text-sm text-slate-500">Ainda não há categorias cadastradas.</p>}
+      </div> : <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center"><p className="text-sm font-medium text-slate-700">Ainda não há categorias cadastradas.</p><p className="mt-1 text-xs text-slate-500">Comece criando um agrupamento para facilitar a busca e a composição dos orçamentos.</p></div>}
     </CardContent>
   </Card>;
 }

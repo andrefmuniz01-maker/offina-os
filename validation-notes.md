@@ -117,3 +117,15 @@ O cliente agora percorre uma jornada de três etapas: contato, veículo e necess
 ## 26/08/2026 — Visualização pública de orçamento
 
 A proposta pública agora separa revisão, decisão e próximo passo, apresenta itens e validade de forma mais clara e exige uma confirmação explícita antes de aprovar ou recusar. O link continua sem expor custos internos e preserva a decisão pública existente. TypeScript e a suíte completa aprovaram 55 arquivos e 182 testes Vitest.
+
+## 26/08/2026 — Categorias do catálogo
+
+Os cadastros de categorias agora evidenciam cobertura de produto e serviço, separam o novo agrupamento do conteúdo persistido e oferecem vazio orientado à ação. As operações de criar, editar e excluir preservam a validação por tenant e as confirmações existentes. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 56 arquivos e 183 testes Vitest.
+
+## 26/08/2026 — Equipe e permissões
+
+A gestão de equipe agora diferencia membros ativos, administradores e acessos desativados, descreve o alcance de cada papel e identifica o proprietário primário protegido. Convites e alterações continuam executados pelo servidor. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 57 arquivos e 184 testes Vitest.
+
+## 26/08/2026 — Revisão transversal de acessibilidade
+
+A navegação ganhou salto direto para o conteúdo principal, foco visível global, seleção com contraste, redução de movimento e controle de redimensionamento lateral por teclado. A navegação principal passou a ter marco semântico e as telas prioritárias continuaram estáveis em desktop e mobile. TypeScript e a suíte completa aprovaram 58 arquivos e 185 testes Vitest.

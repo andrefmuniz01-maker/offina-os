@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { startLogin } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
+import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -99,22 +100,23 @@ export default function DashboardLayout({
         } as CSSProperties
       }
     >
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} menuItems={menuItems} workspaceName={workspaceName}>
-        {children}
-      </DashboardLayoutContent>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-slate-950 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white">Pular para o conteúdo principal</a>
+      <DashboardLayoutContent sidebarWidth={sidebarWidth} setSidebarWidth={setSidebarWidth} menuItems={menuItems} workspaceName={workspaceName}>{children}</DashboardLayoutContent>
     </SidebarProvider>
   );
 }
 
 type DashboardLayoutContentProps = {
   children: React.ReactNode;
-  setSidebarWidth: (width: number) => void;
+  sidebarWidth: number;
+  setSidebarWidth: React.Dispatch<React.SetStateAction<number>>;
   menuItems: DashboardMenuItem[];
   workspaceName: string;
 };
 
 function DashboardLayoutContent({
   children,
+  sidebarWidth,
   setSidebarWidth,
   menuItems,
   workspaceName,
@@ -177,7 +179,7 @@ function DashboardLayoutContent({
               <button
                 onClick={toggleSidebar}
                 className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                aria-label="Alternar navegação"
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
@@ -192,7 +194,7 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+            <nav aria-label="Navegação principal"><SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
                 const isActive = location === item.path;
                 return (
@@ -212,7 +214,7 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
+            </SidebarMenu></nav>
           </SidebarContent>
 
           <SidebarFooter className="p-3">
@@ -246,11 +248,18 @@ function DashboardLayoutContent({
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+        <button
+          type="button"
+          aria-label="Redimensionar navegação lateral"
+          title="Use as setas esquerda e direita para redimensionar"
+          className={`absolute top-0 right-0 h-full w-2 cursor-col-resize border-0 bg-transparent hover:bg-primary/20 focus-visible:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
+          }}
+          onKeyDown={event => {
+            const nextWidth = getSidebarResizeWidth(sidebarWidth, event.key, MIN_WIDTH, MAX_WIDTH);
+            if (nextWidth !== sidebarWidth) { event.preventDefault(); setSidebarWidth(nextWidth); }
           }}
           style={{ zIndex: 50 }}
         />
@@ -271,7 +280,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main id="main-content" tabIndex={-1} className="flex-1 p-4 focus:outline-none">{children}</main>
       </SidebarInset>
     </>
   );
