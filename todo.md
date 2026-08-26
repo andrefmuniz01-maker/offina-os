@@ -196,3 +196,4 @@
 - [x] Impedir rebaixamento ou desativação do proprietário primário nas mutações internas de equipe.
 - [x] Bloquear leitura pública e expiração de orçamento quando o tenant estiver suspenso ou inativo.
 - [x] Gerar chaves de armazenamento não enumeráveis para novos anexos de solicitações e ordens de serviço.
+- [x] Tornar condicionais as atualizações de descontos e totais de orçamento antes da auditoria.

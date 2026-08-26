@@ -30,8 +30,8 @@ function chain(result: unknown) {
   return query;
 }
 
-function buildDb(selectResults: unknown[]) {
-  const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) }));
+function buildDb(selectResults: unknown[], updateResults: unknown[] = []) {
+  const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) }));
   const tx = { update };
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
@@ -89,5 +89,13 @@ describe("quotes.applyDiscounts — integração tRPC simulada", () => {
 
     await expect(caller.applyDiscounts({ tenantId: 4, quoteId: 999, items: [{ quoteItemId: 301, discount: 0 }] })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("interrompe a transação e não audita se outro usuário alterar descontos antes da gravação", async () => {
+    mocks.db = buildDb([[quote], items, [settings]], [[{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(createContext());
+
+    await expect(caller.applyDiscounts({ tenantId: 4, quoteId: 81, items: [{ quoteItemId: 301, discount: 10 }, { quoteItemId: 302, discount: 0 }] })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });

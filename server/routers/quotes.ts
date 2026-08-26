@@ -414,8 +414,12 @@ export const quoteRouter = router({
     if (violation === "discount_limit") throw new TRPCError({ code: "FORBIDDEN", message: "O desconto solicitado ultrapassa o limite permitido para seu perfil." });
     if (violation === "minimum_margin") throw new TRPCError({ code: "BAD_REQUEST", message: `A margem estimada ficaria abaixo do mínimo de ${minimumMargin.toFixed(2)}%. Um gestor financeiro deve informar uma justificativa para autorizar a exceção.` });
     await db.transaction(async tx => {
-      for (const item of savedItems) await tx.update(quoteItems).set({ discount: (discounts.get(item.id) ?? 0).toFixed(2) }).where(and(eq(quoteItems.id, item.id), eq(quoteItems.tenantId, input.tenantId)));
-      await tx.update(quotes).set({ subtotal: pricing.subtotal.toFixed(2), discountTotal: pricing.discountTotal.toFixed(2), total: pricing.total.toFixed(2), estimatedCostTotal: pricing.totalCost.toFixed(2), estimatedMarginPercent: pricing.marginPercent.toFixed(2) }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, input.tenantId)));
+      for (const item of savedItems) {
+        const itemUpdate = await tx.update(quoteItems).set({ discount: (discounts.get(item.id) ?? 0).toFixed(2) }).where(and(eq(quoteItems.id, item.id), eq(quoteItems.tenantId, input.tenantId), eq(quoteItems.discount, item.discount)));
+        if (!Number(itemUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Os descontos foram alterados por outro usuário. Atualize o orçamento e tente novamente." });
+      }
+      const quoteUpdate = await tx.update(quotes).set({ subtotal: pricing.subtotal.toFixed(2), discountTotal: pricing.discountTotal.toFixed(2), total: pricing.total.toFixed(2), estimatedCostTotal: pricing.totalCost.toFixed(2), estimatedMarginPercent: pricing.marginPercent.toFixed(2) }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, input.tenantId), eq(quotes.status, quote.status), eq(quotes.total, quote.total), eq(quotes.discountTotal, quote.discountTotal), eq(quotes.estimatedMarginPercent, quote.estimatedMarginPercent)));
+      if (!Number(quoteUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Os totais do orçamento foram alterados por outro usuário. Atualize o orçamento e tente novamente." });
     });
     const previousDiscounts = savedItems.map(item => ({ quoteItemId: item.id, discount: Number(item.discount) }));
     const nextDiscounts = savedItems.map(item => ({ quoteItemId: item.id, discount: discounts.get(item.id) ?? 0 }));
