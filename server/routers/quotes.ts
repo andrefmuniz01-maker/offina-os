@@ -260,6 +260,8 @@ export const quoteRequestRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "quotes.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const request = (await db.select({ id: quoteRequests.id }).from(quoteRequests).where(and(eq(quoteRequests.id, input.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId))).limit(1))[0];
+    if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Solicitação não encontrada nesta oficina." });
     return db.select().from(quoteRequestEvents).where(and(eq(quoteRequestEvents.tenantId, input.tenantId), eq(quoteRequestEvents.quoteRequestId, input.quoteRequestId))).orderBy(desc(quoteRequestEvents.createdAt));
   }),
 

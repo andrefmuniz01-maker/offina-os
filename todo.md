@@ -141,3 +141,4 @@
 - [x] Cobrir auditoria de edição e bloqueio de exclusão referenciada também para categorias de serviço.
 - [x] Registrar composição anterior e posterior ao alterar os produtos vinculados a um serviço por tenant.
 - [x] Registrar corretamente a remoção de responsável no estado posterior auditado de uma solicitação.
+- [x] Validar explicitamente a solicitação no tenant antes de consultar seu histórico de eventos.

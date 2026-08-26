@@ -110,6 +110,21 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
     ]));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote_request.updated", entityId: 91, before: { status: "in_analysis", assignedToUserId: 19 }, after: { status: "in_analysis", assignedToUserId: null } }));
   });
+
+  it("bloqueia histórico de solicitação que não pertence ao tenant", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.history({ tenantId: 4, quoteRequestId: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("retorna eventos somente depois de confirmar a solicitação do tenant", async () => {
+    const event = { id: 301, tenantId: 4, quoteRequestId: 91, type: "status_changed" };
+    mocks.db = buildDb([[{ id: 91 }], [event]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.history({ tenantId: 4, quoteRequestId: 91 })).resolves.toEqual([event]);
+  });
 });
 
 describe("quoteRequests.submitPublic — disponibilidade da oficina", () => {
