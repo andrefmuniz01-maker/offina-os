@@ -126,7 +126,11 @@
 - [x] Registrar na auditoria os dados operacionais do agendamento e da OS criados a partir de orçamento aprovado.
 - [x] Registrar fornecedor, quantidade e produtos de pedidos de compra na auditoria sem expor custos unitários.
 - [x] Permitir renomear categorias por tenant e impedir exclusão quando ainda houver produtos ou serviços vinculados.
-- [ ] Permitir selecionar categorias por tenant ao cadastrar produtos e serviços no fluxo operacional.
+- [x] Permitir selecionar categorias por tenant ao cadastrar produtos e serviços no fluxo operacional.
 - [x] Exibir carregamento, erro e vazio das categorias na rota de cadastro por categoria, sem confundir falha com ausência de opções.
 - [x] Cobrir associação bem-sucedida de categoria também ao cadastrar serviço por tenant.
-- [ ] Validar em uma oficina ativa a criação de produto e serviço com categoria pela rota de cadastro operacional.
+- [x] Validar em uma oficina ativa a criação de produto e serviço com categoria pela rota de cadastro operacional.
+- [x] Criar a oficina real Ruidão Performance com identificador público autorizado e confirmar o vínculo administrativo.
+- [x] Habilitar o navegador pessoal autorizado para concluir a criação e validação real da oficina.
+- [x] Cadastrar itens explicitamente identificados como demonstração para validar o vínculo de categorias na primeira oficina.
+- [x] Exibir e confirmar na interface a categoria persistida em produtos e serviços cadastrados pelo fluxo operacional.

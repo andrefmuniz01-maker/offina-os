@@ -223,9 +223,9 @@ export const catalogRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const filter = input.search ? and(eq(products.tenantId, input.tenantId), or(like(products.name, `%${input.search}%`), like(products.sku, `%${input.search}%`))) : eq(products.tenantId, input.tenantId);
-      const rows = await db.select({ product: products, balance: inventoryBalances }).from(products).leftJoin(inventoryBalances, and(eq(inventoryBalances.tenantId, products.tenantId), eq(inventoryBalances.productId, products.id))).where(filter).orderBy(products.name).limit(pagination(input).limit).offset(pagination(input).offset);
+      const rows = await db.select({ product: products, balance: inventoryBalances, category: productCategories }).from(products).leftJoin(inventoryBalances, and(eq(inventoryBalances.tenantId, products.tenantId), eq(inventoryBalances.productId, products.id))).leftJoin(productCategories, and(eq(productCategories.id, products.categoryId), eq(productCategories.tenantId, products.tenantId))).where(filter).orderBy(products.name).limit(pagination(input).limit).offset(pagination(input).offset);
       const financial = hasPermission(access, "financial.view");
-      return rows.map(({ product, balance }) => ({ ...visibleProduct(product, financial), physicalQuantity: balance?.physicalQuantity ?? "0", reservedQuantity: balance?.reservedQuantity ?? "0" }));
+      return rows.map(({ product, balance, category }) => ({ ...visibleProduct(product, financial), physicalQuantity: balance?.physicalQuantity ?? "0", reservedQuantity: balance?.reservedQuantity ?? "0", categoryName: category?.name ?? null }));
     }),
     create: protectedProcedure.input(tenantIdInput.extend({
       categoryId: z.number().int().positive().optional(), supplierId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), sku: z.string().trim().max(96).optional(), brand: z.string().trim().max(100).optional(), unit: z.string().trim().min(1).max(16).default("un"), currentCost: decimalInput.default(0), salePrice: decimalInput.default(0), desiredMarginPercent: decimalInput.max(99.99).default(0), minStock: decimalInput.default(0), maxStock: decimalInput.optional(), location: z.string().trim().max(120).optional(), barcode: z.string().trim().max(96).optional(), description: z.string().max(4000).optional(),
@@ -276,11 +276,11 @@ export const catalogRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const filter = input.search ? and(eq(services.tenantId, input.tenantId), like(services.name, `%${input.search}%`)) : eq(services.tenantId, input.tenantId);
-      const rows = await db.select().from(services).where(filter).orderBy(services.name).limit(pagination(input).limit).offset(pagination(input).offset);
-      return rows.map(service => {
-        if (hasPermission(access, "financial.view")) return service;
+      const rows = await db.select({ service: services, category: serviceCategories }).from(services).leftJoin(serviceCategories, and(eq(serviceCategories.id, services.categoryId), eq(serviceCategories.tenantId, services.tenantId))).where(filter).orderBy(services.name).limit(pagination(input).limit).offset(pagination(input).offset);
+      return rows.map(({ service, category }) => {
+        if (hasPermission(access, "financial.view")) return { ...service, categoryName: category?.name ?? null };
         const { estimatedCost, desiredMarginPercent, ...safeService } = service;
-        return safeService;
+        return { ...safeService, categoryName: category?.name ?? null };
       });
     }),
     create: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive().optional(), name: z.string().trim().min(2).max(180), description: z.string().max(4000).optional(), estimatedMinutes: z.number().int().min(5).max(1440).default(60), laborPrice: decimalInput.default(0), estimatedCost: decimalInput.default(0), desiredMarginPercent: decimalInput.max(99.99).default(0), quoteQuestions: z.array(z.object({ id: z.string().min(1).max(64), label: z.string().min(1).max(200), required: z.boolean().optional(), type: z.string().max(40).optional(), options: z.array(z.string().max(120)).max(20).optional() })).max(30).optional() }))
