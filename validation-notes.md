@@ -161,3 +161,7 @@ A revisão dos roteadores de catálogo, estoque, compras, orçamento e OS confir
 ## 26/08/2026 — Estado de falha de configurações
 
 A tela de Configurações agora separa carregamento, ausência de vínculo e falha de consulta. Caso a oficina, seus dados ou branding não carreguem, o operador vê uma explicação objetiva e uma ação para refazer as consultas sem aplicar alterações. O estado normal foi revisado em desktop e mobile após a inclusão; TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.
+
+## 26/08/2026 — Página pública indisponível
+
+Rotas públicas inexistentes ou links não reconhecidos agora apresentam uma página em português do Brasil, sem gradientes, pulsos ou texto genérico. O estado explica as causas prováveis e oferece um único retorno para a visão geral. A versão móvel foi revisada após a alteração; TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.

@@ -229,3 +229,4 @@
 - [ ] Registrar evidências explícitas de carregamento, vazio e erro nas rotas principais.
 - [ ] Executar revisão documentada de foco visível, labels, landmarks e navegação por teclado nos fluxos principais.
 - [x] Exibir erro explícito ao carregar dados ou identidade na tela de configurações da oficina.
+- [x] Substituir a página 404 genérica em inglês por um estado público objetivo em português do Brasil.
