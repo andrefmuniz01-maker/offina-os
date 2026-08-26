@@ -248,10 +248,10 @@ export const quoteRequestRouter = router({
     }
     await db.transaction(async tx => {
       const nextAssignedToUserId = input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId;
-      const updateWhere = request.status === input.status
-        ? and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId))
-        : and(eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId), eq(quoteRequests.status, request.status));
-      const updated = await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: nextAssignedToUserId }).where(updateWhere);
+      const updateConditions = [eq(quoteRequests.id, request.id), eq(quoteRequests.tenantId, input.tenantId)];
+      if (request.status !== input.status) updateConditions.push(eq(quoteRequests.status, request.status));
+      if (input.assignedToUserId !== undefined) updateConditions.push(request.assignedToUserId === null ? isNull(quoteRequests.assignedToUserId) : eq(quoteRequests.assignedToUserId, request.assignedToUserId));
+      const updated = await tx.update(quoteRequests).set({ status: input.status, assignedToUserId: nextAssignedToUserId }).where(and(...updateConditions));
       if (!Number(updated[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Esta solicitação foi alterada em outra sessão. Atualize a fila para consultar o estado atual." });
       if (request.status !== input.status) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "status_changed", actorUserId: ctx.user.id, metadata: { from: request.status, to: input.status } });
       if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId, assignedToUserName: assignedUserName } });

@@ -121,6 +121,16 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("bloqueia trilha e auditoria quando outra sessão já alterou o responsável", async () => {
+    mocks.db = buildDb([[request], [{ userId: 19, name: "Ana Técnica" }]], [[{ affectedRows: 0 }]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.updateStatus({ tenantId: 4, quoteRequestId: 91, status: "in_analysis", assignedToUserId: 19 })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("bloqueia histórico de solicitação que não pertence ao tenant", async () => {
     mocks.db = buildDb([[]]);
     const caller = quoteRequestRouter.createCaller(createContext());
