@@ -97,3 +97,7 @@ Agenda e pátio passaram a expor pulso operacional por período, capacidade atri
 ## 26/08/2026 — Gestão de estoque
 
 O estoque agora destaca criticidade, itens indisponíveis, reservas e necessidades de reposição no período escolhido. Produtos exibem situação operacional sem revelar custos, enquanto a previsão reforça quantidade sugerida e vínculos com agenda e OS. A tela foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 50 arquivos e 177 testes Vitest.
+
+## 26/08/2026 — Clientes e veículos
+
+A jornada de atendimento passou a destacar a seleção segura de cliente, veículos vinculados e a próxima ação para avançar no histórico operacional. A interface conecta cadastro, consulta de veículos, histórico de OS e pós-venda em um mesmo contexto do tenant. A tela foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 51 arquivos e 178 testes Vitest.
