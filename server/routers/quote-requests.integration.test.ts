@@ -31,10 +31,10 @@ function chain(result: unknown) {
   return query;
 }
 
-function buildDb(selectResults: unknown[]) {
+function buildDb(selectResults: unknown[], updateResults: unknown[] = []) {
   const inserts: unknown[] = [];
   const tx = {
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 1 }]; }) })),
   };
   return {
@@ -109,6 +109,16 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
       expect.objectContaining({ tenantId: 4, quoteRequestId: 91, type: "assigned", actorUserId: 7, metadata: { assignedToUserId: null, assignedToUserName: null } }),
     ]));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote_request.updated", entityId: 91, before: { status: "in_analysis", assignedToUserId: 19 }, after: { status: "in_analysis", assignedToUserId: null } }));
+  });
+
+  it("bloqueia eventos e auditoria quando outra sessão já mudou o status", async () => {
+    mocks.db = buildDb([[request]], [[{ affectedRows: 0 }]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.updateStatus({ tenantId: 4, quoteRequestId: 91, status: "in_quoting" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 
   it("bloqueia histórico de solicitação que não pertence ao tenant", async () => {
