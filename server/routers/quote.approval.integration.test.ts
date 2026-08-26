@@ -63,6 +63,16 @@ describe("quotes.publicDecision — integração tRPC simulada", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("bloqueia a reserva quando outra aprovação já consumiu o saldo disponível", async () => {
+    mocks.db = database([[{ quote }]], [items, [{ id: 7, tenantId: 4, productId: 55, physicalQuantity: "8.000", reservedQuantity: "2.000" }]], [[{ affectedRows: 1 }], [{ affectedRows: 0 }]]);
+    const caller = quoteRouter.createCaller(publicContext);
+
+    await expect(caller.publicDecision({ token: "token-publico", decision: "approved" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
   it("não processa decisão por link vencido", async () => {
     mocks.db = database([[{ quote: { ...quote, publicTokenExpiresAt: new Date("2026-01-01T00:00:00.000Z") } }]], []);
     const caller = quoteRouter.createCaller(publicContext);

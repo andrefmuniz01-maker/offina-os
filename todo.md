@@ -168,3 +168,4 @@
 - [x] Impedir alterações concorrentes e auditorias contraditórias de papel ou ativação de membros do tenant.
 - [x] Impedir auditoria contraditória em alterações concorrentes de ativação, plano ou status de tenant pelo Super Admin.
 - [x] Reforçar o vínculo de status entre orçamento e solicitação durante envios e decisões comerciais.
+- [x] Tornar atômica a reserva de estoque em aprovação pública para impedir sobre-reserva concorrente.

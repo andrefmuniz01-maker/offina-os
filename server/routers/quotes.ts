@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -465,8 +465,9 @@ export const quoteRouter = router({
       if (plan.some(item => !item.reservable)) throw new TRPCError({ code: "CONFLICT", message: "Um ou mais itens não possuem disponibilidade para reserva. Fale com a oficina." });
       for (const item of plan) {
         const balance = balances.find(candidate => candidate.productId === item.productId)!;
+        const balanceUpdate = await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity.toFixed(3)}` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, quote.tenantId), gte(sql`${inventoryBalances.physicalQuantity} - ${inventoryBalances.reservedQuantity}`, item.quantity.toFixed(3))));
+        if (!Number(balanceUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "O saldo foi reservado em outra aprovação. Atualize o orçamento e tente novamente." });
         await tx.insert(inventoryReservations).values({ tenantId: quote.tenantId, productId: item.productId, quoteId: quote.id, quantity: item.quantity.toFixed(3) });
-        await tx.update(inventoryBalances).set({ reservedQuantity: sql`${inventoryBalances.reservedQuantity} + ${item.quantity.toFixed(3)}` }).where(and(eq(inventoryBalances.id, balance.id), eq(inventoryBalances.tenantId, quote.tenantId)));
         await tx.insert(inventoryMovements).values({ tenantId: quote.tenantId, productId: item.productId, type: "reservation", quantity: item.quantity.toFixed(3), physicalDelta: "0", reservedDelta: item.quantity.toFixed(3), referenceType: "quote", referenceId: quote.id, notes: "Reserva criada por aprovação do orçamento." });
       }
       await tx.insert(quoteEvents).values({ tenantId: quote.tenantId, quoteId: quote.id, type: "approved", metadata: { source: "public_link" } });
