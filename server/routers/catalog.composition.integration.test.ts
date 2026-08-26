@@ -39,6 +39,7 @@ function buildDb(selectResults: unknown[], insertIds: number[] = []) {
   const updates: unknown[] = [];
   const deletes: unknown[] = [];
   const tx = {
+    select: vi.fn(() => chain(selectResults.shift() ?? [])),
     delete: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { transactionInserts.push(value); return [{ insertId: insertIds.shift() ?? 1 }]; }) })),
   };
@@ -79,11 +80,11 @@ describe("catalog — composição segura por tenant", () => {
   });
 
   it("audita a atualização de componentes válidos de um serviço", async () => {
-    mocks.db = buildDb([[{ id: 81 }], [{ id: 12 }]]);
+    mocks.db = buildDb([[{ id: 81 }], [{ id: 12 }], [{ productId: 10, quantity: "1.000", required: false }]]);
     const caller = catalogRouter.createCaller(createContext());
 
     await expect(caller.services.setProducts({ tenantId: 4, serviceId: 81, items: [{ productId: 12, quantity: 2, required: true }] })).resolves.toEqual({ success: true });
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "service.products_updated", entityType: "service", entityId: 81, after: { items: [{ productId: 12, quantity: 2, required: true }] } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "service.products_updated", entityType: "service", entityId: 81, before: { items: [{ productId: 10, quantity: 1, required: false }] }, after: { items: [{ productId: 12, quantity: 2, required: true }] } }));
   });
 
   it("bloqueia a criação de kit com componente de outra oficina", async () => {

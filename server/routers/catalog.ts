@@ -324,11 +324,13 @@ export const catalogRouter = router({
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Serviço não encontrado nesta oficina." });
       const productRows = await db.select({ id: products.id }).from(products).where(and(eq(products.tenantId, input.tenantId), inArray(products.id, input.items.map(item => item.productId))));
       if (productRows.length !== input.items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Um ou mais produtos não pertencem a esta oficina." });
-      await db.transaction(async (tx) => {
+      const composition = await db.transaction(async (tx) => {
+        const previous = await tx.select().from(serviceProducts).where(and(eq(serviceProducts.tenantId, input.tenantId), eq(serviceProducts.serviceId, input.serviceId)));
         await tx.delete(serviceProducts).where(and(eq(serviceProducts.tenantId, input.tenantId), eq(serviceProducts.serviceId, input.serviceId)));
         await tx.insert(serviceProducts).values(input.items.map(item => ({ tenantId: input.tenantId, serviceId: input.serviceId, productId: item.productId, quantity: item.quantity.toFixed(3), required: item.required })));
+        return { before: previous.map(item => ({ productId: item.productId, quantity: Number(item.quantity), required: item.required })), after: input.items.map(item => ({ productId: item.productId, quantity: item.quantity, required: item.required })) };
       });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.products_updated", entityType: "service", entityId: input.serviceId, after: { items: input.items.map(item => ({ productId: item.productId, quantity: item.quantity, required: item.required })) } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.products_updated", entityType: "service", entityId: input.serviceId, before: { items: composition.before }, after: { items: composition.after } });
       return { success: true };
     }),
   }),
