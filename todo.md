@@ -170,7 +170,7 @@
 - [x] Reforçar o vínculo de status entre orçamento e solicitação durante envios e decisões comerciais.
 - [x] Tornar atômica a reserva de estoque em aprovação pública para impedir sobre-reserva concorrente.
 - [x] Validar todos os produtos de um pedido de compra no tenant antes de criar seus itens.
-- [ ] Ampliar busca, filtros, paginação e estados de interface nas filas operacionais priorizadas.
+- [x] Ampliar busca, filtros, paginação e estados de interface nas filas operacionais priorizadas.
 - [x] Adicionar busca por cliente, WhatsApp, placa ou veículo à fila paginada de solicitações.
 - [x] Adicionar busca por cliente, placa ou veículo à fila paginada de orçamentos.
 - [x] Adicionar busca por número ou fornecedor à fila paginada de pedidos de compra.
