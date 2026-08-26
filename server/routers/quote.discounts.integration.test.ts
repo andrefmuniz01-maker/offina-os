@@ -70,7 +70,9 @@ describe("quotes.applyDiscounts — integração tRPC simulada", () => {
 
     expect(result).toEqual({ subtotal: 250, discountTotal: 10, total: 240, totalCost: 140, marginPercent: 41.67 });
     expect(mocks.db.transaction).toHaveBeenCalledOnce();
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote.discounts_updated", entityId: 81 }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote.discounts_updated", entityId: 81, before: expect.objectContaining({ discounts: [{ quoteItemId: 301, discount: 0 }, { quoteItemId: 302, discount: 0 }] }), after: expect.objectContaining({ discounts: [{ quoteItemId: 301, discount: 10 }, { quoteItemId: 302, discount: 0 }] }) }));
+    const auditPayload = mocks.audit.mock.calls[0][0];
+    expect(JSON.stringify(auditPayload)).not.toContain("unitCost");
   });
 
   it("bloqueia desconto acima da autonomia do atendente antes de iniciar a transação", async () => {

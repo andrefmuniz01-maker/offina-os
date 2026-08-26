@@ -388,7 +388,9 @@ export const quoteRouter = router({
       for (const item of savedItems) await tx.update(quoteItems).set({ discount: (discounts.get(item.id) ?? 0).toFixed(2) }).where(and(eq(quoteItems.id, item.id), eq(quoteItems.tenantId, input.tenantId)));
       await tx.update(quotes).set({ subtotal: pricing.subtotal.toFixed(2), discountTotal: pricing.discountTotal.toFixed(2), total: pricing.total.toFixed(2), estimatedCostTotal: pricing.totalCost.toFixed(2), estimatedMarginPercent: pricing.marginPercent.toFixed(2) }).where(and(eq(quotes.id, quote.id), eq(quotes.tenantId, input.tenantId)));
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.discounts_updated", entityType: "quote", entityId: quote.id, before: { total: quote.total, discountTotal: quote.discountTotal, marginPercent: quote.estimatedMarginPercent }, after: { total: pricing.total, discountTotal: pricing.discountTotal, marginPercent: pricing.marginPercent, overrideReason: input.overrideReason ?? null } });
+    const previousDiscounts = savedItems.map(item => ({ quoteItemId: item.id, discount: Number(item.discount) }));
+    const nextDiscounts = savedItems.map(item => ({ quoteItemId: item.id, discount: discounts.get(item.id) ?? 0 }));
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote.discounts_updated", entityType: "quote", entityId: quote.id, before: { total: quote.total, discountTotal: quote.discountTotal, marginPercent: quote.estimatedMarginPercent, discounts: previousDiscounts }, after: { total: pricing.total, discountTotal: pricing.discountTotal, marginPercent: pricing.marginPercent, discounts: nextDiscounts, overrideReason: input.overrideReason ?? null } });
     return pricing;
   }),
 
