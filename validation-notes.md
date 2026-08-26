@@ -93,3 +93,7 @@ A fila de orçamentos agora evidencia propostas em preparação, respostas aguar
 ## 26/08/2026 — Agenda e pátio operacional
 
 Agenda e pátio passaram a expor pulso operacional por período, capacidade atribuída, OS em execução e bloqueios de avanço. Os cards da agenda e as colunas do pátio agora mostram próxima ação contextual, mantendo a rolagem horizontal acessível no mobile. A validação visual ocorreu em desktop e mobile; TypeScript e a suíte completa aprovaram 49 arquivos e 175 testes Vitest.
+
+## 26/08/2026 — Gestão de estoque
+
+O estoque agora destaca criticidade, itens indisponíveis, reservas e necessidades de reposição no período escolhido. Produtos exibem situação operacional sem revelar custos, enquanto a previsão reforça quantidade sugerida e vínculos com agenda e OS. A tela foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 50 arquivos e 177 testes Vitest.
