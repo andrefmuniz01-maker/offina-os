@@ -212,3 +212,5 @@
 - [x] Reestruturar catálogo e cadastros para acelerar descoberta, composição e decisão operacional.
 - [x] Reestruturar equipe e permissões para clareza de papéis, acessos e próximas ações administrativas.
 - [x] Executar revisão transversal de acessibilidade, teclado, foco e estados prioritários após as evoluções de interface.
+- [x] Reestruturar Configurações da Oficina em uma interface objetiva, sóbria e orientada a tarefas.
+- [x] Remover emojis e ornamentos que reforçam uma aparência genérica das interfaces prioritárias.

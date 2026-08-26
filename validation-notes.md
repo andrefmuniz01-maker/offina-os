@@ -129,3 +129,7 @@ A gestão de equipe agora diferencia membros ativos, administradores e acessos d
 ## 26/08/2026 — Revisão transversal de acessibilidade
 
 A navegação ganhou salto direto para o conteúdo principal, foco visível global, seleção com contraste, redução de movimento e controle de redimensionamento lateral por teclado. A navegação principal passou a ter marco semântico e as telas prioritárias continuaram estáveis em desktop e mobile. TypeScript e a suíte completa aprovaram 58 arquivos e 185 testes Vitest.
+
+## 26/08/2026 — Configurações objetivas e linguagem sóbria
+
+Configurações da Oficina foi reorganizada em seções diretas para dados, regras comerciais, mensagem e página pública, com navegação por âncoras e comandos de salvamento claros. Emojis foram removidos das fontes de cliente, mantendo ícones funcionais e uma linguagem visual mais sóbria. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 58 arquivos e 185 testes Vitest.
