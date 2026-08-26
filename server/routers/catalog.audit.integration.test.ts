@@ -31,14 +31,14 @@ function chain(result: unknown) {
   return query;
 }
 
-function buildDb(selectResults: unknown[], insertIds: number[]) {
+function buildDb(selectResults: unknown[], insertIds: number[], affectedRows = 1) {
   const tx = {
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: insertIds.shift() ?? 1 }]) })),
   };
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: insertIds.shift() ?? 1 }]) })),
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows }]) })) })),
     transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
   };
 }
@@ -104,5 +104,23 @@ describe("catalog — auditoria de criação comercial", () => {
       before: { laborPrice: "200.00", estimatedCost: "80.00", desiredMarginPercent: "30.00" },
       after: { laborPrice: 230, estimatedCost: 90, desiredMarginPercent: 35 },
     }));
+  });
+
+  it("interrompe a alteração financeira de produto se os valores forem modificados concorrentemente", async () => {
+    const product = { id: 101, tenantId: 4, currentCost: "100.00", salePrice: "150.00", desiredMarginPercent: "20.00" };
+    mocks.db = buildDb([[product], []], [], 0);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.products.updateFinancial({ tenantId: 4, productId: 101, currentCost: 120, salePrice: 180, desiredMarginPercent: 25 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("interrompe a alteração financeira de serviço se os valores forem modificados concorrentemente", async () => {
+    const service = { id: 202, tenantId: 4, estimatedMinutes: 60, estimatedCost: "80.00", laborPrice: "200.00", desiredMarginPercent: "30.00" };
+    mocks.db = buildDb([[service], []], [], 0);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.services.updateFinancial({ tenantId: 4, serviceId: 202, estimatedCost: 90, laborPrice: 230, desiredMarginPercent: 35 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });

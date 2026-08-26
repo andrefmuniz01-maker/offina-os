@@ -271,7 +271,8 @@ export const catalogRouter = router({
       if (!product) throw new TRPCError({ code: "NOT_FOUND", message: "Produto não encontrado nesta oficina." });
       const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
       const pricing = resolveSellingPrice({ cost: input.currentCost, requestedPrice: input.salePrice, desiredMarginPercent: input.desiredMarginPercent }, settings);
-      await db.update(products).set({ currentCost: input.currentCost.toFixed(2), salePrice: pricing.price.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(and(eq(products.id, input.productId), eq(products.tenantId, input.tenantId)));
+      const result = await db.update(products).set({ currentCost: input.currentCost.toFixed(2), salePrice: pricing.price.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(and(eq(products.id, input.productId), eq(products.tenantId, input.tenantId), eq(products.currentCost, product.currentCost), eq(products.salePrice, product.salePrice), eq(products.desiredMarginPercent, product.desiredMarginPercent)));
+      if (!Number(result[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Os valores financeiros foram alterados por outro usuário. Atualize o catálogo e tente novamente." });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product.financial_updated", entityType: "product", entityId: input.productId, before: { currentCost: product.currentCost, salePrice: product.salePrice, desiredMarginPercent: product.desiredMarginPercent }, after: { currentCost: input.currentCost, salePrice: pricing.price, desiredMarginPercent: pricing.targetMarginPercent } });
       return { success: true };
     }),
@@ -314,8 +315,9 @@ export const catalogRouter = router({
       const service = (await db.select().from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, input.tenantId))).limit(1))[0];
       if (!service) throw new TRPCError({ code: "NOT_FOUND", message: "Serviço não encontrado nesta oficina." });
       const settings = (await db.select().from(tenantSettings).where(eq(tenantSettings.tenantId, input.tenantId)).limit(1))[0];
-      const pricing = resolveSellingPrice({ cost: input.estimatedCost, requestedPrice: input.laborPrice, desiredMarginPercent: input.desiredMarginPercent, fallbackPrice: Number(settings?.defaultLaborHourlyRate ?? 0) * Number(service.estimatedMinutes) / 60 }, settings);
-      await db.update(services).set({ laborPrice: pricing.price.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(and(eq(services.id, input.serviceId), eq(services.tenantId, input.tenantId)));
+      const pricing = resolveSellingPrice({ cost: input.estimatedCost, requestedPrice: input.laborPrice, desiredMarginPercent: input.desiredMarginPercent }, settings);
+      const result = await db.update(services).set({ laborPrice: pricing.price.toFixed(2), estimatedCost: input.estimatedCost.toFixed(2), desiredMarginPercent: pricing.targetMarginPercent.toFixed(2) }).where(and(eq(services.id, input.serviceId), eq(services.tenantId, input.tenantId), eq(services.laborPrice, service.laborPrice), eq(services.estimatedCost, service.estimatedCost), eq(services.desiredMarginPercent, service.desiredMarginPercent)));
+      if (!Number(result[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Os valores financeiros foram alterados por outro usuário. Atualize o catálogo e tente novamente." });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service.financial_updated", entityType: "service", entityId: input.serviceId, before: { laborPrice: service.laborPrice, estimatedCost: service.estimatedCost, desiredMarginPercent: service.desiredMarginPercent }, after: { laborPrice: pricing.price, estimatedCost: input.estimatedCost, desiredMarginPercent: pricing.targetMarginPercent } });
       return { success: true };
     }),

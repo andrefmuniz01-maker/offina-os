@@ -53,3 +53,7 @@ A central de gestão de usuários foi revisada após incluir a associação de u
 ## 26/08/2026 — Relatório consolidado da plataforma
 
 O relatório global foi verificado em desktop e mobile com seleção de período, cartões de totais e tabela por oficina. A tabela usa rolagem horizontal em telas pequenas, evitando a perda de colunas; o resumo por cards continua em coluna. O conteúdo informa que os números são agregados e não abre clientes, veículos, OS ou lançamentos individuais.
+
+## 26/08/2026 — Integridade concorrente de alterações financeiras
+
+As atualizações de custo, preço e margem de produtos e serviços passaram a comparar os valores lidos com os persistidos no momento da escrita, mantendo o predicado de tenant. Se outro usuário alterar os dados antes da confirmação, a operação retorna conflito e não cria evento de auditoria. A validação completa terminou com TypeScript aprovado e 44 arquivos de teste, totalizando 158 testes Vitest aprovados.

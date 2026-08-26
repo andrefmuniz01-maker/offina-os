@@ -190,3 +190,5 @@
 - [x] Permitir ao Super Admin associar um usuário existente a um tenant com papel inicial auditável.
 - [x] Aplicar efetivamente limites de plano para membros ativos e clientes por tenant.
 - [x] Implementar relatórios consolidados de uso e desempenho por tenant no Painel de Super Admin.
+- [ ] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
+- [x] Tornar condicionais as alterações financeiras de produtos e serviços antes de registrar auditoria.
