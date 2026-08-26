@@ -230,3 +230,4 @@
 - [ ] Executar revisão documentada de foco visível, labels, landmarks e navegação por teclado nos fluxos principais.
 - [x] Exibir erro explícito ao carregar dados ou identidade na tela de configurações da oficina.
 - [x] Substituir a página 404 genérica em inglês por um estado público objetivo em português do Brasil.
+- [ ] Criar e sincronizar um repositório privado no GitHub para o código-fonte do OficinaOS.
