@@ -25,7 +25,7 @@
 - [x] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
 - [x] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
 - [x] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
-- [ ] Implementar busca, filtros, paginação e estados vazios em módulos operacionais.
+- [x] Implementar busca, filtros, paginação e estados vazios em módulos operacionais.
 - [ ] Implementar notificações internas por evento e preferências por usuário; preparar a entrega por e-mail mediante configuração.
 - [ ] Implementar rotinas periódicas idempotentes para recalcular necessidade de estoque e identificar orçamentos sem resposta, sem enviar lembretes automaticamente.
 - [ ] Preparar estrutura para planos, assinaturas, limites, WhatsApp oficial e sugestões futuras limitadas aos dados e permissões do tenant.
@@ -36,7 +36,7 @@
 - [ ] Cobrir explicitamente em auditoria as alterações de preço/custo e os demais eventos críticos ainda não registrados.
 - [ ] Criar e ativar após publicação o job periódico, persistindo seu identificador e evitando lembretes automáticos.
 - [ ] Executar uma revisão verificável de estados de carregamento, erro e acessibilidade de teclado/foco sem erros pendentes no runtime.
-- [ ] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
+- [x] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
 - [x] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
 - [x] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
 - [x] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
@@ -223,3 +223,8 @@
 - [x] Auditar a confirmação de leitura de notificações sem expor conteúdo operacional na trilha global.
 - [x] Uniformizar painéis de prioridade em linguagem neutra e reduzir elementos decorativos nas telas diárias.
 - [x] Traduzir a tela de autenticação do painel para português do Brasil.
+- [x] Executar uma matriz verificável por roteador e mutação comercial para confirmar `tenantId` e IDs relacionados.
+- [x] Inventariar eventos críticos por domínio e comprovar a cobertura de auditoria antes/depois.
+- [ ] Validar por papel um fluxo principal de atendente, mecânico e dono em desktop e mobile.
+- [ ] Registrar evidências explícitas de carregamento, vazio e erro nas rotas principais.
+- [ ] Executar revisão documentada de foco visível, labels, landmarks e navegação por teclado nos fluxos principais.

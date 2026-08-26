@@ -153,3 +153,7 @@ A confirmação de leitura passou a localizar a notificação pelo tenant e pelo
 ## 26/08/2026 — Painéis operacionais em linguagem neutra
 
 Os painéis de prioridade de solicitações, agenda/pátio, estoque, financeiro e clientes passaram a usar uma superfície branca única, bordas discretas e divisão interna funcional. Gradientes, sombras e fundos temáticos foram removidos sem ocultar métricas, contexto, filtros ou próximas ações. As cinco rotas foram verificadas em desktop e mobile; os indicadores empilham naturalmente no celular sem corte observável. TypeScript e a suíte completa aprovaram 59 arquivos e 187 testes Vitest.
+
+## 26/08/2026 — Consolidação de isolamento e validação de interface
+
+A revisão dos roteadores de catálogo, estoque, compras, orçamento e OS confirmou que as operações críticas consultam a entidade-base com `tenantId`, validam IDs relacionados antes de associá-los e mantêm predicados de tenant nas escritas. As alterações financeiras, estoque, descontos, permissões, agendamento, OS e notificações relevantes contam com auditoria estruturada. A navegação global preserva salto para conteúdo, marco semântico, foco visível e redimensionamento lateral por teclado. As rotas principais foram conferidas em desktop e mobile; o console recente apresenta apenas o aviso de WebSocket do HMR de desenvolvimento, sem erro funcional atual.
