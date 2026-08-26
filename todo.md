@@ -192,3 +192,4 @@
 - [x] Implementar relatórios consolidados de uso e desempenho por tenant no Painel de Super Admin.
 - [ ] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
 - [x] Tornar condicionais as alterações financeiras de produtos e serviços antes de registrar auditoria.
+- [x] Bloquear centralmente acessos internos a tenants suspensos, incluindo Super Admin em operações do tenant.

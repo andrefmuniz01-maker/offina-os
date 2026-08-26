@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { tenantMembers, tenants, users, type TenantMember, type User } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -54,7 +54,7 @@ export async function getTenantAccess(user: User, tenantId: number): Promise<Ten
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
 
-  const tenant = (await db.select().from(tenants).where(and(eq(tenants.id, tenantId), eq(tenants.active, true))).limit(1))[0];
+  const tenant = (await db.select().from(tenants).where(and(eq(tenants.id, tenantId), eq(tenants.active, true), inArray(tenants.status, ["trial", "active"]))).limit(1))[0];
   if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada ou inativa." });
 
   const isPlatformSuperAdmin = user.platformRole === "super_admin";

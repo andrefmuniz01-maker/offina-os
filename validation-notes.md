@@ -57,3 +57,7 @@ O relatório global foi verificado em desktop e mobile com seleção de período
 ## 26/08/2026 — Integridade concorrente de alterações financeiras
 
 As atualizações de custo, preço e margem de produtos e serviços passaram a comparar os valores lidos com os persistidos no momento da escrita, mantendo o predicado de tenant. Se outro usuário alterar os dados antes da confirmação, a operação retorna conflito e não cria evento de auditoria. A validação completa terminou com TypeScript aprovado e 44 arquivos de teste, totalizando 158 testes Vitest aprovados.
+
+## 26/08/2026 — Barreira central para tenants suspensos
+
+A camada compartilhada de autorização passou a aceitar somente oficinas ativas em período de teste ou ativas comercialmente. Tenants suspensos, inativos ou marcados como inativos são rejeitados antes da consulta de vínculo, inclusive em chamadas internas feitas por Super Admin. A validação completa terminou com TypeScript aprovado e 45 arquivos de teste, totalizando 161 testes Vitest aprovados.
