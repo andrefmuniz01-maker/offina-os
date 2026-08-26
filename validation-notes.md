@@ -105,3 +105,7 @@ A jornada de atendimento passou a destacar a seleção segura de cliente, veícu
 ## 26/08/2026 — Painel financeiro
 
 O painel financeiro agora evidencia recebimentos pendentes, despesas planejadas e a próxima ação sem alterar a política de permissão nem expor valores a perfis restritos. Receitas e despesas preservam filtros, paginação e confirmações manuais. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 52 arquivos e 179 testes Vitest.
+
+## 26/08/2026 — Gestão de compras
+
+A gestão de compras agora evidencia pedidos em aberto, recebimentos parciais e a próxima ação de reposição. O recebimento segue como a única operação que altera o saldo físico, enquanto filtros, paginação e escopo por tenant foram preservados. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 53 arquivos e 180 testes Vitest.
