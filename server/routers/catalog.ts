@@ -137,6 +137,29 @@ export const catalogRouter = router({
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product_category.created", entityType: "product_category", entityId: id, after: { name: input.name, description: input.description ?? null } });
       return { id };
     }),
+    updateProduct: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive(), name: z.string().trim().min(2).max(120), description: z.string().max(1000).nullable().optional() })).mutation(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const previous = (await db.select().from(productCategories).where(and(eq(productCategories.id, input.categoryId), eq(productCategories.tenantId, input.tenantId))).limit(1))[0];
+      if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Categoria de produto não encontrada nesta oficina." });
+      const changes = { name: input.name, description: input.description ?? null };
+      await db.update(productCategories).set(changes).where(and(eq(productCategories.id, input.categoryId), eq(productCategories.tenantId, input.tenantId)));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product_category.updated", entityType: "product_category", entityId: input.categoryId, before: { name: previous.name, description: previous.description }, after: changes });
+      return { success: true };
+    }),
+    deleteProduct: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const category = (await db.select().from(productCategories).where(and(eq(productCategories.id, input.categoryId), eq(productCategories.tenantId, input.tenantId))).limit(1))[0];
+      if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Categoria de produto não encontrada nesta oficina." });
+      const product = (await db.select({ id: products.id }).from(products).where(and(eq(products.tenantId, input.tenantId), eq(products.categoryId, input.categoryId))).limit(1))[0];
+      if (product) throw new TRPCError({ code: "CONFLICT", message: "Não é possível excluir uma categoria vinculada a produtos." });
+      await db.delete(productCategories).where(and(eq(productCategories.id, input.categoryId), eq(productCategories.tenantId, input.tenantId)));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "product_category.deleted", entityType: "product_category", entityId: input.categoryId, before: { name: category.name, description: category.description } });
+      return { success: true };
+    }),
     listServices: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
       const db = await getDb();
@@ -151,6 +174,29 @@ export const catalogRouter = router({
       const id = Number(result[0].insertId);
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service_category.created", entityType: "service_category", entityId: id, after: { name: input.name, description: input.description ?? null } });
       return { id };
+    }),
+    updateService: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive(), name: z.string().trim().min(2).max(120), description: z.string().max(1000).nullable().optional() })).mutation(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const previous = (await db.select().from(serviceCategories).where(and(eq(serviceCategories.id, input.categoryId), eq(serviceCategories.tenantId, input.tenantId))).limit(1))[0];
+      if (!previous) throw new TRPCError({ code: "NOT_FOUND", message: "Categoria de serviço não encontrada nesta oficina." });
+      const changes = { name: input.name, description: input.description ?? null };
+      await db.update(serviceCategories).set(changes).where(and(eq(serviceCategories.id, input.categoryId), eq(serviceCategories.tenantId, input.tenantId)));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service_category.updated", entityType: "service_category", entityId: input.categoryId, before: { name: previous.name, description: previous.description }, after: changes });
+      return { success: true };
+    }),
+    deleteService: protectedProcedure.input(tenantIdInput.extend({ categoryId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await requireTenantPermission(ctx.user, input.tenantId, "catalog.manage");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const category = (await db.select().from(serviceCategories).where(and(eq(serviceCategories.id, input.categoryId), eq(serviceCategories.tenantId, input.tenantId))).limit(1))[0];
+      if (!category) throw new TRPCError({ code: "NOT_FOUND", message: "Categoria de serviço não encontrada nesta oficina." });
+      const service = (await db.select({ id: services.id }).from(services).where(and(eq(services.tenantId, input.tenantId), eq(services.categoryId, input.categoryId))).limit(1))[0];
+      if (service) throw new TRPCError({ code: "CONFLICT", message: "Não é possível excluir uma categoria vinculada a serviços." });
+      await db.delete(serviceCategories).where(and(eq(serviceCategories.id, input.categoryId), eq(serviceCategories.tenantId, input.tenantId)));
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "service_category.deleted", entityType: "service_category", entityId: input.categoryId, before: { name: category.name, description: category.description } });
+      return { success: true };
     }),
   }),
 

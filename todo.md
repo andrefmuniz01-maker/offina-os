@@ -125,3 +125,4 @@
 - [x] Registrar estados anterior e posterior das preferências internas de notificação por usuário e tenant.
 - [x] Registrar na auditoria os dados operacionais do agendamento e da OS criados a partir de orçamento aprovado.
 - [x] Registrar fornecedor, quantidade e produtos de pedidos de compra na auditoria sem expor custos unitários.
+- [x] Permitir renomear categorias por tenant e impedir exclusão quando ainda houver produtos ou serviços vinculados.

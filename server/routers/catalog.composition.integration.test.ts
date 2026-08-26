@@ -33,6 +33,8 @@ function chain(result: unknown) {
 
 function buildDb(selectResults: unknown[], insertIds: number[] = []) {
   const inserts: unknown[] = [];
+  const updates: unknown[] = [];
+  const deletes: unknown[] = [];
   const tx = {
     delete: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })),
     insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: insertIds.shift() ?? 1 }]) })),
@@ -40,8 +42,12 @@ function buildDb(selectResults: unknown[], insertIds: number[] = []) {
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: insertIds.shift() ?? 1 }]; }) })),
+    update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return [{ affectedRows: 1 }]; }) })) })),
+    delete: vi.fn(() => ({ where: vi.fn(async () => { deletes.push(true); return [{ affectedRows: 1 }]; }) })),
     transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     inserts: () => inserts,
+    updates: () => updates,
+    deletes: () => deletes,
   };
 }
 
@@ -127,6 +133,33 @@ describe("catalog — composição segura por tenant", () => {
 
     await expect(caller.services.create({ tenantId: 4, name: "Instalação", laborPrice: 100, categoryId: 92 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("atualiza categoria de produto somente dentro do tenant e registra antes e depois", async () => {
+    mocks.db = buildDb([[{ id: 71, name: "Performance", description: "Anterior" }]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.updateProduct({ tenantId: 4, categoryId: 71, name: "Peças performance", description: "Preparação" })).resolves.toEqual({ success: true });
+    expect(mocks.db.updates()).toEqual([{ name: "Peças performance", description: "Preparação" }]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "product_category.updated", entityId: 71, before: { name: "Performance", description: "Anterior" }, after: { name: "Peças performance", description: "Preparação" } }));
+  });
+
+  it("impede excluir categoria de produto ainda referenciada pelo catálogo", async () => {
+    mocks.db = buildDb([[{ id: 71, name: "Performance", description: null }], [{ id: 12 }]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.deleteProduct({ tenantId: 4, categoryId: 71 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.db.deletes()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("impede editar categoria inexistente em outro tenant antes de escrever ou auditar", async () => {
+    mocks.db = buildDb([[]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.categories.updateService({ tenantId: 4, categoryId: 91, name: "Instalação", description: null })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.db.updates()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
