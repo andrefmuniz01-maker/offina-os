@@ -92,7 +92,7 @@ export default function Purchases() {
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="purchase-product">Produto</Label>
-                <select id="purchase-product" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={form.productId} onChange={event => setForm({ ...form, productId: event.target.value })}>
+                <select id="purchase-product" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={form.productId} onChange={event => setForm({ ...form, productId: event.target.value })} aria-busy={products.isLoading} aria-invalid={products.isError} disabled={products.isLoading || products.isError}>
                   <option value="">Selecione um produto</option>
                   {products.data?.map(product => <option value={product.id} key={product.id}>{product.name}</option>)}
                 </select>
@@ -111,7 +111,7 @@ export default function Purchases() {
           <Card className="border-slate-200">
             <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div><CardTitle className="text-lg">Pedidos de compra</CardTitle><CardDescription>Histórico deste tenant. O recebimento baixa o pedido e aumenta o saldo físico.</CardDescription></div>
-              <div className="grid gap-1"><Label htmlFor="purchase-status" className="text-xs">Status</Label><select id="purchase-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div>
+              <div className="grid gap-1"><Label htmlFor="purchase-status" className="text-xs">Status</Label><select id="purchase-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" value={status} onChange={event => changeStatus(event.target.value as (typeof statuses)[number] | "all")} aria-busy={orders.isLoading} aria-invalid={orders.isError} disabled={orders.isLoading || orders.isError}><option value="all">Todos</option>{statuses.map(value => <option key={value} value={value}>{labels[value]}</option>)}</select></div>
             </CardHeader>
             <CardContent>
               {orders.isLoading ? <Skeleton className="h-52" /> : orders.isError ? <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os pedidos. Atualize a página e tente novamente.</div> : orders.data?.items.length ? <div className="space-y-2">
