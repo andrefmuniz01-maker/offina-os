@@ -24,6 +24,7 @@ import {
   vehicles,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { assertTenantPlanCapacity } from "../planLimits";
 import { calculateQuotePricing, discountPolicyViolation } from "../pricing";
 import { storagePut } from "../storage";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
@@ -172,7 +173,10 @@ export const quoteRequestRouter = router({
     }
     const result = await db.transaction(async (tx) => {
       const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, input.whatsapp))).limit(1))[0];
-      const customerId = existingCustomer?.id ?? Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp: input.whatsapp, email: input.email ?? null }))[0].insertId);
+      const customerId = existingCustomer?.id ?? await (async () => {
+        await assertTenantPlanCapacity(tx, tenant.id, "customers");
+        return Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp: input.whatsapp, email: input.email ?? null }))[0].insertId);
+      })();
       const existingVehicle = input.plate ? (await tx.select().from(vehicles).where(and(eq(vehicles.tenantId, tenant.id), eq(vehicles.customerId, customerId), eq(vehicles.plate, input.plate))).limit(1))[0] : undefined;
       const vehicleId = existingVehicle?.id ?? Number((await tx.insert(vehicles).values({ tenantId: tenant.id, customerId, make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null }))[0].insertId);
       const next = (await tx.select({ value: sql<number>`coalesce(max(${quoteRequests.number}), 0) + 1` }).from(quoteRequests).where(eq(quoteRequests.tenantId, tenant.id)))[0]?.value ?? 1;

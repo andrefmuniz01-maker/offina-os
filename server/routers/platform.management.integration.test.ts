@@ -21,6 +21,7 @@ vi.mock("../tenantAccess", () => ({
   getTenantAccess: vi.fn(),
   requireTenantPermission: mocks.requirePermission,
 }));
+vi.mock("../planLimits", () => ({ assertTenantPlanCapacity: vi.fn() }));
 
 import { platformRouter, tenantRouter } from "./platform";
 

@@ -188,3 +188,4 @@
 - [x] Permitir ao Super Admin consultar eventos auditáveis de um tenant sem acessar seus dados operacionais.
 - [x] Implementar gestão global auditável de usuários e vínculos por tenant no Painel de Super Admin.
 - [x] Permitir ao Super Admin associar um usuário existente a um tenant com papel inicial auditável.
+- [x] Aplicar efetivamente limites de plano para membros ativos e clientes por tenant.

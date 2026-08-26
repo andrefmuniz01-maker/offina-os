@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ db: null as any, audit: vi.fn(), assertSuperAdmin: vi.fn() }));
 vi.mock("../db", () => ({ getDb: vi.fn(async () => mocks.db), writeAuditLog: mocks.audit, createTenantForOwner: vi.fn(), listUserTenants: vi.fn() }));
 vi.mock("../tenantAccess", () => ({ assertPlatformSuperAdmin: mocks.assertSuperAdmin, getTenantAccess: vi.fn(), requireTenantPermission: vi.fn() }));
+vi.mock("../planLimits", () => ({ assertTenantPlanCapacity: vi.fn() }));
 
 import { platformRouter } from "./platform";
 

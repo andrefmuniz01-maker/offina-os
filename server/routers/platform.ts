@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { auditLogs, customers, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
+import { assertTenantPlanCapacity } from "../planLimits";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -88,6 +89,7 @@ export const platformRouter = router({
       if (!tenant[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
       if (!user[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
       const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0] ?? null;
+      if (!previous || !previous.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
       await db.insert(tenantMembers).values({ tenantId: input.tenantId, userId: input.userId, role: input.role, active: true }).onDuplicateKeyUpdate({ set: { role: input.role, active: true } });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "platform.user_membership_added", entityType: "tenant_member", entityId: input.userId, before: previous ?? undefined, after: { role: input.role, active: true } });
       return { success: true };
@@ -101,6 +103,7 @@ export const platformRouter = router({
       if (tenant.primaryOwnerUserId === input.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "O vínculo do proprietário primário não pode ser alterado nesta central." });
       const membership = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0];
       if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
+      if (input.active && !membership.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
       const result = await db.update(tenantMembers).set({ role: input.role, active: input.active }).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId), eq(tenantMembers.role, membership.role), eq(tenantMembers.active, membership.active)));
       if (!Number(result[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este vínculo foi alterado em outra sessão. Atualize o painel para consultar o estado atual." });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "platform.user_membership_updated", entityType: "tenant_member", entityId: input.userId, before: membership, after: { role: input.role, active: input.active } });
@@ -271,6 +274,7 @@ export const tenantRouter = router({
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Este usuário precisa acessar a plataforma uma vez antes de ser adicionado." });
       const previous = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
         .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, target.id))).limit(1))[0] ?? null;
+      if (!previous || !previous.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
       await db.insert(tenantMembers).values({ tenantId: input.tenantId, userId: target.id, role: input.role })
         .onDuplicateKeyUpdate({ set: { role: input.role, active: true } });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_added", entityType: "tenant_member", entityId: target.id, before: previous ? { role: previous.role, active: previous.active } : undefined, after: { role: input.role, active: true } });
@@ -284,6 +288,7 @@ export const tenantRouter = router({
         const member = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers)
           .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0];
         if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
+        if (input.active === true && !member.active) await assertTenantPlanCapacity(db, input.tenantId, "members");
         const result = await db.update(tenantMembers).set({ role: input.role, ...(input.active === undefined ? {} : { active: input.active }) })
           .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId), eq(tenantMembers.role, member.role), eq(tenantMembers.active, member.active)));
         if (!result[0].affectedRows) throw new TRPCError({ code: "CONFLICT", message: "O papel ou a ativação deste membro foi alterado em outra sessão. Atualize a equipe para consultar o estado atual." });

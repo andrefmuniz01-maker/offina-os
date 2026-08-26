@@ -18,6 +18,7 @@ import {
   workOrders,
 } from "../../drizzle/schema";
 import { getDb, writeAuditLog } from "../db";
+import { assertTenantPlanCapacity } from "../planLimits";
 import { grossMarginPercent, suggestedSalePrice, toMoney } from "../pricing";
 import { getTenantAccess, hasPermission, requireTenantPermission } from "../tenantAccess";
 import { protectedProcedure, router } from "../_core/trpc";
@@ -70,8 +71,10 @@ export const customerRouter = router({
       await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      const result = await db.insert(customers).values({ ...input, email: input.email ?? null, document: input.document ?? null, notes: input.notes ?? null });
-      const id = Number(result[0].insertId);
+      const id = await db.transaction(async (tx: any) => {
+        await assertTenantPlanCapacity(tx, input.tenantId, "customers");
+        return Number((await tx.insert(customers).values({ ...input, email: input.email ?? null, document: input.document ?? null, notes: input.notes ?? null }))[0].insertId);
+      });
       await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "customer.created", entityType: "customer", entityId: id, after: { name: input.name } });
       return { id };
     }),
