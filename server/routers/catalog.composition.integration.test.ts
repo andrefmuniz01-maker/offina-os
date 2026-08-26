@@ -33,11 +33,12 @@ function chain(result: unknown) {
 
 function buildDb(selectResults: unknown[], insertIds: number[] = []) {
   const inserts: unknown[] = [];
+  const transactionInserts: unknown[] = [];
   const updates: unknown[] = [];
   const deletes: unknown[] = [];
   const tx = {
     delete: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })),
-    insert: vi.fn(() => ({ values: vi.fn(async () => [{ insertId: insertIds.shift() ?? 1 }]) })),
+    insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { transactionInserts.push(value); return [{ insertId: insertIds.shift() ?? 1 }]; }) })),
   };
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
@@ -46,6 +47,7 @@ function buildDb(selectResults: unknown[], insertIds: number[] = []) {
     delete: vi.fn(() => ({ where: vi.fn(async () => { deletes.push(true); return [{ affectedRows: 1 }]; }) })),
     transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     inserts: () => inserts,
+    transactionInserts: () => transactionInserts,
     updates: () => updates,
     deletes: () => deletes,
   };
@@ -127,6 +129,15 @@ describe("catalog — composição segura por tenant", () => {
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
+  it("associa uma categoria de produto pertencente ao tenant durante o cadastro", async () => {
+    mocks.db = buildDb([[], [{ id: 71 }]], [301, 1]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.products.create({ tenantId: 4, name: "Filtro esportivo", salePrice: 100, categoryId: 71 })).resolves.toEqual({ id: 301 });
+    expect(mocks.db.transactionInserts()).toEqual(expect.arrayContaining([expect.objectContaining({ tenantId: 4, categoryId: 71, name: "Filtro esportivo" })]));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "product.created", entityId: 301, after: expect.objectContaining({ categoryId: 71 }) }));
+  });
+
   it("bloqueia categoria de serviço pertencente a outra oficina antes de criar o serviço", async () => {
     mocks.db = buildDb([[], []]);
     const caller = catalogRouter.createCaller(createContext());
@@ -134,6 +145,15 @@ describe("catalog — composição segura por tenant", () => {
     await expect(caller.services.create({ tenantId: 4, name: "Instalação", laborPrice: 100, categoryId: 92 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mocks.db.inserts()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("associa uma categoria de serviço pertencente ao tenant durante o cadastro", async () => {
+    mocks.db = buildDb([[], [{ id: 82 }]], [401]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.services.create({ tenantId: 4, name: "Instalação", laborPrice: 100, categoryId: 82 })).resolves.toEqual({ id: 401 });
+    expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, categoryId: 82, name: "Instalação" })]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "service.created", entityId: 401, after: expect.objectContaining({ categoryId: 82 }) }));
   });
 
   it("atualiza categoria de produto somente dentro do tenant e registra antes e depois", async () => {

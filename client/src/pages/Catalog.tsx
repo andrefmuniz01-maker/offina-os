@@ -12,7 +12,7 @@ import { useState } from "react";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { toast } from "sonner";
 
-const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: Boxes, label: "Cadastros", path: "/cadastros" }, { icon: Tags, label: "Categorias", path: "/categorias" }];
+const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: Boxes, label: "Cadastros", path: "/cadastros" }, { icon: Tags, label: "Categorias", path: "/categorias" }, { icon: PackagePlus, label: "Itens por categoria", path: "/cadastros/itens" }];
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const Field = ({ label, value, setValue, type = "text", ...props }: { label: string; value: string; setValue: (value: string) => void; type?: string; [key: string]: unknown }) => <div className="grid gap-2"><Label>{label}</Label><Input type={type} value={value} onChange={event => setValue(event.target.value)} {...props} /></div>;
 function Empty({ children }: { children: string }) { return <p className="py-10 text-center text-sm text-slate-500">{children}</p>; }
