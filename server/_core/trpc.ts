@@ -27,6 +27,33 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+const requireSupabaseUser = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  if (!ctx.supabaseUser) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      supabaseUser: ctx.supabaseUser,
+    },
+  });
+});
+
+export const supabaseProtectedProcedure = t.procedure.use(requireSupabaseUser);
+
+export const supabaseAdminProcedure = supabaseProtectedProcedure.use(
+  t.middleware(async opts => {
+    const supabaseUser = opts.ctx.supabaseUser;
+    if (!supabaseUser || supabaseUser.platformRole !== "super_admin") {
+      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+    }
+    return opts.next();
+  }),
+);
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

@@ -67,6 +67,24 @@ describe("createContext com Supabase", () => {
     expect(db.getUserByEmail).not.toHaveBeenCalled();
   });
 
+  it("preserva a identidade Supabase mesmo sem usuário legado durante a transição", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+    vi.mocked(db.getUserByEmail).mockResolvedValue(undefined);
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(context.supabaseUser).toMatchObject({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+  });
+
   it("materializa o usuário legado somente após vínculo completo e aplica o papel do profile", async () => {
     vi.mocked(getSupabaseProfile).mockResolvedValue({
       id: "c577d57b-6375-431d-8549-971a4b20c0ed",
@@ -79,5 +97,6 @@ describe("createContext com Supabase", () => {
 
     expect(context.user?.id).toBe(legacyUser.id);
     expect(context.user?.platformRole).toBe("super_admin");
+    expect(context.supabaseUser?.id).toBe("c577d57b-6375-431d-8549-971a4b20c0ed");
   });
 });
