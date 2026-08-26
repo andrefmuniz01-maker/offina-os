@@ -154,3 +154,4 @@
 - [x] Tornar atômica a baixa de estoque por OS para impedir consumo concorrente acima do saldo ou da reserva ativa.
 - [x] Tornar atômico o recebimento de compra para impedir entrada concorrente acima da quantidade pedida.
 - [x] Tornar atômico o ajuste negativo de estoque para impedir saldo físico concorrente abaixo de zero.
+- [x] Corrigir a rota interna da agenda e pátio que retorna página 404 em vez do fluxo operacional.

@@ -25,6 +25,7 @@ import Notifications from "./pages/Notifications";
 import Team from "./pages/Team";
 import Audit from "./pages/Audit";
 import Reports from "./pages/Reports";
+import { operationsRoutePaths } from "./lib/operationsRoutes";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -34,7 +35,7 @@ function Router() {
       <Route path={"/solicitar/:slug"} component={PublicQuoteRequest} />
       <Route path={"/solicitacoes"} component={Requests} />
       <Route path={"/orcamentos"} component={Quotes} />
-      <Route path={"/operacao"} component={Operations} />
+      {operationsRoutePaths.map(path => <Route key={path} path={path} component={Operations} />)}
       <Route path={"/estoque"} component={Inventory} />
       <Route path={"/configuracoes"} component={Settings} />
       <Route path={"/plataforma"} component={Platform} />
