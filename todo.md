@@ -140,3 +140,4 @@
 - [x] Tornar a seleção de cliente para veículos explicitamente focável e não acionável durante carregamento ou falha.
 - [x] Cobrir auditoria de edição e bloqueio de exclusão referenciada também para categorias de serviço.
 - [x] Registrar composição anterior e posterior ao alterar os produtos vinculados a um serviço por tenant.
+- [x] Registrar corretamente a remoção de responsável no estado posterior auditado de uma solicitação.

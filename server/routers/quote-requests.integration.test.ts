@@ -99,6 +99,17 @@ describe("quoteRequests.updateStatus — integração tRPC simulada", () => {
     ]));
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote_request.updated", entityId: 91, after: { status: "in_quoting", assignedToUserId: 19 } }));
   });
+
+  it("registra responsável nulo na auditoria quando a atribuição é removida", async () => {
+    mocks.db = buildDb([[{ ...request, assignedToUserId: 19 }]]);
+    const caller = quoteRequestRouter.createCaller(createContext());
+
+    await expect(caller.updateStatus({ tenantId: 4, quoteRequestId: 91, status: "in_analysis", assignedToUserId: null })).resolves.toEqual({ success: true });
+    expect(mocks.db.inserts()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ tenantId: 4, quoteRequestId: 91, type: "assigned", actorUserId: 7, metadata: { assignedToUserId: null, assignedToUserName: null } }),
+    ]));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "quote_request.updated", entityId: 91, before: { status: "in_analysis", assignedToUserId: 19 }, after: { status: "in_analysis", assignedToUserId: null } }));
+  });
 });
 
 describe("quoteRequests.submitPublic — disponibilidade da oficina", () => {

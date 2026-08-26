@@ -252,7 +252,7 @@ export const quoteRequestRouter = router({
       if (input.assignedToUserId !== undefined && input.assignedToUserId !== request.assignedToUserId) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "assigned", actorUserId: ctx.user.id, metadata: { assignedToUserId: input.assignedToUserId, assignedToUserName: assignedUserName } });
       if (input.note) await tx.insert(quoteRequestEvents).values({ tenantId: input.tenantId, quoteRequestId: request.id, type: "note_added", actorUserId: ctx.user.id, metadata: { note: input.note } });
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote_request.updated", entityType: "quote_request", entityId: request.id, before: { status: request.status, assignedToUserId: request.assignedToUserId }, after: { status: input.status, assignedToUserId: input.assignedToUserId ?? request.assignedToUserId } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "quote_request.updated", entityType: "quote_request", entityId: request.id, before: { status: request.status, assignedToUserId: request.assignedToUserId }, after: { status: input.status, assignedToUserId: input.assignedToUserId === undefined ? request.assignedToUserId : input.assignedToUserId } });
     return { success: true };
   }),
 
