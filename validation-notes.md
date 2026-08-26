@@ -109,3 +109,7 @@ O painel financeiro agora evidencia recebimentos pendentes, despesas planejadas 
 ## 26/08/2026 — Gestão de compras
 
 A gestão de compras agora evidencia pedidos em aberto, recebimentos parciais e a próxima ação de reposição. O recebimento segue como a única operação que altera o saldo físico, enquanto filtros, paginação e escopo por tenant foram preservados. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 53 arquivos e 180 testes Vitest.
+
+## 26/08/2026 — Solicitação pública de orçamento
+
+O cliente agora percorre uma jornada de três etapas: contato, veículo e necessidade. O fluxo mantém o token público seguro, valida somente os campos obrigatórios da etapa, deixa anexos opcionais e usa tipos de mídia explicitamente permitidos. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 54 arquivos e 181 testes Vitest.
