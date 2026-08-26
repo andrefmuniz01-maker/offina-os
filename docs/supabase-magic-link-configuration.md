@@ -22,7 +22,9 @@ O Magic Link será solicitado com `shouldCreateUser: false`. Além dessa proteç
 
 ## Diagnóstico de entrega — 26/08/2026
 
-Os logs do Auth registram `mail.send` apenas para o convite inicial às **21:58 UTC**. Eles também mostram tentativas posteriores de `/verify` recusadas com `403: Email link is invalid or has expired`, o que impede reutilizar links antigos. Não houve um novo evento `mail.send` visível após o comando de reenvio no painel. O limite do projeto está configurado em **2 e-mails por hora**; portanto, não serão disparadas novas tentativas até concluir a verificação de template e do mecanismo de entrega, evitando consumir o limite e invalidar links anteriores.
+Os logs do Auth registram `mail.send` para o Magic Link solicitado pelo formulário oficial às **22:41 UTC**, seguido de `/verify` com `303` e evento de login às **22:42 UTC**. Eles também mostram tentativas posteriores de `/verify` recusadas com `403: Email link is invalid or has expired`, o que impede reutilizar links antigos. No domínio publicado, novas solicitações de `/otp` foram registradas e bloqueadas por `429: email rate limit exceeded`; depois do limite, o Auth também registrou `422: Signups not allowed for otp`. O limite do projeto está configurado em **2 e-mails por hora**; portanto, não serão disparadas novas tentativas até a janela de envio liberar, evitando consumir o limite e invalidar links anteriores.
+
+Após o primeiro login, confirmou-se que a ponte temporária MySQL ainda associava Felipe ao papel legado `platform_user`, embora seu perfil Supabase real já fosse `super_admin`. O registro legado existente foi atualizado de forma controlada, por e-mail verificado e sem criar identidade, tenant ou permissão nova. A correção definitiva continua sendo a migração integral para `profiles` e `tenant_members` no Supabase.
 
 ## Referências
 

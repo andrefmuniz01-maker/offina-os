@@ -73,4 +73,7 @@
 - [x] Desativar autoinscrição pública no Supabase Auth, mantendo o e-mail/Magic Link habilitado para identidades provisionadas por convite.
 - [x] Confirmar e registrar o estado persistido do Supabase Auth: autoinscrição pública desativada e provider de e-mail/Magic Link habilitado.
 - [x] Diagnosticar a não entrega do Magic Link de Felipe no Supabase, verificando logs, template, limites e configuração de e-mail antes de novo reenvio.
-- [ ] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.
+- [x] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.
+- [ ] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
+- [ ] Corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
+- [ ] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.

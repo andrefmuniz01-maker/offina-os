@@ -45,19 +45,50 @@ const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
+type MagicLinkError = {
+  code?: string;
+  message?: string;
+  status?: number;
+};
+
+export function getMagicLinkErrorMessage(error: MagicLinkError) {
+  const message = error.message?.toLowerCase() ?? "";
+
+  if (
+    error.code === "over_email_send_rate_limit" ||
+    error.status === 429 ||
+    message.includes("email rate limit")
+  ) {
+    return "O limite temporário de e-mails foi atingido. Aguarde até uma hora antes de solicitar outro link.";
+  }
+
+  if (error.code === "otp_disabled" || message.includes("signups not allowed")) {
+    return "Este e-mail ainda não está autorizado para receber um link de acesso. Solicite o provisionamento a um Super Admin.";
+  }
+
+  return "Não foi possível iniciar o acesso seguro. Tente novamente mais tarde.";
+}
+
 function MagicLinkAccess() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const requestMagicLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus("sending");
+    setErrorMessage(null);
     const redirectTo = new URL("/auth/callback", window.location.origin).toString();
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
     });
-    setStatus(error ? "error" : "sent");
+    if (error) {
+      setErrorMessage(getMagicLinkErrorMessage(error));
+      setStatus("error");
+      return;
+    }
+    setStatus("sent");
   };
 
   return (
@@ -81,7 +112,7 @@ function MagicLinkAccess() {
           {status === "sending" ? "Enviando…" : "Enviar link de acesso"}
         </Button>
         {status === "sent" && <p className="text-center text-sm text-muted-foreground">Verifique sua caixa de entrada para concluir o acesso.</p>}
-        {status === "error" && <p className="text-center text-sm text-destructive">Não foi possível iniciar o acesso. Use um e-mail já autorizado.</p>}
+        {status === "error" && <p className="text-center text-sm text-destructive">{errorMessage}</p>}
       </form>
     </div>
   );
