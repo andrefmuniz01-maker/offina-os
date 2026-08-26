@@ -14,10 +14,10 @@ function chain(result: unknown) {
   return query;
 }
 
-function dbWith(selectResults: unknown[]) {
+function dbWith(selectResults: unknown[], updateResults: unknown[] = []) {
   const updates: unknown[] = []; const inserts: unknown[] = [];
   const select = vi.fn(() => chain(selectResults.shift() ?? []));
-  const tx = { select, update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return [{ affectedRows: 1 }]; }) })) })), insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 1 }]; }) })) };
+  const tx = { select, update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return updateResults.shift() ?? [{ affectedRows: 1 }]; }) })) })), insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 1 }]; }) })) };
   return { transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)), updates: () => updates, inserts: () => inserts };
 }
 
@@ -67,6 +67,33 @@ describe("workOrders.consumeProduct — integração tRPC simulada", () => {
     await expect(caller.consumeProduct({ tenantId: 4, workOrderId: 999, productId: 44, quantity: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocks.db.inserts()).toHaveLength(0);
     expect(mocks.db.updates()).toHaveLength(0);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("interrompe o consumo se a reserva mudou antes da atualização atômica", async () => {
+    const order = { id: 401, tenantId: 4, assignedToUserId: 5, estimatedTotal: "500.00" };
+    const balance = { id: 9, tenantId: 4, productId: 44, physicalQuantity: "8.000", reservedQuantity: "3.000" };
+    const product = { id: 44, tenantId: 4, currentCost: "40.00" };
+    const reservation = { id: 200, tenantId: 4, workOrderId: 401, productId: 44, quantity: "3.000", status: "active" };
+    mocks.db = dbWith([[order], [balance], [product], [reservation]], [[{ affectedRows: 0 }]]);
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.consumeProduct({ tenantId: 4, workOrderId: 401, productId: 44, reservationId: 200, quantity: 2 })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("interrompe o consumo se o saldo físico mudou antes da atualização atômica", async () => {
+    const order = { id: 401, tenantId: 4, assignedToUserId: 5, estimatedTotal: "500.00" };
+    const balance = { id: 9, tenantId: 4, productId: 44, physicalQuantity: "8.000", reservedQuantity: "0.000" };
+    const product = { id: 44, tenantId: 4, currentCost: "40.00" };
+    mocks.db = dbWith([[order], [balance], [product]], [[{ affectedRows: 0 }]]);
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.consumeProduct({ tenantId: 4, workOrderId: 401, productId: 44, quantity: 2 })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
