@@ -143,3 +143,4 @@
 - [x] Registrar corretamente a remoção de responsável no estado posterior auditado de uma solicitação.
 - [x] Validar explicitamente a solicitação no tenant antes de consultar seu histórico de eventos.
 - [x] Registrar descontos anterior e posterior por item na auditoria de orçamentos, sem incluir custos internos.
+- [x] Tornar o filtro de status de orçamentos explicitamente focável e não acionável durante carregamento ou falha.
