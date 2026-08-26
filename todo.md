@@ -152,3 +152,4 @@
 - [x] Garantir no banco a unicidade de receita prevista por ordem de serviço dentro do tenant.
 - [x] Garantir no banco a unicidade de notificação interna de pós-venda por ordem de serviço dentro do tenant.
 - [x] Tornar atômica a baixa de estoque por OS para impedir consumo concorrente acima do saldo ou da reserva ativa.
+- [x] Tornar atômico o recebimento de compra para impedir entrada concorrente acima da quantidade pedida.

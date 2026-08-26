@@ -33,16 +33,18 @@ function chain(result: unknown) {
   return query;
 }
 
-function buildDb(selectResults: unknown[], transactionResults: unknown[] = []) {
-  const inserts: unknown[] = [];
+function buildDb(selectResults: unknown[], transactionResults: unknown[] = [], updateResults: unknown[] = []) {
+  const inserts: unknown[] = []; const updates: unknown[] = [];
   const tx = {
     select: vi.fn(() => chain(transactionResults.shift() ?? [])),
     insert: vi.fn(() => ({ values: vi.fn(async (value: unknown) => { inserts.push(value); return [{ insertId: 71 }]; }) })),
+    update: vi.fn(() => ({ set: vi.fn((value: unknown) => ({ where: vi.fn(async () => { updates.push(value); return updateResults.shift() ?? [{ affectedRows: 1 }]; }) })) })),
   };
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
     transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     inserts: () => inserts,
+    updates: () => updates,
   };
 }
 
@@ -105,5 +107,18 @@ describe("inventory.purchaseOrders.create — isolamento de fornecedor", () => {
     await expect(caller.purchaseOrders.list({ tenantId: 4, page: 1, pageSize: 10 })).resolves.toEqual({
       items: [{ order, supplier: null, items: [item] }], page: 1, pageSize: 10, hasMore: false,
     });
+  });
+
+  it("bloqueia o recebimento quando o item foi atualizado antes da baixa concorrente", async () => {
+    const order = { id: 61, tenantId: 4, number: 12, status: "ordered" };
+    const item = { id: 71, tenantId: 4, purchaseOrderId: 61, productId: 12, orderedQuantity: "2.000", receivedQuantity: "1.000", unitCost: "45.00" };
+    const balance = { id: 9, tenantId: 4, productId: 12, physicalQuantity: "3.000" };
+    mocks.db = buildDb([], [[order], [item], [balance], [{ averageCost: "30.00" }]], [[{ affectedRows: 0 }]]);
+    const caller = inventoryRouter.createCaller(createContext());
+
+    await expect(caller.purchaseOrders.receive({ tenantId: 4, purchaseOrderId: 61, items: [{ itemId: 71, receivedQuantity: 1 }] })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
