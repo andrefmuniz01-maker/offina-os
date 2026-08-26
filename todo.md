@@ -218,3 +218,5 @@
 - [x] Simplificar painéis operacionais e administrativos restantes com foco em próxima ação e redução de ruído.
 - [x] Simplificar Ordem de Serviço e registros de execução para uso diário da equipe técnica.
 - [x] Simplificar a administração global restante sem ampliar escopo de acesso.
+- [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
+- [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.

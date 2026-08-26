@@ -141,3 +141,7 @@ Relatórios, notificações, auditoria e painel inicial foram revisados para red
 ## 26/08/2026 — Execução de OS e administração global objetivas
 
 A Ordem de Serviço passou a priorizar o estado legível, a próxima ação, checklist, itens previstos, consumo reservado e evidências de execução. O fluxo de mutações, reservas, anexos e permissões foi preservado. O painel de Super Admin teve a camada decorativa reduzida: indicadores globais usam uma faixa de leitura única e o cadastro de planos deixa de repetir ícones sem função operacional. A revisão visual do painel global em desktop e mobile confirmou empilhamento natural dos controles e ausência de corte nas ações críticas.
+
+## 26/08/2026 — Apontamentos técnicos de OS
+
+Os apontamentos foram organizados como uma superfície direta de registro e histórico: o formulário descreve o tipo de informação esperado, o contador permanece próximo ao comando e os registros usam uma única linha do tempo sem cartões repetidos. A tela conserva estados de carregamento, ausência de tenant e OS indisponível. A validação em rota móvel confirmou o estado de acesso negado para uma OS não pertencente ao contexto selecionado; a consulta não encontrou outra OS disponível no tenant de demonstração para inspecionar registros preenchidos. TypeScript e a suíte completa permanecem aprovados com 59 arquivos e 186 testes Vitest.
