@@ -158,3 +158,4 @@
 - [x] Tornar o pátio horizontalmente rolável no mobile explícito e acessível por foco de teclado.
 - [x] Impedir reservas de estoque duplicadas sob concorrência na aprovação pública de orçamento.
 - [x] Impedir liberação duplicada de reservas sob concorrência na entrega ou cancelamento de OS.
+- [x] Corrigir a sobreposição dos cabeçalhos de saldo no inventário exibido em mobile.
