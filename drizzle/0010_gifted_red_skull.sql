@@ -1,0 +1,1 @@
+ALTER TABLE `revenues` ADD CONSTRAINT `revenues_tenant_work_order_unique` UNIQUE(`tenantId`,`workOrderId`);

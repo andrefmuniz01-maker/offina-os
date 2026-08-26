@@ -48,4 +48,15 @@ describe("operations.updateStatus — finalização integrada", () => {
     ]));
     expect(delivered.tx.update).toHaveBeenCalledTimes(4);
   });
+
+  it("não duplica a receita prevista quando a OS já possui lançamento financeiro", async () => {
+    const existingRevenue = buildDb([[{ id: 91, tenantId: 4, number: 12, status: "completed", customerId: 21, vehicleId: 22, appointmentId: 31, estimatedTotal: "850.00", notes: null }], [], [{ id: 700 }]]);
+    mocks.db = existingRevenue.db;
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.updateStatus({ tenantId: 4, workOrderId: 91, status: "completed" })).resolves.toEqual({ success: true });
+
+    expect(existingRevenue.inserted).toEqual([]);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "work_order.status_updated", entityId: 91 }));
+  });
 });

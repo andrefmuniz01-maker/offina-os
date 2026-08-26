@@ -521,7 +521,7 @@ export const revenues = mysqlTable("revenues", {
   notes: text("notes"),
   createdAt,
   updatedAt,
-}, (table) => [index("revenues_tenant_status_date_idx").on(table.tenantId, table.status, table.receivedAt)]);
+}, (table) => [uniqueIndex("revenues_tenant_work_order_unique").on(table.tenantId, table.workOrderId), index("revenues_tenant_status_date_idx").on(table.tenantId, table.status, table.receivedAt)]);
 
 export const expenses = mysqlTable("expenses", {
   id: int("id").autoincrement().primaryKey(),
