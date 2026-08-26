@@ -1,7 +1,8 @@
 import "dotenv/config";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
+  auditLogs,
   customers,
   inventoryBalances,
   productCategories,
@@ -187,9 +188,31 @@ export async function seedDemoTenant() {
   });
 }
 
+const DEMO_CHILD_TABLES = [
+  "audit_logs", "notifications", "work_order_consumption", "work_order_notes", "work_order_checklists", "work_order_items", "work_orders", "appointments", "quote_events", "quote_items", "quotes", "attachments", "quote_request_events", "quote_requests", "inventory_reservations", "inventory_movements", "purchase_order_items", "purchase_orders", "service_products", "kit_items", "kits", "services", "products", "inventory_balances", "vehicles", "customers", "suppliers", "product_categories", "service_categories",
+] as const;
+
+export async function resetDemoTenant() {
+  const db = await getDb();
+  if (!db) throw new Error("DATABASE_URL é obrigatório para resetar a demonstração.");
+  const tenant = (await db.select({ id: tenants.id, isDemo: tenants.isDemo }).from(tenants).where(eq(tenants.slug, DEMO_SLUG)).limit(1))[0];
+  if (!tenant) throw new Error("Tenant demonstrativo não encontrado.");
+  if (!tenant.isDemo) throw new Error("Reset bloqueado: o slug informado não está marcado como ambiente demonstrativo.");
+
+  await db.transaction(async tx => {
+    await tx.insert(auditLogs).values({ tenantId: tenant.id, action: "demo.reset", entityType: "tenant", entityId: tenant.id, before: { isDemo: true }, after: { reset: true, isDemo: true }, metadata: { scope: "demo-only", tables: DEMO_CHILD_TABLES } });
+    for (const table of DEMO_CHILD_TABLES) {
+      await tx.execute(sql.raw(`DELETE FROM \`${table}\` WHERE \`tenantId\` = ${tenant.id}`));
+    }
+    await tx.update(tenantSettings).set({ quoteMessageTemplate: "Olá, {cliente}. Seu orçamento da Performance Garage está pronto para revisão." }).where(eq(tenantSettings.tenantId, tenant.id));
+  });
+  return seedDemoTenant();
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  seedDemoTenant().then(result => {
-    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+  const reset = process.argv.includes("--reset");
+  (reset ? resetDemoTenant() : seedDemoTenant()).then(result => {
+    console.log(JSON.stringify({ ok: true, reset, ...result }, null, 2));
   }).catch(error => {
     console.error(error);
     process.exitCode = 1;
