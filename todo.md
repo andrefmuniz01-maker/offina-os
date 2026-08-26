@@ -222,3 +222,4 @@
 - [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
 - [x] Auditar a confirmação de leitura de notificações sem expor conteúdo operacional na trilha global.
 - [x] Uniformizar painéis de prioridade em linguagem neutra e reduzir elementos decorativos nas telas diárias.
+- [x] Traduzir a tela de autenticação do painel para português do Brasil.
