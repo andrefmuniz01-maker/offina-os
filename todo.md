@@ -208,3 +208,4 @@
 - [x] Reestruturar compras para destacar reposição, recebimento e prioridades de pedido.
 - [ ] Evoluir a jornada pública de solicitação e decisão de orçamento com foco em clareza e confiança do cliente.
 - [x] Reestruturar o formulário público de solicitação com etapas, progresso e validação orientada ao cliente.
+- [x] Reestruturar a visualização pública do orçamento para clareza de itens, validade e decisão segura.

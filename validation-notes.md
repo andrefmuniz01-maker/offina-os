@@ -113,3 +113,7 @@ A gestão de compras agora evidencia pedidos em aberto, recebimentos parciais e 
 ## 26/08/2026 — Solicitação pública de orçamento
 
 O cliente agora percorre uma jornada de três etapas: contato, veículo e necessidade. O fluxo mantém o token público seguro, valida somente os campos obrigatórios da etapa, deixa anexos opcionais e usa tipos de mídia explicitamente permitidos. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 54 arquivos e 181 testes Vitest.
+
+## 26/08/2026 — Visualização pública de orçamento
+
+A proposta pública agora separa revisão, decisão e próximo passo, apresenta itens e validade de forma mais clara e exige uma confirmação explícita antes de aprovar ou recusar. O link continua sem expor custos internos e preserva a decisão pública existente. TypeScript e a suíte completa aprovaram 55 arquivos e 182 testes Vitest.
