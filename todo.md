@@ -136,3 +136,4 @@
 - [x] Exibir e confirmar na interface a categoria persistida em produtos e serviços cadastrados pelo fluxo operacional.
 - [x] Registrar e cobrir na auditoria a criação de fornecedores por tenant.
 - [x] Validar explicitamente o produto no tenant antes de consultar seu histórico de movimentações de estoque.
+- [x] Validar explicitamente o cliente no tenant antes de listar seus veículos associados.

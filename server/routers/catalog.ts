@@ -95,6 +95,8 @@ export const vehicleRouter = router({
     await requireTenantPermission(ctx.user, input.tenantId, "customers.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const customer = (await db.select({ id: customers.id }).from(customers).where(and(eq(customers.id, input.customerId), eq(customers.tenantId, input.tenantId))).limit(1))[0];
+    if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado nesta oficina." });
     return db.select().from(vehicles).where(and(eq(vehicles.tenantId, input.tenantId), eq(vehicles.customerId, input.customerId)));
   }),
   workOrderHistory: protectedProcedure.input(tenantIdInput.extend({ vehicleId: z.number().int().positive() })).query(async ({ ctx, input }) => {

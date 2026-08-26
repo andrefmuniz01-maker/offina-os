@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ db: null as any, requirePermission: vi.fn() })
 vi.mock("../db", () => ({ getDb: vi.fn(async () => mocks.db), writeAuditLog: vi.fn() }));
 vi.mock("../tenantAccess", () => ({ getTenantAccess: vi.fn(), hasPermission: vi.fn(), requireTenantPermission: mocks.requirePermission }));
 
-import { customerRouter } from "./catalog";
+import { customerRouter, vehicleRouter } from "./catalog";
 
 function query(result: unknown) {
   const builder: any = {};
@@ -33,5 +33,21 @@ describe("customers.listPaged — busca e paginação operacional", () => {
 
     await expect(caller.listPaged({ tenantId: 4, search: "Marina", page: 1, pageSize: 1 })).resolves.toEqual({ items: [first], page: 1, pageSize: 1, hasMore: true });
     expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "customers.manage");
+  });
+
+  it("bloqueia a listagem de veículos quando o cliente não pertence ao tenant", async () => {
+    mocks.db = { select: vi.fn(() => query([])) };
+    const caller = vehicleRouter.createCaller(context());
+
+    await expect(caller.listByCustomer({ tenantId: 4, customerId: 99 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("lista veículos somente após confirmar o cliente do tenant", async () => {
+    const vehicle = { id: 31, tenantId: 4, customerId: 21, make: "BMW", model: "320i" };
+    const results = [[{ id: 21 }], [vehicle]];
+    mocks.db = { select: vi.fn(() => query(results.shift() ?? [])) };
+    const caller = vehicleRouter.createCaller(context());
+
+    await expect(caller.listByCustomer({ tenantId: 4, customerId: 21 })).resolves.toEqual([vehicle]);
   });
 });
