@@ -64,7 +64,8 @@ export const inventoryRouter = router({
       const previousPhysical = Number(row?.balance.physicalQuantity);
       if (!row || previousPhysical + input.quantityDelta < 0) throw new TRPCError({ code: "BAD_REQUEST", message: "O ajuste não pode tornar o estoque físico negativo." });
       const nextPhysical = previousPhysical + input.quantityDelta;
-      await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${input.quantityDelta.toFixed(3)}` }).where(and(eq(inventoryBalances.id, row.balance.id), eq(inventoryBalances.tenantId, input.tenantId)));
+      const balanceUpdate = await tx.update(inventoryBalances).set({ physicalQuantity: sql`${inventoryBalances.physicalQuantity} + ${input.quantityDelta.toFixed(3)}` }).where(and(eq(inventoryBalances.id, row.balance.id), eq(inventoryBalances.tenantId, input.tenantId), ...(input.quantityDelta < 0 ? [gte(inventoryBalances.physicalQuantity, Math.abs(input.quantityDelta).toFixed(3))] : [])));
+      if (!Number(balanceUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "O saldo foi alterado antes deste ajuste. Atualize o estoque e tente novamente." });
       await tx.insert(inventoryMovements).values({ tenantId: input.tenantId, productId: input.productId, type: "adjustment", quantity: Math.abs(input.quantityDelta).toFixed(3), physicalDelta: input.quantityDelta.toFixed(3), reservedDelta: "0", notes: input.notes, createdByUserId: ctx.user.id });
       return { previousPhysical, nextPhysical };
     });

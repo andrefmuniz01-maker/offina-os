@@ -153,3 +153,4 @@
 - [x] Garantir no banco a unicidade de notificação interna de pós-venda por ordem de serviço dentro do tenant.
 - [x] Tornar atômica a baixa de estoque por OS para impedir consumo concorrente acima do saldo ou da reserva ativa.
 - [x] Tornar atômico o recebimento de compra para impedir entrada concorrente acima da quantidade pedida.
+- [x] Tornar atômico o ajuste negativo de estoque para impedir saldo físico concorrente abaixo de zero.
