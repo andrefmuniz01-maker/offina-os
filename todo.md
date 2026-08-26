@@ -38,3 +38,13 @@
 - [x] Inventariar autenticação, banco, migrations, isolamento multi-tenant, permissões, rotas, secrets e serviços externos.
 - [ ] Documentar riscos, incompatibilidades e um plano seguro de migração para Supabase antes de qualquer nova mudança de infraestrutura.
 - [x] Registrar marco de aprovação pré-migração que bloqueia novas alterações estruturais de Supabase até decisão explícita.
+- [ ] Congelar e inventariar dados, identidade, arquivos e contagens da base MySQL antes da migração.
+- [ ] Criar um branch de staging Supabase e aplicar o schema PostgreSQL com RLS, policies e Storage privados.
+- [ ] Migrar e reconciliar dados, usuários e arquivos no staging sem excluir a origem MySQL.
+- [ ] Adaptar o backend e o cliente de Manus OAuth/MySQL para Supabase Auth/PostgreSQL.
+- [ ] Executar testes Tenant A × Tenant B, IDOR, papéis, estoque, reservas e rollback antes do corte.
+- [ ] Preparar plano de corte e rollback para aprovação antes de promover staging a produção.
+- [x] Executar a migração exclusivamente dentro do plano gratuito, sem criar branches ou recursos pagos no Supabase.
+- [x] Documentar o mapeamento MySQL → PostgreSQL/Supabase sem criar identidades fictícias nem remover dados da origem.
+- [x] Criar e aplicar a foundation versionada no projeto Supabase gratuito, com 39 tabelas públicas protegidas por RLS e bucket privado.
+- [ ] Concluir a troca integral de Manus OAuth/MySQL após o primeiro login real de um Super Admin no Supabase e validação de corte sem fonte paralela.
