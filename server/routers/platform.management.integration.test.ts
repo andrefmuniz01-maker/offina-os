@@ -35,10 +35,10 @@ function chain(result: unknown) {
   return query;
 }
 
-function buildDb(selectResults: unknown[]) {
+function buildDb(selectResults: unknown[], updateResults: unknown[] = []) {
   return {
     select: vi.fn(() => chain(selectResults.shift() ?? [])),
-    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
+    update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(async () => updateResults.shift() ?? [{ affectedRows: 1 }]) })) })),
     insert: vi.fn(() => ({ values: vi.fn(() => ({ onDuplicateKeyUpdate: vi.fn(async () => [{ affectedRows: 1 }]) })) })),
   };
 }
@@ -100,6 +100,15 @@ describe("platform — ciclo administrativo de tenants", () => {
     const caller = tenantRouter.createCaller(createContext());
 
     await expect(caller.members.updateRole({ tenantId: 41, userId: 999, role: "attendant" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia auditoria quando outra sessão já alterou o papel ou a ativação do membro", async () => {
+    mocks.db = buildDb([[{ role: "technician", active: true }]], [[{ affectedRows: 0 }]]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect(caller.members.updateRole({ tenantId: 41, userId: 19, role: "attendant", active: false })).rejects.toMatchObject({ code: "CONFLICT" });
+
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 

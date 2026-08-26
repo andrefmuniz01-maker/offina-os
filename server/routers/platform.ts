@@ -155,8 +155,8 @@ export const tenantRouter = router({
           .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0];
         if (!member) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
         const result = await db.update(tenantMembers).set({ role: input.role, ...(input.active === undefined ? {} : { active: input.active }) })
-          .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId)));
-        if (!result[0].affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
+          .where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId), eq(tenantMembers.role, member.role), eq(tenantMembers.active, member.active)));
+        if (!result[0].affectedRows) throw new TRPCError({ code: "CONFLICT", message: "O papel ou a ativação deste membro foi alterado em outra sessão. Atualize a equipe para consultar o estado atual." });
         await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "tenant.member_updated", entityType: "tenant_member", entityId: input.userId, before: { role: member.role, active: member.active }, after: { role: input.role, active: input.active ?? member.active } });
         return { success: true };
       }),
