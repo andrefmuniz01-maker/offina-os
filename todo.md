@@ -214,3 +214,5 @@
 - [x] Executar revisão transversal de acessibilidade, teclado, foco e estados prioritários após as evoluções de interface.
 - [x] Reestruturar Configurações da Oficina em uma interface objetiva, sóbria e orientada a tarefas.
 - [x] Remover emojis e ornamentos que reforçam uma aparência genérica das interfaces prioritárias.
+- [x] Simplificar relatórios, notificações e auditoria para consulta rápida no dia a dia.
+- [x] Simplificar painéis operacionais e administrativos restantes com foco em próxima ação e redução de ruído.

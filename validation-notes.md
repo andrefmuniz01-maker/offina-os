@@ -133,3 +133,7 @@ A navegação ganhou salto direto para o conteúdo principal, foco visível glob
 ## 26/08/2026 — Configurações objetivas e linguagem sóbria
 
 Configurações da Oficina foi reorganizada em seções diretas para dados, regras comerciais, mensagem e página pública, com navegação por âncoras e comandos de salvamento claros. Emojis foram removidos das fontes de cliente, mantendo ícones funcionais e uma linguagem visual mais sóbria. A interface foi validada em desktop e mobile; TypeScript e a suíte completa aprovaram 58 arquivos e 185 testes Vitest.
+
+## 26/08/2026 — Consulta diária simplificada
+
+Relatórios, notificações, auditoria e painel inicial foram revisados para reduzir elementos decorativos, encurtar a hierarquia e evidenciar somente indicadores, pendências e ações úteis no dia a dia. A auditoria também traduz as ações técnicas mais frequentes para rótulos operacionais. As telas foram conferidas em desktop e mobile; TypeScript e a suíte completa aprovaram 59 arquivos e 186 testes Vitest.

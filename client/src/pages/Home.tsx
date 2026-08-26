@@ -30,9 +30,8 @@ const menuItems: DashboardMenuItem[] = [
   { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 
-function Metric({ label, value, detail, icon: Icon, tone = "default" }: { label: string; value: string; detail: string; icon: typeof ChartNoAxesCombined; tone?: "default" | "amber" | "red" | "green" }) {
-  const tones = { default: "bg-slate-100 text-slate-700", amber: "bg-amber-100 text-amber-700", red: "bg-red-100 text-red-700", green: "bg-emerald-100 text-emerald-700" };
-  return <Card className="border-slate-200/80 shadow-[0_10px_30px_-24px_rgba(15,23,42,.38)]"><CardContent className="p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">{value}</p><p className="mt-1.5 text-sm text-slate-500">{detail}</p></div><div className={`rounded-xl p-2.5 ${tones[tone]}`}><Icon className="h-5 w-5" /></div></div></CardContent></Card>;
+function Metric({ label, value, detail }: { label: string; value: string; detail: string; [key: string]: unknown }) {
+  return <Card className="border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p><p className="mt-3 text-2xl font-semibold tabular-nums tracking-tight text-slate-950">{value}</p><p className="mt-1.5 text-sm text-slate-500">{detail}</p></CardContent></Card>;
 }
 
 function CreateTenant({ onCreated }: { onCreated: () => void }) {
