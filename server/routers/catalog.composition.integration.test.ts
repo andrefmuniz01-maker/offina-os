@@ -24,9 +24,11 @@ import { catalogRouter } from "./catalog";
 function chain(result: unknown) {
   const query: any = {};
   query.from = vi.fn(() => query);
+  query.leftJoin = vi.fn(() => query);
   query.where = vi.fn(() => query);
-  query.limit = vi.fn(async () => result);
-  query.orderBy = vi.fn(async () => result);
+  query.limit = vi.fn(() => query);
+  query.offset = vi.fn(() => query);
+  query.orderBy = vi.fn(() => query);
   query.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result).then(resolve, reject);
   return query;
 }
@@ -154,6 +156,17 @@ describe("catalog — composição segura por tenant", () => {
     await expect(caller.services.create({ tenantId: 4, name: "Instalação", laborPrice: 100, categoryId: 82 })).resolves.toEqual({ id: 401 });
     expect(mocks.db.inserts()).toEqual([expect.objectContaining({ tenantId: 4, categoryId: 82, name: "Instalação" })]);
     expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "service.created", entityId: 401, after: expect.objectContaining({ categoryId: 82 }) }));
+  });
+
+  it("retorna a categoria persistida de produtos e serviços sem expor custo a perfil restrito", async () => {
+    mocks.hasPermission.mockReturnValue(false);
+    const product = { id: 301, tenantId: 4, name: "Filtro", sku: null, currentCost: "50.00", averageCost: "50.00", desiredMarginPercent: "30.00", salePrice: "100.00" };
+    const service = { id: 401, tenantId: 4, name: "Instalação", estimatedCost: "20.00", desiredMarginPercent: "30.00", laborPrice: "100.00", estimatedMinutes: 60 };
+    mocks.db = buildDb([[{ product, balance: { physicalQuantity: "2.000", reservedQuantity: "0.000" }, category: { name: "Performance" } }], [{ service, category: { name: "Instalação" } }]]);
+    const caller = catalogRouter.createCaller(createContext());
+
+    await expect(caller.products.list({ tenantId: 4, page: 1, pageSize: 10 })).resolves.toEqual([expect.objectContaining({ id: 301, categoryName: "Performance", physicalQuantity: "2.000" })]);
+    await expect(caller.services.list({ tenantId: 4, page: 1, pageSize: 10 })).resolves.toEqual([expect.objectContaining({ id: 401, categoryName: "Instalação", laborPrice: "100.00" })]);
   });
 
   it("atualiza categoria de produto somente dentro do tenant e registra antes e depois", async () => {
