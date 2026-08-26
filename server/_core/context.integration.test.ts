@@ -1,0 +1,83 @@
+import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { User } from "../../drizzle/schema";
+
+vi.mock("../db", () => ({
+  getUserByEmail: vi.fn(),
+}));
+
+vi.mock("./supabase", () => ({
+  getBearerToken: vi.fn(() => "supabase-token"),
+  getSupabaseAuthUser: vi.fn(),
+  getSupabaseProfile: vi.fn(),
+}));
+
+import * as db from "../db";
+import { createContext } from "./context";
+import { getSupabaseAuthUser, getSupabaseProfile } from "./supabase";
+
+const legacyUser: User = {
+  id: 1,
+  openId: "legacy-felipe",
+  name: "Felipe",
+  email: "felipefmuniz@gmail.com",
+  loginMethod: "email",
+  role: "user",
+  platformRole: "platform_user",
+  createdAt: new Date("2026-08-26T00:00:00.000Z"),
+  updatedAt: new Date("2026-08-26T00:00:00.000Z"),
+  lastSignedIn: new Date("2026-08-26T00:00:00.000Z"),
+};
+
+function options() {
+  return {
+    req: { headers: { authorization: "Bearer supabase-token" } },
+    res: {},
+  } as CreateExpressContextOptions;
+}
+
+describe("createContext com Supabase", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getSupabaseAuthUser).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+    } as Awaited<ReturnType<typeof getSupabaseAuthUser>>);
+  });
+
+  it("não materializa contexto quando o token não possui profile autorizado", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue(null);
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(db.getUserByEmail).not.toHaveBeenCalled();
+  });
+
+  it("não materializa contexto quando o profile diverge da identidade validada pelo token", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "outro-id",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(db.getUserByEmail).not.toHaveBeenCalled();
+  });
+
+  it("materializa o usuário legado somente após vínculo completo e aplica o papel do profile", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+    vi.mocked(db.getUserByEmail).mockResolvedValue(legacyUser);
+
+    const context = await createContext(options());
+
+    expect(context.user?.id).toBe(legacyUser.id);
+    expect(context.user?.platformRole).toBe("super_admin");
+  });
+});

@@ -80,3 +80,10 @@
 - [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
 - [ ] Repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
 - [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
+- [ ] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
+- [ ] Quando o limite do Supabase liberar, enviar um único convite seguro para andrefmuniz01@gmail.com e permitir que ele defina a senha exclusivamente no fluxo de recuperação.
+- [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
+- [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
+- [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
+- [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para usuário sem vínculo ativo no tenant.
+- [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para técnico tentando ação financeira.

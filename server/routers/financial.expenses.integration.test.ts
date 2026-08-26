@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import type { TrpcContext } from "../_core/context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,9 +28,9 @@ function buildDb(affectedRows: number, selectResults: unknown[] = []) {
   };
 }
 
-function createContext(): TrpcContext {
+function createContext(userOverrides: Partial<NonNullable<TrpcContext["user"]>> = {}): TrpcContext {
   return {
-    user: { id: 7, openId: "financial-manager", role: "user", platformRole: "platform_user", name: "Gestor", email: "gestor@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
+    user: { id: 7, openId: "financial-manager", role: "user", platformRole: "platform_user", name: "Gestor", email: "gestor@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date(), ...userOverrides },
     req: {} as TrpcContext["req"],
     res: {} as TrpcContext["res"],
   };
@@ -38,6 +39,7 @@ function createContext(): TrpcContext {
 describe("financial.expenses.markPaid — integração tRPC simulada", () => {
   beforeEach(() => {
     mocks.audit.mockReset();
+    mocks.requirePermission.mockReset();
     mocks.requirePermission.mockResolvedValue({ permissions: ["financial.manage"] });
   });
 
@@ -54,6 +56,26 @@ describe("financial.expenses.markPaid — integração tRPC simulada", () => {
     const caller = financialRouter.createCaller(createContext());
 
     await expect(caller.expenses.markPaid({ tenantId: 4, expenseId: 999 })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("retorna FORBIDDEN na procedure protegida quando o usuário não possui vínculo ativo no tenant", async () => {
+    mocks.db = buildDb(1);
+    mocks.requirePermission.mockRejectedValueOnce(new TRPCError({ code: "FORBIDDEN", message: "Você não possui acesso a esta oficina." }));
+    const caller = financialRouter.createCaller(createContext({ id: 22, email: "sem-vinculo@example.com" }));
+
+    await expect(caller.expenses.markPaid({ tenantId: 4, expenseId: 55 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.objectContaining({ id: 22 }), 4, "financial.manage");
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("retorna FORBIDDEN na procedure protegida quando um técnico tenta executar ação financeira", async () => {
+    mocks.db = buildDb(1);
+    mocks.requirePermission.mockRejectedValueOnce(new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para esta ação." }));
+    const caller = financialRouter.createCaller(createContext({ id: 23, email: "tecnico@example.com", name: "Técnico" }));
+
+    await expect(caller.expenses.markPaid({ tenantId: 4, expenseId: 55 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.objectContaining({ id: 23 }), 4, "financial.manage");
     expect(mocks.audit).not.toHaveBeenCalled();
   });
 
