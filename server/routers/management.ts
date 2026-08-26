@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -31,11 +31,12 @@ export function periodBounds(reference: Date) {
 
 export const financialRouter = router({
   revenues: router({
-    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["expected", "received", "cancelled"]).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["expected", "received", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.view");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      const rows = await db.select().from(revenues).where(input.status ? and(eq(revenues.tenantId, input.tenantId), eq(revenues.status, input.status)) : eq(revenues.tenantId, input.tenantId)).orderBy(desc(revenues.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      const search = input.search ? `%${input.search}%` : null;
+      const rows = await db.select().from(revenues).where(and(eq(revenues.tenantId, input.tenantId), ...(input.status ? [eq(revenues.status, input.status)] : []), ...(search ? [or(like(revenues.notes, search), like(revenues.paymentMethod, search))] : []))).orderBy(desc(revenues.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
       return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
     markReceived: protectedProcedure.input(tenantIdInput.extend({ revenueId: z.number().int().positive(), paymentMethod: z.string().trim().min(2).max(64) })).mutation(async ({ ctx, input }) => {
@@ -52,11 +53,12 @@ export const financialRouter = router({
     }),
   }),
   expenses: router({
-    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["planned", "paid", "cancelled"]).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
+    list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["planned", "paid", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: listPageInput.shape.page, pageSize: listPageInput.shape.pageSize })).query(async ({ ctx, input }) => {
       await requireTenantPermission(ctx.user, input.tenantId, "financial.view");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-      const rows = await db.select().from(expenses).where(input.status ? and(eq(expenses.tenantId, input.tenantId), eq(expenses.status, input.status)) : eq(expenses.tenantId, input.tenantId)).orderBy(desc(expenses.expenseDate)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      const search = input.search ? `%${input.search}%` : null;
+      const rows = await db.select().from(expenses).where(and(eq(expenses.tenantId, input.tenantId), ...(input.status ? [eq(expenses.status, input.status)] : []), ...(search ? [or(like(expenses.category, search), like(expenses.notes, search), like(expenses.recurrence, search))] : []))).orderBy(desc(expenses.expenseDate)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
       return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
     }),
     create: protectedProcedure.input(tenantIdInput.extend({ category: z.string().trim().min(2).max(96), amount: moneyInput, expenseDate: z.date(), dueAt: z.date().optional(), recurrence: z.string().trim().max(32).optional(), notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {

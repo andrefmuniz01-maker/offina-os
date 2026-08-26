@@ -50,4 +50,18 @@ describe("financial listagens paginadas — integração tRPC simulada", () => {
     await expect(caller.expenses.list({ tenantId: 4, status: "paid", page: 1, pageSize: 2 })).resolves.toEqual({ items: rows.slice(0, 2), page: 1, pageSize: 2, hasMore: false });
     expect(mocks.db.calls).toEqual([{ limit: 3, offset: 0 }]);
   });
+
+  it("aceita busca de descrição junto do status e paginação em receitas e despesas", async () => {
+    const found = [{ id: 8, tenantId: 4, notes: "Instalação BMW", category: "Fornecedor" }];
+    mocks.db = buildDb(found);
+    const caller = financialRouter.createCaller(createContext());
+
+    await expect(caller.revenues.list({ tenantId: 4, status: "expected", search: "Instalação", page: 1, pageSize: 10 })).resolves.toEqual({ items: found, page: 1, pageSize: 10, hasMore: false });
+    expect(mocks.db.calls).toEqual([{ limit: 11, offset: 0 }]);
+
+    mocks.db = buildDb(found);
+    await expect(caller.expenses.list({ tenantId: 4, status: "planned", search: "Fornecedor", page: 1, pageSize: 10 })).resolves.toEqual({ items: found, page: 1, pageSize: 10, hasMore: false });
+    expect(mocks.db.calls).toEqual([{ limit: 11, offset: 0 }]);
+    expect(mocks.requirePermission).toHaveBeenCalledWith(expect.anything(), 4, "financial.view");
+  });
 });
