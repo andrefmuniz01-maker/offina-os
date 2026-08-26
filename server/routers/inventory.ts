@@ -161,7 +161,7 @@ export const inventoryRouter = router({
         await tx.insert(purchaseOrderItems).values(input.items.map(item => ({ tenantId: input.tenantId, purchaseOrderId: orderId, productId: item.productId, orderedQuantity: item.quantity.toFixed(3), unitCost: item.unitCost.toFixed(2) })));
         return { id: orderId, number: Number(next) };
       });
-      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.created", entityType: "purchase_order", entityId: result.id, after: { number: result.number } });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "purchase_order.created", entityType: "purchase_order", entityId: result.id, after: { number: result.number, supplierId: input.supplierId ?? null, itemCount: input.items.length, items: input.items.map(item => ({ productId: item.productId, quantity: item.quantity })) } });
       return result;
     }),
     receive: protectedProcedure.input(tenantIdInput.extend({ purchaseOrderId: z.number().int().positive(), items: z.array(z.object({ itemId: z.number().int().positive(), receivedQuantity: quantityInput })).min(1).max(100) })).mutation(async ({ ctx, input }) => {

@@ -79,7 +79,7 @@ describe("inventory.purchaseOrders.create — isolamento de fornecedor", () => {
       expect.objectContaining({ tenantId: 4, number: 43, supplierId: 88, notes: "Reposição programada", createdByUserId: 7 }),
       expect.arrayContaining([expect.objectContaining({ tenantId: 4, purchaseOrderId: 71, productId: 12, orderedQuantity: "2.000", unitCost: "25.00" })]),
     ]));
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "purchase_order.created", entityId: 71 }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, actorUserId: 7, action: "purchase_order.created", entityId: 71, after: { number: 43, supplierId: 88, itemCount: 1, items: [{ productId: 12, quantity: 2 }] } }));
   });
 
   it("pagina pedidos do tenant e oculta custo unitário quando o perfil não pode ver financeiro", async () => {
