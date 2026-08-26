@@ -53,9 +53,10 @@ export const tenants = mysqlTable("tenants", {
   planId: int("planId").references(() => plans.id),
   primaryOwnerUserId: int("primaryOwnerUserId").references(() => users.id),
   active: boolean("active").notNull().default(true),
+  isDemo: boolean("isDemo").notNull().default(false),
   createdAt,
   updatedAt,
-}, (table) => [uniqueIndex("tenants_slug_unique").on(table.slug), index("tenants_status_idx").on(table.status)]);
+}, (table) => [uniqueIndex("tenants_slug_unique").on(table.slug), index("tenants_status_idx").on(table.status), index("tenants_demo_idx").on(table.isDemo)]);
 
 export const tenantSettings = mysqlTable("tenant_settings", {
   id: int("id").autoincrement().primaryKey(),
