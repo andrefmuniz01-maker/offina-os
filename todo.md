@@ -186,3 +186,4 @@
 - [x] Implementar listagem e manutenção auditável de planos no Painel de Super Admin.
 - [x] Exibir consumo de membros e clientes por tenant frente aos limites do plano no Painel de Super Admin.
 - [x] Permitir ao Super Admin consultar eventos auditáveis de um tenant sem acessar seus dados operacionais.
+- [x] Implementar gestão global auditável de usuários e vínculos por tenant no Painel de Super Admin.

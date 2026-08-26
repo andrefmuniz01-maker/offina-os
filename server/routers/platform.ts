@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { auditLogs, customers, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
@@ -61,6 +61,36 @@ export const platformRouter = router({
       .where(and(eq(auditLogs.tenantId, input.tenantId), ...(search ? [or(like(auditLogs.action, search), like(auditLogs.entityType, search), sql`CAST(${auditLogs.entityId} AS CHAR) LIKE ${search}`)] : [])))
       .orderBy(desc(auditLogs.createdAt)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
     return { items: rows.slice(0, input.pageSize), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
+  }),
+
+  users: router({
+    list: protectedProcedure.input(z.object({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ ctx, input }) => {
+      assertPlatformSuperAdmin(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const search = input.search ? `%${input.search}%` : null;
+      const rows = await db.select({ id: users.id, name: users.name, email: users.email, platformRole: users.platformRole, lastSignedIn: users.lastSignedIn })
+        .from(users).where(search ? or(like(users.name, search), like(users.email, search)) : undefined).orderBy(desc(users.lastSignedIn)).limit(input.pageSize + 1).offset((input.page - 1) * input.pageSize);
+      const pageRows = rows.slice(0, input.pageSize);
+      const ids = pageRows.map(row => row.id);
+      const memberships = ids.length ? await db.select({ membership: tenantMembers, tenant: { id: tenants.id, name: tenants.name, slug: tenants.slug, primaryOwnerUserId: tenants.primaryOwnerUserId } })
+        .from(tenantMembers).innerJoin(tenants, eq(tenants.id, tenantMembers.tenantId)).where(inArray(tenantMembers.userId, ids)) : [];
+      return { items: pageRows.map(user => ({ ...user, memberships: memberships.filter(row => row.membership.userId === user.id).map(row => ({ tenantId: row.tenant.id, tenantName: row.tenant.name, tenantSlug: row.tenant.slug, role: row.membership.role, active: row.membership.active, primaryOwner: row.tenant.primaryOwnerUserId === user.id })) })), page: input.page, pageSize: input.pageSize, hasMore: rows.length > input.pageSize };
+    }),
+    updateMembership: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), userId: z.number().int().positive(), role: roleInput, active: z.boolean() })).mutation(async ({ ctx, input }) => {
+      assertPlatformSuperAdmin(ctx.user);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+      const tenant = (await db.select({ id: tenants.id, primaryOwnerUserId: tenants.primaryOwnerUserId }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1))[0];
+      if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada." });
+      if (tenant.primaryOwnerUserId === input.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "O vínculo do proprietário primário não pode ser alterado nesta central." });
+      const membership = (await db.select({ role: tenantMembers.role, active: tenantMembers.active }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId))).limit(1))[0];
+      if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Vínculo de usuário não encontrado nesta oficina." });
+      const result = await db.update(tenantMembers).set({ role: input.role, active: input.active }).where(and(eq(tenantMembers.tenantId, input.tenantId), eq(tenantMembers.userId, input.userId), eq(tenantMembers.role, membership.role), eq(tenantMembers.active, membership.active)));
+      if (!Number(result[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Este vínculo foi alterado em outra sessão. Atualize o painel para consultar o estado atual." });
+      await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "platform.user_membership_updated", entityType: "tenant_member", entityId: input.userId, before: membership, after: { role: input.role, active: input.active } });
+      return { success: true };
+    }),
   }),
 
   updateTenant: protectedProcedure.input(z.object({ tenantId: z.number().int().positive(), status: z.enum(["trial", "active", "suspended", "inactive"]).optional(), active: z.boolean().optional(), planId: z.number().int().positive().nullable().optional() })).mutation(async ({ ctx, input }) => {

@@ -41,3 +41,7 @@ O painel global agora exibe, para cada tenant, contagens agregadas de membros at
 ## 26/08/2026 — Suporte auditável por tenant
 
 A central de suporte do Super Admin foi verificada em desktop e mobile. A seleção de oficina, a busca por metadados e o estado vazio de eventos permanecem separados da operação do tenant. No mobile, o seletor e a busca ficam empilhados; a tela conserva a distinção entre metadados de auditoria permitidos e dados operacionais não acessados.
+
+## 26/08/2026 — Gestão global de usuários
+
+A gestão global de usuários foi verificada em desktop e mobile. A busca, os vínculos por oficina, a identificação do proprietário primário protegido e a paginação permanecem legíveis. A versão móvel empilha as ações de vínculo sem corte; os controles mantêm a distinção entre alteração auditável de um vínculo comum e o bloqueio explícito do proprietário primário.
