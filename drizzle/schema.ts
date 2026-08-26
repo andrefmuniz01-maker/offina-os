@@ -329,6 +329,7 @@ export const quotes = mysqlTable("quotes", {
   updatedAt,
 }, (table) => [
   uniqueIndex("quotes_tenant_number_unique").on(table.tenantId, table.number),
+  uniqueIndex("quotes_tenant_request_unique").on(table.tenantId, table.quoteRequestId),
   uniqueIndex("quotes_public_token_unique").on(table.publicToken),
   index("quotes_tenant_status_idx").on(table.tenantId, table.status),
 ]);
