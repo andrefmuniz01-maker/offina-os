@@ -84,4 +84,18 @@ describe("operations.updateStatus — finalização integrada", () => {
     expect(concurrentRelease.inserted).toContainEqual(expect.objectContaining({ type: "post_sale_suggested", workOrderId: 91 }));
     expect(concurrentRelease.inserted).not.toContainEqual(expect.objectContaining({ type: "reservation_release", referenceId: 91 }));
   });
+
+  it("bloqueia efeitos e auditoria quando outra sessão já mudou o status da OS", async () => {
+    const concurrentStatus = buildDb([
+      [{ id: 91, tenantId: 4, number: 12, status: "in_service", customerId: 21, vehicleId: 22, appointmentId: 31, estimatedTotal: "850.00", notes: null }],
+      [],
+    ], [[{ affectedRows: 0 }]]);
+    mocks.db = concurrentStatus.db;
+    const caller = workOrderRouter.createCaller(context());
+
+    await expect(caller.updateStatus({ tenantId: 4, workOrderId: 91, status: "completed" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    expect(concurrentStatus.inserted).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
 });

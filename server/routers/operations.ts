@@ -127,7 +127,8 @@ export const workOrderRouter = router({
       if (uncompleted.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Conclua o checklist antes de finalizar a OS." });
     }
     await db.transaction(async (tx) => {
-      await tx.update(workOrders).set({ status: input.status, notes: input.notes ?? order.notes, completedAt: input.status === "completed" ? new Date() : order.completedAt, deliveredAt: input.status === "delivered" ? new Date() : order.deliveredAt }).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId)));
+      const statusUpdate = await tx.update(workOrders).set({ status: input.status, notes: input.notes ?? order.notes, completedAt: input.status === "completed" ? new Date() : order.completedAt, deliveredAt: input.status === "delivered" ? new Date() : order.deliveredAt }).where(and(eq(workOrders.id, input.workOrderId), eq(workOrders.tenantId, input.tenantId), eq(workOrders.status, order.status)));
+      if (!Number(statusUpdate[0]?.affectedRows ?? 0)) throw new TRPCError({ code: "CONFLICT", message: "Esta ordem de serviço foi alterada em outra sessão. Atualize o pátio para consultar o estado atual." });
       if (order.appointmentId) await tx.update(appointments).set({ status: input.status }).where(and(eq(appointments.id, order.appointmentId), eq(appointments.tenantId, input.tenantId)));
       if (input.status === "completed") {
         const existingRevenue = (await tx.select({ id: revenues.id }).from(revenues).where(and(eq(revenues.tenantId, input.tenantId), eq(revenues.workOrderId, input.workOrderId))).limit(1))[0];

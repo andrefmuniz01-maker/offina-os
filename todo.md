@@ -163,3 +163,4 @@
 - [x] Impedir registro duplicado de visualização pública de orçamento sob concorrência.
 - [x] Impedir registro duplicado de expiração pública de orçamento sob concorrência.
 - [x] Impedir eventos e auditorias duplicados em mudanças concorrentes de status de solicitações.
+- [x] Impedir auditorias e efeitos duplicados em mudanças concorrentes de status de ordem de serviço.
