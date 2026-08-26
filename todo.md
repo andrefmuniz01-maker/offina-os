@@ -177,3 +177,4 @@
 - [x] Adicionar busca por cliente, placa ou veículo à agenda e ao pátio operacional.
 - [x] Adicionar busca por descrição às filas paginadas de receitas e despesas, sem ampliar acesso financeiro.
 - [x] Adicionar busca por ação ou entidade à trilha de auditoria paginada por tenant.
+- [x] Cobrir em regressão a auditoria de alteração de custo, preço e margem no catálogo.
