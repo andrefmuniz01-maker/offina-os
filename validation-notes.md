@@ -165,3 +165,7 @@ A tela de Configurações agora separa carregamento, ausência de vínculo e fal
 ## 26/08/2026 — Página pública indisponível
 
 Rotas públicas inexistentes ou links não reconhecidos agora apresentam uma página em português do Brasil, sem gradientes, pulsos ou texto genérico. O estado explica as causas prováveis e oferece um único retorno para a visão geral. A versão móvel foi revisada após a alteração; TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.
+
+## 26/08/2026 — Falha global protegida
+
+O limite global de erro foi traduzido para português do Brasil e não revela mais stack traces ou detalhes técnicos ao operador. A tela informa que a falha é temporária, orienta a atualização e mantém um único comando de recuperação com foco visível. TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.

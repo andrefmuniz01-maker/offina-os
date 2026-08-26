@@ -231,3 +231,4 @@
 - [x] Exibir erro explícito ao carregar dados ou identidade na tela de configurações da oficina.
 - [x] Substituir a página 404 genérica em inglês por um estado público objetivo em português do Brasil.
 - [x] Criar e sincronizar um repositório privado no GitHub para o código-fonte do OficinaOS.
+- [x] Traduzir e tornar seguro o estado global de erro sem expor detalhes técnicos ao operador.
