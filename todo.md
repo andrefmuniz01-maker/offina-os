@@ -189,3 +189,4 @@
 - [x] Implementar gestão global auditável de usuários e vínculos por tenant no Painel de Super Admin.
 - [x] Permitir ao Super Admin associar um usuário existente a um tenant com papel inicial auditável.
 - [x] Aplicar efetivamente limites de plano para membros ativos e clientes por tenant.
+- [x] Implementar relatórios consolidados de uso e desempenho por tenant no Painel de Super Admin.

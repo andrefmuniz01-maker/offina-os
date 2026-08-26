@@ -49,3 +49,7 @@ A gestão global de usuários foi verificada em desktop e mobile. A busca, os v�
 ## 26/08/2026 — Associação global de usuários a tenants
 
 A central de gestão de usuários foi revisada após incluir a associação de usuário existente a uma nova oficina com papel inicial. Os controles preservam o vínculo primário protegido e ficam disponíveis apenas para oficinas ainda não associadas ao usuário. A página continua responsiva em desktop e mobile; o estado atual com um único tenant não exibe a ação adicional, como esperado.
+
+## 26/08/2026 — Relatório consolidado da plataforma
+
+O relatório global foi verificado em desktop e mobile com seleção de período, cartões de totais e tabela por oficina. A tabela usa rolagem horizontal em telas pequenas, evitando a perda de colunas; o resumo por cards continua em coluna. O conteúdo informa que os números são agregados e não abre clientes, veículos, OS ou lançamentos individuais.

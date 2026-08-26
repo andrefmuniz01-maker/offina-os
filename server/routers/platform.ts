@@ -1,7 +1,7 @@
-import { and, count, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, like, lte, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, customers, plans, tenantBranding, tenantMembers, tenantSettings, tenants, users } from "../../drizzle/schema";
+import { auditLogs, customers, plans, quotes, revenues, tenantBranding, tenantMembers, tenantSettings, tenants, users, workOrders } from "../../drizzle/schema";
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
 import { assertTenantPlanCapacity } from "../planLimits";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
@@ -29,6 +29,30 @@ export const platformRouter = router({
       db.select({ total: count() }).from(tenantMembers).where(eq(tenantMembers.active, true)),
     ]);
     return { tenants: Number(tenantCount[0]?.total ?? 0), activeTenants: Number(activeCount[0]?.total ?? 0), users: Number(userCount[0]?.total ?? 0), activeMemberships: Number(memberships[0]?.total ?? 0) };
+  }),
+
+  report: protectedProcedure.input(z.object({ from: z.date().optional(), to: z.date().optional() }).refine(input => !input.from || !input.to || input.from <= input.to, "O período inicial deve anteceder o final.")).query(async ({ ctx, input }) => {
+    assertPlatformSuperAdmin(ctx.user);
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const to = input.to ?? new Date();
+    const from = input.from ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const betweenCreated = (column: any) => and(gte(column, from), lte(column, to));
+    const [tenantRows, customerRows, quoteRows, deliveredRows, revenueRows] = await Promise.all([
+      db.select({ id: tenants.id, name: tenants.name, slug: tenants.slug, status: tenants.status, active: tenants.active }).from(tenants).orderBy(tenants.name),
+      db.select({ tenantId: customers.tenantId, total: count() }).from(customers).where(betweenCreated(customers.createdAt)).groupBy(customers.tenantId),
+      db.select({ tenantId: quotes.tenantId, total: count(), approved: sql<number>`SUM(CASE WHEN ${quotes.status} = 'approved' THEN 1 ELSE 0 END)` }).from(quotes).where(betweenCreated(quotes.createdAt)).groupBy(quotes.tenantId),
+      db.select({ tenantId: workOrders.tenantId, total: count() }).from(workOrders).where(and(eq(workOrders.status, "delivered"), gte(workOrders.deliveredAt, from), lte(workOrders.deliveredAt, to))).groupBy(workOrders.tenantId),
+      db.select({ tenantId: revenues.tenantId, amount: sql<number>`COALESCE(SUM(${revenues.amount}), 0)` }).from(revenues).where(and(eq(revenues.status, "received"), gte(revenues.receivedAt, from), lte(revenues.receivedAt, to))).groupBy(revenues.tenantId),
+    ]);
+    const toMap = (rows: Array<{ tenantId: number; total?: number | string; amount?: number | string }>, key: "total" | "amount") => new Map(rows.map(row => [row.tenantId, Number(row[key] ?? 0)]));
+    const customersByTenant = toMap(customerRows, "total");
+    const quotesByTenant = toMap(quoteRows, "total");
+    const approvedByTenant = new Map(quoteRows.map(row => [row.tenantId, Number(row.approved ?? 0)]));
+    const deliveredByTenant = toMap(deliveredRows, "total");
+    const revenueByTenant = toMap(revenueRows, "amount");
+    const items = tenantRows.map(tenant => ({ ...tenant, newCustomers: customersByTenant.get(tenant.id) ?? 0, quotes: quotesByTenant.get(tenant.id) ?? 0, approvedQuotes: approvedByTenant.get(tenant.id) ?? 0, deliveredWorkOrders: deliveredByTenant.get(tenant.id) ?? 0, receivedRevenue: revenueByTenant.get(tenant.id) ?? 0 }));
+    return { from, to, items, totals: { tenants: items.length, newCustomers: items.reduce((sum, item) => sum + item.newCustomers, 0), quotes: items.reduce((sum, item) => sum + item.quotes, 0), approvedQuotes: items.reduce((sum, item) => sum + item.approvedQuotes, 0), deliveredWorkOrders: items.reduce((sum, item) => sum + item.deliveredWorkOrders, 0), receivedRevenue: items.reduce((sum, item) => sum + item.receivedRevenue, 0) } };
   }),
 
   usage: protectedProcedure.query(async ({ ctx }) => {
