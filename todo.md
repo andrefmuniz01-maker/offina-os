@@ -123,3 +123,4 @@
 - [x] Cobrir o bloqueio de categorias de outra oficina antes de criar produtos ou serviços, sem escrita ou auditoria indevida.
 - [x] Registrar o papel e a ativação anteriores e posteriores ao incluir ou reativar um membro em uma oficina.
 - [x] Registrar estados anterior e posterior das preferências internas de notificação por usuário e tenant.
+- [x] Registrar na auditoria os dados operacionais do agendamento e da OS criados a partir de orçamento aprovado.

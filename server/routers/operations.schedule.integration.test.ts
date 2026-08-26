@@ -61,7 +61,7 @@ describe("appointments.scheduleFromQuote — integração tRPC simulada", () => 
       expect.objectContaining({ tenantId: 4, quoteId: 70, workOrderId: 401, customerId: 20, vehicleId: 31, bay: "Baia 2" }),
     ]));
     expect(mocks.db.updates()).toEqual(expect.arrayContaining([expect.objectContaining({ workOrderId: 401 })]));
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "appointment.created_from_quote", entityId: 901, metadata: { quoteId: 70, workOrderId: 401 } }));
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 4, action: "appointment.created_from_quote", entityId: 901, after: { quoteId: 70, workOrderId: 401, workOrderNumber: 14, assignedToUserId: null, bay: "Baia 2", scheduledStart: start, scheduledEnd: end }, metadata: { quoteId: 70, workOrderId: 401 } }));
   });
 
   it("não inicia o encadeamento quando o orçamento não pertence ao tenant", async () => {

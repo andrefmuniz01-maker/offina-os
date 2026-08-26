@@ -73,7 +73,7 @@ export const appointmentRouter = router({
       await tx.update(workOrders).set({ appointmentId, assignedToUserId: input.assignedToUserId ?? null }).where(and(eq(workOrders.id, workOrderId), eq(workOrders.tenantId, input.tenantId)));
       return { appointmentId, workOrderId, workOrderNumber: existing ? undefined : Number(next) };
     });
-    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "appointment.created_from_quote", entityType: "appointment", entityId: result.appointmentId, metadata: { quoteId: input.quoteId, workOrderId: result.workOrderId } });
+    await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "appointment.created_from_quote", entityType: "appointment", entityId: result.appointmentId, after: { quoteId: input.quoteId, workOrderId: result.workOrderId, workOrderNumber: result.workOrderNumber ?? null, assignedToUserId: input.assignedToUserId ?? null, bay: input.bay ?? null, scheduledStart: input.scheduledStart, scheduledEnd: input.scheduledEnd }, metadata: { quoteId: input.quoteId, workOrderId: result.workOrderId } });
     return result;
   }),
   list: protectedProcedure.input(tenantIdInput.extend({ from: z.date().optional(), to: z.date().optional() })).query(async ({ ctx, input }) => {
