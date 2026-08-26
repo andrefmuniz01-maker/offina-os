@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { trpc } from "@/lib/trpc";
 import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
-import { ArrowLeft, CalendarClock, CarFront, Wrench } from "lucide-react";
+import { ArrowLeft, CalendarClock, CarFront, Search, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -46,6 +46,7 @@ export default function Operations() {
 
   const [agendaFrom, setAgendaFrom] = useState(() => dateInput(new Date()));
   const [agendaTo, setAgendaTo] = useState(defaultAgendaEnd);
+  const [operationSearch, setOperationSearch] = useState("");
   const [quoteId, setQuoteId] = useState("");
   const [date, setDate] = useState("");
   const [bay, setBay] = useState("");
@@ -57,10 +58,10 @@ export default function Operations() {
     [agendaFrom, agendaTo],
   );
   const appointments = trpc.appointments.list.useQuery(
-    { tenantId, ...agendaRange },
+    { tenantId, ...agendaRange, ...(operationSearch.trim() ? { search: operationSearch.trim() } : {}) },
     { enabled: Boolean(tenantId) && agendaRange.to >= agendaRange.from },
   );
-  const yard = trpc.workOrders.kanban.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const yard = trpc.workOrders.kanban.useQuery({ tenantId, ...(operationSearch.trim() ? { search: operationSearch.trim() } : {}) }, { enabled: Boolean(tenantId) });
   const quotes = trpc.quotes.list.useQuery({ tenantId, status: "approved", page: 1, pageSize: 100 }, { enabled: Boolean(tenantId) });
   const members = trpc.tenant.members.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
 
@@ -169,7 +170,8 @@ export default function Operations() {
         <section>
           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Próximos agendamentos</h2></div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-1 sm:col-span-3"><Label className="text-xs" htmlFor="operation-search">Buscar na agenda e pátio</Label><div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" /><Input id="operation-search" className="pl-8" value={operationSearch} onChange={event => setOperationSearch(event.target.value)} placeholder="Cliente, WhatsApp, placa ou veículo" aria-describedby="operation-search-help" aria-busy={appointments.isLoading || yard.isLoading} /></div><span id="operation-search-help" className="sr-only">Filtra a agenda e o pátio por cliente, WhatsApp, placa, marca ou modelo do veículo.</span></div>
               <div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-from">De</Label><Input id="agenda-from" type="date" value={agendaFrom} onChange={event => setAgendaFrom(event.target.value)} /></div>
               <div className="grid gap-1"><Label className="text-xs" htmlFor="agenda-to">Até</Label><Input id="agenda-to" type="date" min={agendaFrom} value={agendaTo} onChange={event => setAgendaTo(event.target.value)} /></div>
             </div>
@@ -178,7 +180,7 @@ export default function Operations() {
           {agendaRange.to >= agendaRange.from && appointments.isLoading ? <div className="grid gap-3 md:grid-cols-2">{Array.from({ length: 2 }).map((_, index) => <Skeleton className="h-24" key={index} />)}</div> : null}
           {agendaRange.to >= agendaRange.from && appointments.isError ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">Não foi possível carregar os agendamentos desta oficina.</CardContent></Card> : null}
           {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && appointments.data?.length ? <div className="grid gap-3 md:grid-cols-2">{appointments.data.map(({ appointment, customer, vehicle, workOrder }) => <Card key={appointment.id} className="border-slate-200"><CardContent className="p-4"><div className="flex justify-between gap-3"><div><p className="font-medium text-slate-950">{customer.name} · {vehicle.make} {vehicle.model}</p><p className="mt-1 text-sm text-slate-500">{new Date(appointment.scheduledStart).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}{appointment.bay ? ` · Baia ${appointment.bay}` : ""}</p></div><Badge variant="outline">{labels[appointment.status] ?? appointment.status}</Badge></div>{workOrder ? <Link href={`/os/${workOrder.id}`}><a className="mt-3 inline-block text-xs font-medium text-orange-700 hover:text-orange-900">Abrir OS #{String(workOrder.number).padStart(6, "0")} →</a></Link> : null}</CardContent></Card>)}</div> : null}
-          {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && !appointments.data?.length ? <Card className="border-dashed border-slate-300"><CardHeader><CardTitle className="text-base">Nenhum agendamento encontrado no período</CardTitle><CardDescription>Após a aprovação de um orçamento, o agendamento cria ou reutiliza a OS vinculada sem redigitação.</CardDescription></CardHeader></Card> : null}
+          {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && !appointments.data?.length ? <Card className="border-dashed border-slate-300"><CardHeader><CardTitle className="text-base">Nenhum agendamento neste filtro</CardTitle><CardDescription>Ajuste a busca ou o período. Após a aprovação de um orçamento, o agendamento cria ou reutiliza a OS vinculada sem redigitação.</CardDescription></CardHeader></Card> : null}
         </section>
 
         <section>

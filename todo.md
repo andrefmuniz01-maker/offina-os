@@ -174,3 +174,4 @@
 - [x] Adicionar busca por cliente, WhatsApp, placa ou veículo à fila paginada de solicitações.
 - [x] Adicionar busca por cliente, placa ou veículo à fila paginada de orçamentos.
 - [x] Adicionar busca por número ou fornecedor à fila paginada de pedidos de compra.
+- [x] Adicionar busca por cliente, placa ou veículo à agenda e ao pátio operacional.

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, like, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -78,22 +78,24 @@ export const appointmentRouter = router({
     await writeAuditLog({ tenantId: input.tenantId, actorUserId: ctx.user.id, action: "appointment.created_from_quote", entityType: "appointment", entityId: result.appointmentId, after: { quoteId: input.quoteId, workOrderId: result.workOrderId, workOrderNumber: result.workOrderNumber ?? null, assignedToUserId: input.assignedToUserId ?? null, bay: input.bay ?? null, scheduledStart: input.scheduledStart, scheduledEnd: input.scheduledEnd }, metadata: { quoteId: input.quoteId, workOrderId: result.workOrderId } });
     return result;
   }),
-  list: protectedProcedure.input(tenantIdInput.extend({ from: z.date().optional(), to: z.date().optional() })).query(async ({ ctx, input }) => {
+  list: protectedProcedure.input(tenantIdInput.extend({ from: z.date().optional(), to: z.date().optional(), search: z.string().trim().min(1).max(120).optional() })).query(async ({ ctx, input }) => {
     await requireTenantPermission(ctx.user, input.tenantId, "appointments.manage");
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
-    return db.select({ appointment: appointments, customer: customers, vehicle: vehicles, workOrder: workOrders }).from(appointments).innerJoin(customers, and(eq(customers.id, appointments.customerId), eq(customers.tenantId, appointments.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, appointments.vehicleId), eq(vehicles.tenantId, appointments.tenantId))).leftJoin(workOrders, and(eq(workOrders.id, appointments.workOrderId), eq(workOrders.tenantId, appointments.tenantId))).where(and(eq(appointments.tenantId, input.tenantId), ...(input.from ? [gte(appointments.scheduledStart, input.from)] : []), ...(input.to ? [sql`${appointments.scheduledStart} <= ${input.to}`] : []))).orderBy(asc(appointments.scheduledStart));
+    const search = input.search ? `%${input.search}%` : null;
+    return db.select({ appointment: appointments, customer: customers, vehicle: vehicles, workOrder: workOrders }).from(appointments).innerJoin(customers, and(eq(customers.id, appointments.customerId), eq(customers.tenantId, appointments.tenantId))).innerJoin(vehicles, and(eq(vehicles.id, appointments.vehicleId), eq(vehicles.tenantId, appointments.tenantId))).leftJoin(workOrders, and(eq(workOrders.id, appointments.workOrderId), eq(workOrders.tenantId, appointments.tenantId))).where(and(eq(appointments.tenantId, input.tenantId), ...(input.from ? [gte(appointments.scheduledStart, input.from)] : []), ...(input.to ? [sql`${appointments.scheduledStart} <= ${input.to}`] : []), ...(search ? [or(like(customers.name, search), like(customers.whatsapp, search), like(vehicles.plate, search), like(vehicles.make, search), like(vehicles.model, search))] : []))).orderBy(asc(appointments.scheduledStart));
   }),
 });
 
 export const workOrderRouter = router({
-  kanban: protectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
+  kanban: protectedProcedure.input(tenantIdInput.extend({ search: z.string().trim().min(1).max(120).optional() })).query(async ({ ctx, input }) => {
     const access = await getTenantAccess(ctx.user, input.tenantId);
     if (!hasPermission(access, "work_orders.manage") && !hasPermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode visualizar o pátio." });
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const ownOnly = access.membership?.role === "technician";
-    const rows = await db.select({ workOrder: workOrders, vehicle: vehicles, customer: customers, appointment: appointments }).from(workOrders).innerJoin(vehicles, and(eq(vehicles.id, workOrders.vehicleId), eq(vehicles.tenantId, workOrders.tenantId))).innerJoin(customers, and(eq(customers.id, workOrders.customerId), eq(customers.tenantId, workOrders.tenantId))).leftJoin(appointments, and(eq(appointments.id, workOrders.appointmentId), eq(appointments.tenantId, workOrders.tenantId))).where(and(eq(workOrders.tenantId, input.tenantId), ...(ownOnly ? [eq(workOrders.assignedToUserId, ctx.user.id)] : []), inArray(workOrders.status, ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed"])));
+    const search = input.search ? `%${input.search}%` : null;
+    const rows = await db.select({ workOrder: workOrders, vehicle: vehicles, customer: customers, appointment: appointments }).from(workOrders).innerJoin(vehicles, and(eq(vehicles.id, workOrders.vehicleId), eq(vehicles.tenantId, workOrders.tenantId))).innerJoin(customers, and(eq(customers.id, workOrders.customerId), eq(customers.tenantId, workOrders.tenantId))).leftJoin(appointments, and(eq(appointments.id, workOrders.appointmentId), eq(appointments.tenantId, workOrders.tenantId))).where(and(eq(workOrders.tenantId, input.tenantId), ...(ownOnly ? [eq(workOrders.assignedToUserId, ctx.user.id)] : []), inArray(workOrders.status, ["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed"]), ...(search ? [or(like(customers.name, search), like(customers.whatsapp, search), like(vehicles.plate, search), like(vehicles.make, search), like(vehicles.model, search))] : [])));
     return rows;
   }),
   detail: protectedProcedure.input(tenantIdInput.extend({ workOrderId: z.number().int().positive() })).query(async ({ ctx, input }) => {
