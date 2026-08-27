@@ -68,6 +68,10 @@ export function normalizePublicWhatsapp(value: string) {
   return normalized;
 }
 
+export function resolvePublicServiceLabel(submittedLabel: string, catalogServiceName?: string) {
+  return catalogServiceName ?? submittedLabel;
+}
+
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
 const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
   draft: ["ready", "cancelled"],
@@ -224,10 +228,13 @@ export const quoteRequestRouter = router({
     if (isPublicRequestResubmissionBlocked(latestMatchingPublicRequest?.createdAt)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Recebemos uma solicitação recente deste contato. Aguarde alguns minutos antes de enviar novamente." });
     }
+    const validService = input.serviceId
+      ? (await db.select({ id: services.id, name: services.name }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0]
+      : undefined;
     if (input.serviceId) {
-      const validService = (await db.select({ id: services.id }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0];
       if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });
     }
+    const serviceLabel = resolvePublicServiceLabel(input.serviceLabel, validService?.name);
     const result = await db.transaction(async (tx) => {
       const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, whatsapp))).limit(1))[0];
       const customerId = existingCustomer?.id ?? await (async () => {
@@ -241,7 +248,7 @@ export const quoteRequestRouter = router({
         tenantId: tenant.id, number: Number(next), customerId, vehicleId, serviceId: input.serviceId ?? null,
         requesterName: input.name, requesterWhatsapp: whatsapp, requesterEmail: input.email ?? null,
         vehicleSnapshot: { make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null },
-        serviceLabel: input.serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
+        serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
       });
       const requestId = Number(request[0].insertId);
       await tx.insert(quoteRequestEvents).values({ tenantId: tenant.id, quoteRequestId: requestId, type: "created", metadata: { source: "public_link" } });
@@ -250,7 +257,7 @@ export const quoteRequestRouter = router({
     const members = await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, tenant.id), eq(tenantMembers.active, true)));
     if (members.length) {
       const { notifications } = await import("../../drizzle/schema");
-      await db.insert(notifications).values(members.map(member => ({ tenantId: tenant.id, userId: member.userId, type: "quote_request.created", title: "Nova solicitação de orçamento", body: `${input.name} solicitou ${input.serviceLabel}.`, link: `/solicitacoes/${result.requestId}` })));
+      await db.insert(notifications).values(members.map(member => ({ tenantId: tenant.id, userId: member.userId, type: "quote_request.created", title: "Nova solicitação de orçamento", body: `${input.name} solicitou ${serviceLabel}.`, link: `/solicitacoes/${result.requestId}` })));
     }
     if (input.attachments?.length) {
       for (const file of input.attachments) {

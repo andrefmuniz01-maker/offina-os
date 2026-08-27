@@ -124,3 +124,4 @@
 - [x] Cobrir todo o fluxo de primeiro acesso para garantir que a interface não confirme cadastro, autorização ou inexistência de e-mail.
 - [x] Limitar reenvios públicos consecutivos pelo mesmo contato e oficina, sem bloquear o envio legítimo de uma nova solicitação após intervalo seguro.
 - [x] Normalizar o WhatsApp da solicitação pública antes de deduplicar cliente, limitar reenvio e salvar o contato.
+- [x] Usar o nome canônico do serviço cadastrado quando a solicitação pública referencia um serviço do catálogo.
