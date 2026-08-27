@@ -124,7 +124,7 @@
 - [x] Configurar ou documentar a pendência de proteção contra senhas vazadas no Supabase Auth antes da liberação comercial.
 - [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
 - [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
-- [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
+- [x] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
 - [x] Remover o access token Supabase do payload de `auth.me`, preservando-o exclusivamente no contexto interno do servidor.
 - [x] Remover a exportação incompatível do painel de acesso extraindo helpers de mensagens, sem mudar o fluxo Supabase de e-mail/senha.
 - [x] Remover a exportação incompatível da Home extraindo a regra de visibilidade financeira, sem alterar o RBAC financeiro.

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getQuoteValidity } from "@/lib/publicQuoteDecision";
+import { publicQuoteApprovalBoundary, publicQuoteFollowUpNotice } from "@/lib/publicCommunicationBoundaries";
 import { trpc } from "@/lib/trpc";
 import { Check, CheckCircle2, CircleAlert, ClipboardCheck, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import { useState } from "react";
@@ -37,12 +38,12 @@ export default function PublicQuote() {
     <section className={`mt-7 rounded-xl p-5 text-center ${data.quote.status === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
       {data.quote.status === "approved" ? <CheckCircle2 className="mx-auto h-7 w-7" /> : <XCircle className="mx-auto h-7 w-7" />}
       <p className="mt-2 font-semibold">{data.quote.status === "approved" ? "Proposta aprovada" : "Proposta recusada"}</p>
-      <p className="mt-1 text-sm">{data.quote.status === "approved" ? "A oficina recebeu sua confirmação e seguirá com o próximo contato." : "A oficina recebeu sua decisão e poderá orientar você diretamente."}</p>
+      <p className="mt-1 text-sm">{data.quote.status === "approved" ? publicQuoteFollowUpNotice : "A oficina registrou sua decisão e poderá orientar você separadamente."}</p>
     </section>
   ) : pendingDecision ? (
     <section className={`mt-7 rounded-xl border p-5 ${pendingDecision === "approved" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
       <p className="font-semibold text-slate-900">{pendingDecision === "approved" ? "Confirmar aprovação?" : "Confirmar recusa?"}</p>
-      <p className="mt-1 text-sm text-slate-600">{pendingDecision === "approved" ? "Ao confirmar, a oficina registrará sua aprovação e reservará os itens disponíveis. Agenda, ordem de serviço e financeiro serão tratados separadamente." : "Ao confirmar, a oficina receberá sua recusa. Esta ação não pode ser revertida por este link."}</p>
+      <p className="mt-1 text-sm text-slate-600">{pendingDecision === "approved" ? publicQuoteApprovalBoundary : "Ao confirmar, a oficina receberá sua recusa. Esta ação não pode ser revertida por este link."}</p>
       <div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={decision.isPending} onClick={() => setPendingDecision(null)}>Revisar proposta</Button><Button type="button" disabled={decision.isPending} style={{ backgroundColor: pendingDecision === "approved" ? primaryColor : secondaryColor }} onClick={confirmDecision}>{decision.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}Confirmar decisão</Button></div>
     </section>
   ) : (
