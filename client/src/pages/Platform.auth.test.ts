@@ -85,4 +85,17 @@ describe("getPlatformAccessState", () => {
     states.usage = failed;
     expect(renderPlatform("usage")).toContain("Uso indisponível");
   });
+
+  it("expõe somente a solicitação pública da oficina ativa", () => {
+    states.tenants = ready([{ id: 7, name: "Oficina ativa", slug: "oficina-ativa", active: true, status: "active", planId: null }]);
+    const activeMarkup = renderPlatform("tenants");
+    expect(activeMarkup).toContain('href="/solicitar/oficina-ativa"');
+    expect(activeMarkup).toContain("Abrir solicitação pública");
+
+    states.tenants = ready([{ id: 8, name: "Oficina inativa", slug: "oficina-inativa", active: false, status: "inactive", planId: null }]);
+    const inactiveMarkup = renderPlatform("tenants");
+    expect(inactiveMarkup).toContain("Formulário público indisponível para oficina inativa.");
+    expect(inactiveMarkup).not.toContain('href="/solicitar/oficina-inativa"');
+    expect(inactiveMarkup).not.toContain("/orcamento/");
+  });
 });

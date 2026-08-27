@@ -18,6 +18,7 @@
 - [x] Reorganizar a Home operacional como central do dia, preservando dados do workspace e ocultando leituras financeiras de papéis sem permissão.
 - [ ] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
 - [ ] Permitir que o Super Admin abra, de forma controlada, os links públicos de solicitação e orçamento de cada oficina.
+- [x] Expor somente o link público de solicitação de cada oficina ativa; manter orçamentos dependentes do token seguro de cada cliente.
 - [ ] Validar visualmente os ambientes do dono e do Super Admin em desktop e mobile, incluindo seus estados de acesso.
 - [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
 - [ ] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
