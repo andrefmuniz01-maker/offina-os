@@ -25,6 +25,10 @@ const menuItems: DashboardMenuItem[] = [
   { icon: Settings2, label: "Configurações", path: "/configuracoes" },
 ];
 
+const platformMenuItems: DashboardMenuItem[] = [
+  { icon: ShieldCheck, label: "Plataforma", path: "/plataforma" },
+];
+
 type WorkspaceRole = "owner" | "admin" | "attendant" | "technician";
 type DashboardStats = {
   sales: { billing: number; completedOrders: number };
@@ -49,6 +53,10 @@ export function getWorkspaceMetrics(stats: DashboardStats, role: WorkspaceRole) 
 
 export function getWorkspaceNoTenantState(platformRole?: string | null) {
   return platformRole === "super_admin" ? "platform" : "membership_missing";
+}
+
+export function getHomeNavigationContext(platformRole?: string | null) {
+  return platformRole === "super_admin" ? "platform" : "workspace";
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
@@ -84,11 +92,15 @@ function PlatformReadOnlyStart() {
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
-  const tenantList = trpc.workspace.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const navigationContext = getHomeNavigationContext(user?.platformRole);
+  const isPlatformAdmin = navigationContext === "platform";
+  const tenantList = trpc.workspace.mine.useQuery(undefined, { enabled: isAuthenticated && !isPlatformAdmin });
   const [activeTenantId, setActiveTenantId] = useState<number | null>(null);
   const activeTenant = tenantList.data?.find(entry => entry.tenant.id === activeTenantId) ?? tenantList.data?.[0];
   const title = activeTenant?.tenant.name ?? "OficinaOS";
-  const isPlatformAdmin = user?.platformRole === "super_admin";
   const noTenantState = getWorkspaceNoTenantState(user?.platformRole);
-  return <DashboardLayout menuItems={menuItems} workspaceName={title}><div className="min-h-[calc(100vh-2rem)] rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(251,146,60,.10),transparent_28%),#f8fafc] p-1">{isPlatformAdmin ? <div className="mx-auto max-w-7xl px-1 pt-1"><p className="text-right text-xs text-slate-500">Contexto Platform disponível separadamente do ambiente operacional.</p></div> : null}{tenantList.isLoading ? <div className="mx-auto max-w-7xl p-6"><Skeleton className="h-16 w-72" /><div className="mt-7 grid gap-4 md:grid-cols-4"><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /></div></div> : activeTenant ? <><div className="mx-auto flex max-w-7xl justify-end px-1 pt-1">{tenantList.data && tenantList.data.length > 1 ? <select aria-label="Selecionar oficina" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" value={activeTenant.tenant.id} onChange={event => setActiveTenantId(Number(event.target.value))}>{tenantList.data.map(entry => <option key={entry.tenant.id} value={entry.tenant.id}>{entry.tenant.name}</option>)}</select> : null}</div><WorkspaceDashboard tenantId={activeTenant.tenant.id} tenantName={activeTenant.tenant.name} tenantSlug={activeTenant.tenant.slug} role={activeTenant.membership.role as WorkspaceRole} /></> : noTenantState === "platform" ? <PlatformReadOnlyStart /> : <Card className="mx-auto mt-16 max-w-xl"><CardHeader><CardTitle>Seu acesso ainda não está vinculado a uma oficina</CardTitle><CardDescription>Peça a um Super Admin para incluí-lo no tenant correto. A associação é obrigatória para proteger os dados de cada oficina.</CardDescription></CardHeader></Card>}</div></DashboardLayout>;
+  if (isPlatformAdmin) {
+    return <DashboardLayout menuItems={platformMenuItems} workspaceName="OficinaOS Platform"><div className="min-h-[calc(100vh-2rem)] rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(251,146,60,.10),transparent_28%),#f8fafc] p-1"><div className="mx-auto max-w-7xl px-1 pt-1"><p className="text-right text-xs text-slate-500">Contexto Platform separado do ambiente operacional.</p></div><PlatformReadOnlyStart /></div></DashboardLayout>;
+  }
+  return <DashboardLayout menuItems={menuItems} workspaceName={title}><div className="min-h-[calc(100vh-2rem)] rounded-2xl bg-[radial-gradient(circle_at_85%_0%,rgba(251,146,60,.10),transparent_28%),#f8fafc] p-1">{tenantList.isLoading ? <div className="mx-auto max-w-7xl p-6"><Skeleton className="h-16 w-72" /><div className="mt-7 grid gap-4 md:grid-cols-4"><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /><Skeleton className="h-36" /></div></div> : activeTenant ? <><div className="mx-auto flex max-w-7xl justify-end px-1 pt-1">{tenantList.data && tenantList.data.length > 1 ? <select aria-label="Selecionar oficina" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700" value={activeTenant.tenant.id} onChange={event => setActiveTenantId(Number(event.target.value))}>{tenantList.data.map(entry => <option key={entry.tenant.id} value={entry.tenant.id}>{entry.tenant.name}</option>)}</select> : null}</div><WorkspaceDashboard tenantId={activeTenant.tenant.id} tenantName={activeTenant.tenant.name} tenantSlug={activeTenant.tenant.slug} role={activeTenant.membership.role as WorkspaceRole} /></> : noTenantState === "platform" ? <PlatformReadOnlyStart /> : <Card className="mx-auto mt-16 max-w-xl"><CardHeader><CardTitle>Seu acesso ainda não está vinculado a uma oficina</CardTitle><CardDescription>Peça a um Super Admin para incluí-lo no tenant correto. A associação é obrigatória para proteger os dados de cada oficina.</CardDescription></CardHeader></Card>}</div></DashboardLayout>;
 }

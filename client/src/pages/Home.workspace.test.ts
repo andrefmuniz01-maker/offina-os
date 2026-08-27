@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canViewWorkspaceFinancials, getWorkspaceMetrics, getWorkspaceNoTenantState } from "./Home";
+import { canViewWorkspaceFinancials, getHomeNavigationContext, getWorkspaceMetrics, getWorkspaceNoTenantState } from "./Home";
 
 const stats = {
   sales: { billing: 1250, completedOrders: 2 },
@@ -26,5 +26,11 @@ describe("central operacional do workspace", () => {
     expect(getWorkspaceNoTenantState("super_admin")).toBe("platform");
     expect(getWorkspaceNoTenantState("owner")).toBe("membership_missing");
     expect(getWorkspaceNoTenantState(null)).toBe("membership_missing");
+  });
+
+  it("mantém a navegação global fora do menu operacional, mesmo com vínculo transitório", () => {
+    expect(getHomeNavigationContext("super_admin")).toBe("platform");
+    expect(getHomeNavigationContext("owner")).toBe("workspace");
+    expect(getHomeNavigationContext(undefined)).toBe("workspace");
   });
 });
