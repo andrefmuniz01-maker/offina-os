@@ -169,3 +169,4 @@
 - [x] Sincronizar o projeto local com a última versão do GitHub antes de qualquer nova alteração.
 - [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.
 - [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.
+- [x] Evitar a exposição de mensagens técnicas inesperadas no formulário público de solicitação.

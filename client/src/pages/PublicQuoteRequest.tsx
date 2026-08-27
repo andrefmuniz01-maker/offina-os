@@ -19,8 +19,8 @@ function attachmentKey(capability: string, slot: number) {
   return `requests/${capability}/${String(slot).padStart(2, "0")}`;
 }
 
-function userFacingError(error: unknown) {
-  return error instanceof Error && error.message ? error.message : "Não foi possível concluir sua solicitação agora. Tente novamente em alguns minutos.";
+function userFacingError() {
+  return "Não foi possível concluir sua solicitação agora. Tente novamente em alguns minutos.";
 }
 
 export default function PublicQuoteRequest() {
@@ -86,7 +86,7 @@ export default function PublicQuoteRequest() {
       }
       setRequestNumber(result.requestNumber);
     } catch (error) {
-      setStepIssue(userFacingError(error));
+      setStepIssue(userFacingError());
     } finally {
       setSubmitting(false);
     }
