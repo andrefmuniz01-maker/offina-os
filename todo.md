@@ -132,5 +132,6 @@
 - [x] Criar um utilitário somente leitura e versionado para comparar Drizzle com INFORMATION_SCHEMA sem registrar dados operacionais ou credenciais.
 - [x] Comparar os tipos SQL exatos, incluindo precisão e escala, entre Drizzle e o MySQL legado.
 - [x] Comparar os defaults e a geração/on-update de cada coluna sem reduzir a verificação à mera presença de default.
-- [ ] Revisar e priorizar as 43 divergências de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
+- [x] Revisar e priorizar as 42 divergências encontradas de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
+- [ ] Coletar metadados de volume e planos EXPLAIN dos 13 índices P0 antes de propor qualquer DDL na fonte MySQL.
 - [x] Registrar a decisão vigente de Supabase Auth por e-mail e senha e reconciliar o backlog de OAuth/Magic Link sem remover o histórico.
