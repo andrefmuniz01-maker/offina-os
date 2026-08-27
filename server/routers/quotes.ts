@@ -91,6 +91,25 @@ function assertRequestTransition(current: z.infer<typeof requestStatus>, next: z
   if (current === next) return;
   if (!isRequestTransitionAllowed(current, next)) throw new TRPCError({ code: "BAD_REQUEST", message: `Não é permitido mudar a solicitação de ${current} para ${next}.` });
 }
+
+export function decodePublicAttachment(base64: string, expectedMimeType: string) {
+  const normalizedMimeType = expectedMimeType.trim().toLowerCase();
+  const dataUrl = /^data:([a-z0-9.+/-]+);base64,([a-z0-9+/]+={0,2})$/i.exec(base64);
+  const encoded = dataUrl?.[2] ?? base64;
+  const declaredMimeType = dataUrl?.[1]?.toLowerCase();
+
+  if (declaredMimeType && declaredMimeType !== normalizedMimeType) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O tipo declarado do arquivo não corresponde ao anexo enviado." });
+  }
+  if (!/^[a-z0-9+/]+={0,2}$/i.test(encoded) || encoded.length % 4 !== 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo não possui uma codificação válida." });
+  }
+
+  const buffer = Buffer.from(encoded, "base64");
+  if (!buffer.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo enviado está vazio." });
+  return buffer;
+}
+
 const publicRequestInput = z.object({
   tenantSlug: z.string().trim().toLowerCase().min(2).max(96),
   name: z.string().trim().min(2).max(180),
@@ -148,6 +167,14 @@ function publicQuoteItems(items: typeof quoteItems.$inferSelect[]) {
 
 const defaultQuoteMessageTemplate = "Olá, {{cliente}}! Seu orçamento para {{veiculo}} está pronto. Total: {{total}}. Consulte os detalhes e responda aqui: {{link}}";
 
+export function toPublicQuoteRequestReceipt(result: { requestId: number; number: number }) {
+  return { number: result.number };
+}
+
+export function toPublicWorkshopCatalog<TBranding>(workshop: { name: string; branding: TBranding }) {
+  return { name: workshop.name, branding: workshop.branding };
+}
+
 export function renderQuoteMessage(template: string | null | undefined, values: { client: string; vehicle: string; total: string; link: string; workshop: string }) {
   const placeholders: Record<string, string> = { "{{cliente}}": values.client, "{{veiculo}}": values.vehicle, "{{total}}": values.total, "{{link}}": values.link, "{{oficina}}": values.workshop };
   return Object.entries(placeholders).reduce((message, [token, value]) => message.replaceAll(token, value), template?.trim() || defaultQuoteMessageTemplate);
@@ -161,7 +188,7 @@ export const quoteRequestRouter = router({
     if (!tenant) return null;
     const branding = (await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, tenant.id)).limit(1))[0] ?? null;
     const catalog = await db.select({ id: services.id, name: services.name, description: services.description, quoteQuestions: services.quoteQuestions }).from(services).where(and(eq(services.tenantId, tenant.id), eq(services.active, true))).orderBy(asc(services.name));
-    return { workshop: { ...tenant, branding }, services: catalog };
+    return { workshop: toPublicWorkshopCatalog({ name: tenant.name, branding }), services: catalog };
   }),
   submitPublic: publicProcedure.input(publicRequestInput).mutation(async ({ input }) => {
     const db = await getDb();
@@ -200,14 +227,14 @@ export const quoteRequestRouter = router({
       for (const file of input.attachments) {
         const mimeType = file.mimeType.trim().toLowerCase();
         if (!isAllowedAttachmentMimeType(mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie apenas fotos JPEG, PNG, WEBP, GIF ou vídeos MP4, WEBM e MOV." });
-        const buffer = Buffer.from(file.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+        const buffer = decodePublicAttachment(file.base64, mimeType);
         if (buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada anexo deve ter no máximo 5 MB." });
         const storedFile = buildPrivateAttachmentKey({ tenantId: tenant.id, scope: "quote-requests", recordId: result.requestId, filename: file.filename });
         const uploaded = await storagePut(storedFile.key, buffer, mimeType);
         await db.insert(attachments).values({ tenantId: tenant.id, quoteRequestId: result.requestId, storageKey: uploaded.key, url: uploaded.url, filename: storedFile.filename, mimeType, sizeBytes: buffer.length });
       }
     }
-    return { requestId: result.requestId, number: result.number };
+    return toPublicQuoteRequestReceipt(result);
   }),
 
   list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {

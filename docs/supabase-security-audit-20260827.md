@@ -28,7 +28,11 @@ A migration `20260827_0012_harden_public_rpc_context.sql` foi aplicada ao projet
 
 O Advisor continua emitindo os dois avisos de `SECURITY DEFINER` porque ambos os endpoints permanecem corretamente acessíveis a visitantes sem sessão. Isso é uma exceção intencional e não uma aprovação de segurança automática: a limitação de retorno, as validações de entrada, o escopo fixo e uma camada de rate limit ainda são obrigatórios antes da exposição comercial ampla.
 
-A proteção contra senhas vazadas continua desligada. Essa opção é administrada no Supabase Auth e não foi modificada por migration nem pelo código do repositório.
+A proteção contra senhas vazadas continua desligada. A configuração foi localizada em **Authentication → Attack Protection → Prevent use of leaked passwords**, mas o painel do Supabase informa que ela está disponível apenas nos planos **Pro ou superiores**. Para respeitar a regra de custo zero, nenhum upgrade ou cobrança foi iniciado. O projeto mantém as proteções gratuitas já configuradas: senha mínima de 10 caracteres, combinação de minúsculas, maiúsculas e números, confirmação de e-mail e autoinscrição pública desativada.
+
+## Redução de identificadores externos
+
+A migration `20260827_0013_remove_public_tenant_id.sql` foi aplicada ao projeto `OFFICINA OS`. A verificação direta no catálogo PostgreSQL confirmou que `public_get_workshop_catalog` não contém mais o par de retorno `id`/`target_tenant.id`, mantém `search_path=""` e conserva somente a permissão `anon` para o endpoint público. O slug continua sendo a chave externa do formulário; nenhum ID interno de tenant é necessário para a solicitação.
 
 ## Referências
 

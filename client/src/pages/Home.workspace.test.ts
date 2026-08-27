@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canViewWorkspaceFinancials, getWorkspaceMetrics } from "./Home";
+import { canViewWorkspaceFinancials, getWorkspaceMetrics, getWorkspaceNoTenantState } from "./Home";
 
 const stats = {
   sales: { billing: 1250, completedOrders: 2 },
@@ -20,5 +20,11 @@ describe("central operacional do workspace", () => {
     expect(getWorkspaceMetrics(stats, "owner").map(metric => metric.label)).toContain("Faturamento recebido");
     expect(getWorkspaceMetrics(stats, "attendant").map(metric => metric.label)).not.toContain("Faturamento recebido");
     expect(getWorkspaceMetrics(stats, "technician")).toHaveLength(3);
+  });
+
+  it("direciona Super Admin sem oficina ao contexto Platform, sem abrir criação operacional", () => {
+    expect(getWorkspaceNoTenantState("super_admin")).toBe("platform");
+    expect(getWorkspaceNoTenantState("owner")).toBe("membership_missing");
+    expect(getWorkspaceNoTenantState(null)).toBe("membership_missing");
   });
 });

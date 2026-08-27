@@ -110,3 +110,10 @@
 - [x] Endurecer as funções públicas do Supabase preservando apenas o catálogo comercial e a solicitação anônima estritamente necessários.
 - [x] Configurar ou documentar a pendência de proteção contra senhas vazadas no Supabase Auth antes da liberação comercial.
 - [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
+- [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
+- [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
+- [x] Validar localmente quantidade, tipo e tamanho de anexos antes de ler arquivos no formulário público de solicitação.
+- [x] Retornar ao cliente apenas o protocolo da solicitação pública, sem expor o identificador interno do registro.
+- [x] Validar no backend o formato base64 de anexos públicos antes de gravar arquivo ou metadado de solicitação.
+- [x] Impedir que o Super Admin crie tenants pela Home operacional; direcionar a identidade global ao ambiente Platform em modo leitura.
+- [x] Remover o identificador interno da oficina do catálogo público nos caminhos transitório e Supabase, mantendo o slug como chave externa.
