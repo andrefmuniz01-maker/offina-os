@@ -167,3 +167,5 @@
 - [x] Preparar um prompt de continuidade com as próximas alterações recomendadas, sem iniciar novas mudanças funcionais neste ciclo.
 - [x] Restabelecer a checagem de tipos após integrar os roteadores Supabase mais recentes do repositório.
 - [x] Sincronizar o projeto local com a última versão do GitHub antes de qualquer nova alteração.
+- [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.
+- [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.

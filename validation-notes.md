@@ -169,3 +169,7 @@ Rotas públicas inexistentes ou links não reconhecidos agora apresentam uma pá
 ## 26/08/2026 — Falha global protegida
 
 O limite global de erro foi traduzido para português do Brasil e não revela mais stack traces ou detalhes técnicos ao operador. A tela informa que a falha é temporária, orienta a atualização e mantém um único comando de recuperação com foco visível. TypeScript e a suíte de 59 arquivos com 187 testes permaneceram aprovados.
+
+## 27/08/2026 — Fila de solicitações após sincronização
+
+A fila interna de solicitações recebida da migração Supabase preserva busca, filtros, responsáveis, transições e histórico. A leitura visual foi reduzida a superfícies brancas, bordas discretas e indicadores separados por divisórias, removendo os gradientes decorativos sem alterar ações comerciais. A validação integral após a sincronização aprovou tipos, 107 arquivos de teste, 317 testes e build de produção.
