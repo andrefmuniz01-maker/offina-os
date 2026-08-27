@@ -12,6 +12,7 @@ const quote = { id: 53, tenantId: 4, number: 18, requestId: 14, status: "draft",
 const row = { quote, customer: { id: 7, name: "Cliente", whatsapp: "11999999999" }, vehicle: { id: 9, make: "BMW", model: "320i", plate: null } } as const;
 const detail = { quote: { ...quote, notes: null, terms: null }, customer: row.customer, vehicle: row.vehicle, items: [{ id: 71, itemType: "service", description: "Instalação", quantity: 1, unitPrice: 750, discount: 0, sortOrder: 0 }] } as const;
 const discountUpdate = { id: 53, tenantId: 4, status: "draft", subtotal: 839.9, discountTotal: 40, total: 799.9, updatedAt: "2026-08-27T12:05:00.000Z" } as const;
+const finalized = { id: 53, tenantId: 4, requestId: 14, status: "ready", updatedAt: "2026-08-27T12:06:00.000Z" } as const;
 
 function context(supabaseUser = user) {
   return { req: {} as never, res: {} as never, user: null, supabaseUser } as never;
@@ -67,5 +68,22 @@ describe("workspaceQuotes", () => {
     mocks.rpc.mockResolvedValue({ data: { ...discountUpdate, tenantId: 5 }, error: null });
     const caller = supabaseQuoteRouter.createCaller(context());
     await expect(caller.updateDraftDiscounts({ tenantId: 4, quoteId: 53, discounts: [{ quoteItemId: 71, discount: 40 }], expectedUpdatedAt: "2026-08-27T12:00:00.000Z" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("finaliza somente o rascunho solicitado pela RPC Supabase com controle de concorrência", async () => {
+    mocks.rpc.mockResolvedValue({ data: finalized, error: null });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.finalizeDraft({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:05:00.000Z" })).resolves.toEqual(finalized);
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_finalize_quote_draft", {
+      target_tenant_id: 4,
+      target_quote_id: 53,
+      expected_updated_at_input: "2026-08-27T12:05:00.000Z",
+    });
+  });
+
+  it("rejeita a finalização que retorna um orçamento de outro tenant", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...finalized, tenantId: 5 }, error: null });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.finalizeDraft({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:05:00.000Z" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
   });
 });

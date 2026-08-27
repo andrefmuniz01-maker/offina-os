@@ -66,6 +66,14 @@ export const workspaceQuoteDiscountUpdateSchema = z.object({
   updatedAt: z.string(),
 }).strict();
 
+export const workspaceQuoteFinalizeSchema = z.object({
+  id: z.number().int().positive(),
+  tenantId: z.number().int().positive(),
+  requestId: z.number().int().positive(),
+  status: z.literal("ready"),
+  updatedAt: z.string(),
+}).strict();
+
 export function parseWorkspaceQuoteList(value: unknown) {
   return workspaceQuoteListSchema.safeParse(value);
 }
@@ -76,4 +84,8 @@ export function parseWorkspaceQuoteDetail(value: unknown) {
 
 export function parseWorkspaceQuoteDiscountUpdate(value: unknown) {
   return workspaceQuoteDiscountUpdateSchema.safeParse(value);
+}
+
+export function parseWorkspaceQuoteFinalize(value: unknown) {
+  return workspaceQuoteFinalizeSchema.safeParse(value);
 }

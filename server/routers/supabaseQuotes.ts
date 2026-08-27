@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
-import { parseWorkspaceQuoteDetail, parseWorkspaceQuoteDiscountUpdate, parseWorkspaceQuoteList } from "./supabaseQuoteContract";
+import { parseWorkspaceQuoteDetail, parseWorkspaceQuoteDiscountUpdate, parseWorkspaceQuoteFinalize, parseWorkspaceQuoteList } from "./supabaseQuoteContract";
 
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
@@ -69,6 +69,24 @@ export const supabaseQuoteRouter = router({
     const result = parseWorkspaceQuoteDiscountUpdate(data);
     if (!result.success || result.data.tenantId !== input.tenantId || result.data.id !== input.quoteId) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A atualização de desconto retornou dados incompatíveis." });
+    }
+    return result.data;
+  }),
+
+  finalizeDraft: supabaseProtectedProcedure.input(tenantInput.extend({
+    quoteId: z.number().int().positive(),
+    expectedUpdatedAt: z.string().datetime({ offset: true }),
+  })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_finalize_quote_draft", {
+      target_tenant_id: input.tenantId,
+      target_quote_id: input.quoteId,
+      expected_updated_at_input: input.expectedUpdatedAt,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceQuoteFinalize(data);
+    if (!result.success || result.data.tenantId !== input.tenantId || result.data.id !== input.quoteId) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A finalização retornou dados incompatíveis." });
     }
     return result.data;
   }),
