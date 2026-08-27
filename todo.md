@@ -99,3 +99,8 @@
 - [x] Auditar as rotas, componentes, routers e modelos existentes de plataforma antes de criar novas telas ou ações administrativas.
 - [x] Testar diretamente a guarda de Super Admin para comprovar que usuário comum e admin de tenant não acessam procedures globais.
 - [x] Adicionar barreira visual de Super Admin em `/plataforma`, mantendo as procedures do backend como fonte autoritativa de autorização.
+- [x] Criar navegação exclusiva do ambiente Platform em modo leitura, com Dashboard, Oficinas, Usuários, Planos, Uso, Indicadores, Auditoria, Segurança e Suporte.
+- [x] Remover da superfície Platform os controles de criação, edição, associação, ativação e impersonação durante a etapa de consulta global.
+- [x] Diferenciar visualmente carregamento, estado vazio e indisponibilidade em métricas, oficinas, planos e uso.
+- [x] Cobrir com testes o contrato de seções read-only e a proteção dos estados principais da Platform.
+- [x] Adicionar testes renderizados da Platform para navegação read-only e os estados loading, erro e vazio de métricas, oficinas, planos e uso.
