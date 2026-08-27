@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
+import { parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
 
 const status = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -24,9 +25,9 @@ export const supabaseQuoteRequestRouter = router({
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
     const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_quote_requests", { target_tenant_id: input.tenantId, target_status: input.status ?? null, search_input: input.search ?? null, page_input: input.page, page_size_input: input.pageSize });
     if (error || !data) throw databaseError(error);
-    const result = data as { items?: unknown[]; page?: number; pageSize?: number; hasMore?: boolean };
-    const items = (result.items ?? []).slice(0, input.pageSize) as any[];
-    return { items, page: Number(result.page ?? input.page), pageSize: Number(result.pageSize ?? input.pageSize), hasMore: Boolean(result.hasMore) };
+    const result = parseWorkspaceQuoteRequestList(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A fila comercial recebeu dados em formato inválido." });
+    return { ...result.data, items: result.data.items.slice(0, input.pageSize) };
   }),
 
   assignees: supabaseProtectedProcedure.input(tenantInput).query(async ({ ctx, input }) => {
@@ -40,7 +41,9 @@ export const supabaseQuoteRequestRouter = router({
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
     const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_quote_request_history", { target_tenant_id: input.tenantId, target_request_id: input.quoteRequestId });
     if (error) throw databaseError(error);
-    return (data ?? []) as any[];
+    const result = parseWorkspaceQuoteRequestHistory(data ?? []);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O histórico da solicitação recebeu dados em formato inválido." });
+    return result.data;
   }),
 
   update: supabaseProtectedProcedure.input(tenantInput.extend({ quoteRequestId: z.number().int().positive(), status, assignedToUserId: z.string().uuid().nullable().optional() })).mutation(async ({ ctx, input }) => {

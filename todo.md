@@ -170,3 +170,4 @@
 - [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.
 - [x] Simplificar a fila Supabase de solicitações para destacar próxima ação e reduzir gradientes decorativos.
 - [x] Evitar a exposição de mensagens técnicas inesperadas no formulário público de solicitação.
+- [x] Tipar os contratos da fila Supabase de solicitações para evitar dados imprecisos entre backend e interface.

@@ -173,3 +173,7 @@ O limite global de erro foi traduzido para português do Brasil e não revela ma
 ## 27/08/2026 — Fila de solicitações após sincronização
 
 A fila interna de solicitações recebida da migração Supabase preserva busca, filtros, responsáveis, transições e histórico. A leitura visual foi reduzida a superfícies brancas, bordas discretas e indicadores separados por divisórias, removendo os gradientes decorativos sem alterar ações comerciais. A validação integral após a sincronização aprovou tipos, 107 arquivos de teste, 317 testes e build de produção.
+
+## 27/08/2026 — Contrato da fila comercial Supabase
+
+O retorno JSON das RPCs de listagem e histórico de solicitações passou a ser validado por schema antes de chegar à interface. Itens sem tenant, responsável com identificador inválido ou eventos sem identidade e instante são rejeitados pelo backend em vez de seguirem como dados amplos. A validação cobriu o contrato isoladamente e a suíte integral aprovou 108 arquivos de teste, 320 testes e uma suíte ignorada.
