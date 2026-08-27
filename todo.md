@@ -112,6 +112,10 @@
 - [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
 - [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
 - [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
+- [ ] Migrar o intake público para a RPC Supabase antes de mover anexos, evitando dois caminhos de gravação.
+- [ ] Criar capacidade efêmera de upload e policies mínimas para anexos públicos em bucket Supabase privado, com limites de MIME, tamanho, escopo e expiração.
+- [ ] Implementar rate limiting persistido por tenant, contato e impressão de IP no intake Supabase, com testes de concorrência e expiração.
+- [x] Documentar o desenho de segurança de anexos privados e rate limiting antes de criar bucket, policy ou migration.
 - [x] Validar localmente quantidade, tipo e tamanho de anexos antes de ler arquivos no formulário público de solicitação.
 - [x] Retornar ao cliente apenas o protocolo da solicitação pública, sem expor o identificador interno do registro.
 - [x] Validar no backend o formato base64 de anexos públicos antes de gravar arquivo ou metadado de solicitação.
