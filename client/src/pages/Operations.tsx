@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { getOperationNextAction, getYardStatusTone, type YardQueueStatus } from "@/lib/operationsQueue";
+import { canManageAppointments, getOperationsScopeCopy } from "@/lib/operationAccess";
+import type { WorkspaceRole } from "@/lib/homeWorkspace";
 import { trpc } from "@/lib/trpc";
 import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
 import { Activity, AlertCircle, ArrowLeft, CalendarClock, CarFront, CircleCheck, Search, UsersRound, Wrench } from "lucide-react";
@@ -43,6 +45,9 @@ export default function Operations() {
   const mine = trpc.tenant.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
+  const role = (mine.data?.[0]?.membership.role ?? "technician") as WorkspaceRole;
+  const canManageSchedule = canManageAppointments(role);
+  const operationsScope = getOperationsScopeCopy(role);
   const utils = trpc.useUtils();
 
   const [agendaFrom, setAgendaFrom] = useState(() => dateInput(new Date()));
@@ -60,11 +65,11 @@ export default function Operations() {
   );
   const appointments = trpc.appointments.list.useQuery(
     { tenantId, ...agendaRange, ...(operationSearch.trim() ? { search: operationSearch.trim() } : {}) },
-    { enabled: Boolean(tenantId) && agendaRange.to >= agendaRange.from },
+    { enabled: Boolean(tenantId) && canManageSchedule && agendaRange.to >= agendaRange.from },
   );
   const yard = trpc.workOrders.kanban.useQuery({ tenantId, ...(operationSearch.trim() ? { search: operationSearch.trim() } : {}) }, { enabled: Boolean(tenantId) });
-  const quotes = trpc.quotes.list.useQuery({ tenantId, status: "approved", page: 1, pageSize: 100 }, { enabled: Boolean(tenantId) });
-  const members = trpc.tenant.members.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const quotes = trpc.quotes.list.useQuery({ tenantId, status: "approved", page: 1, pageSize: 100 }, { enabled: Boolean(tenantId) && canManageSchedule });
+  const members = trpc.tenant.members.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) && canManageSchedule });
 
   const schedule = trpc.appointments.scheduleFromQuote.useMutation({
     onSuccess: data => {
@@ -130,14 +135,14 @@ export default function Operations() {
           <div>
             <Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Agenda e pátio</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">Planeje a capacidade, acompanhe cada veículo e mantenha a execução em movimento sem duplicar dados do orçamento.</p>
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">{canManageSchedule ? "Planeje a capacidade, acompanhe cada veículo e mantenha a execução em movimento sem duplicar dados do orçamento." : "Acompanhe a execução das suas ordens de serviço sem abrir dados ou ações de escala da oficina."}</p>
           </div>
           <Badge className="w-fit bg-orange-100 text-orange-800 hover:bg-orange-100">Operação conectada</Badge>
         </header>
 
-        <section className="overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-white shadow-sm" aria-label="Resumo da operação"><div className="grid gap-px bg-orange-100 md:grid-cols-[1.35fr_repeat(3,minmax(0,1fr))]"><div className="bg-white/80 p-5"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Pulso operacional</p><p className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Controle pátio, capacidade e execução.</p><p className="mt-1 text-sm text-slate-600">Os números refletem o período e os veículos exibidos nesta tela.</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">Agenda no período</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{appointmentItems.length}</p><p className="mt-1 text-xs text-slate-500">{assignedAppointments} com profissional definido</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">Em execução</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{activeOrders}</p><p className="mt-1 text-xs text-slate-500">Veículos ainda no fluxo de pátio</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">Aguardando avanço</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{waitingOrders}</p><p className="mt-1 text-xs text-slate-500">Aprovação ou peça antes da execução</p></div></div></section>
+        <section className="overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-white shadow-sm" aria-label="Resumo da operação"><div className="grid gap-px bg-orange-100 md:grid-cols-[1.35fr_repeat(3,minmax(0,1fr))]"><div className="bg-white/80 p-5"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-700">Pulso operacional</p><p className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{canManageSchedule ? "Controle pátio, capacidade e execução." : "Acompanhe suas ordens em execução."}</p><p className="mt-1 text-sm text-slate-600">Os números refletem os veículos disponíveis neste escopo.</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">{canManageSchedule ? "Agenda no período" : "OS atribuídas"}</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{canManageSchedule ? appointmentItems.length : yardItems.length}</p><p className="mt-1 text-xs text-slate-500">{canManageSchedule ? `${assignedAppointments} com profissional definido` : "Apenas veículos atribuídos ao seu perfil"}</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">Em execução</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{activeOrders}</p><p className="mt-1 text-xs text-slate-500">Veículos ainda no fluxo de pátio</p></div><div className="bg-white p-5"><p className="text-xs font-medium text-slate-500">Aguardando avanço</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{waitingOrders}</p><p className="mt-1 text-xs text-slate-500">Aprovação ou peça antes da execução</p></div></div></section>
 
-        <Card className="border-orange-100 bg-orange-50/40 shadow-sm">
+        {canManageSchedule ? <Card className="border-orange-100 bg-orange-50/40 shadow-sm">
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div><CardTitle className="inline-flex items-center gap-2 text-lg"><CalendarClock className="h-4 w-4 text-orange-700" />Agendar orçamento aprovado</CardTitle>
             <CardDescription>O agendamento cria ou reutiliza a OS e herda cliente, veículo, itens e reserva sem redigitação.</CardDescription>
@@ -175,9 +180,9 @@ export default function Operations() {
             </div>
           </CardContent>
           {!approved.length && !quotes.isLoading ? <p className="px-6 pb-5 text-xs text-slate-500">Não há orçamento aprovado disponível para agendar.</p> : null}
-        </Card>
+        </Card> : <Card className="border-slate-200 bg-slate-50/70 shadow-sm"><CardHeader><CardTitle className="text-lg">Execução atribuída</CardTitle><CardDescription>Agendamentos, profissionais e baias são organizados pela equipe de atendimento. Use o pátio abaixo para abrir e atualizar somente as suas ordens de serviço.</CardDescription></CardHeader></Card>}
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        {canManageSchedule ? <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div><div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Próximos agendamentos</h2></div><p className="mt-1 text-xs text-slate-500">Filtre a agenda para distribuir profissionais e baias antes da chegada do veículo.</p></div>
             <div className="grid gap-2 sm:grid-cols-3">
@@ -191,10 +196,10 @@ export default function Operations() {
           {agendaRange.to >= agendaRange.from && appointments.isError ? <Card className="border-red-200 bg-red-50"><CardContent className="p-4 text-sm text-red-900">Não foi possível carregar os agendamentos desta oficina.</CardContent></Card> : null}
           {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && appointmentItems.length ? <div className="grid gap-3 md:grid-cols-2">{appointmentItems.map(({ appointment, customer, vehicle, workOrder }) => { const nextAction = getOperationNextAction(appointment.status as YardQueueStatus); return <Card key={appointment.id} className="border-slate-200 shadow-sm"><CardContent className="p-4"><div className="flex justify-between gap-3"><div><p className="font-medium text-slate-950">{customer.name} · {vehicle.make} {vehicle.model}</p><p className="mt-1 text-sm text-slate-500">{new Date(appointment.scheduledStart).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}{appointment.bay ? ` · Baia ${appointment.bay}` : ""}</p></div><Badge variant="outline">{labels[appointment.status] ?? appointment.status}</Badge></div><div className="mt-3 rounded-lg bg-slate-50 px-3 py-2"><p className="text-xs font-semibold text-slate-800">{nextAction.title}</p><p className="mt-1 text-xs text-slate-500">{nextAction.description}</p></div>{workOrder ? <Link href={`/os/${workOrder.id}`}><a className="mt-3 inline-block text-xs font-medium text-orange-700 hover:text-orange-900">Abrir OS #{String(workOrder.number).padStart(6, "0")} →</a></Link> : null}</CardContent></Card>; })}</div> : null}
           {agendaRange.to >= agendaRange.from && !appointments.isLoading && !appointments.isError && !appointmentItems.length ? <Card className="border-dashed border-slate-300 bg-gradient-to-b from-white to-orange-50/40"><CardHeader><CardTitle className="text-base">Nenhum agendamento neste filtro</CardTitle><CardDescription>Ajuste a busca ou o período. Após a aprovação de um orçamento, o agendamento cria ou reutiliza a OS vinculada sem redigitação.</CardDescription></CardHeader></Card> : null}
-        </section>
+        </section> : null}
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Pátio operacional</h2></div><p className="mt-1 text-xs text-slate-500">Acompanhe a etapa real de cada OS e avance a operação sem perder contexto.</p></div><Badge variant="outline" className="w-fit"><Activity className="mr-1.5 h-3.5 w-3.5" />{activeOrders} em andamento</Badge></div>
+          <div className="mb-3 flex flex-col gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">{operationsScope.heading}</h2></div><p className="mt-1 text-xs text-slate-500">{operationsScope.description}</p></div><Badge variant="outline" className="w-fit"><Activity className="mr-1.5 h-3.5 w-3.5" />{activeOrders} em andamento</Badge></div>
           <p className="mb-2 text-xs text-slate-500 sm:hidden">{yardMobileScrollHint}</p>
           {yard.isLoading ? <div className="flex gap-3 overflow-hidden">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-52 min-w-56" key={index} />)}</div> : null}
           {!yard.isLoading ? <div className="flex gap-3 overflow-x-auto pb-3 outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" tabIndex={0} role="region" aria-label={yardRegionLabel}>{columns.map(status => {
