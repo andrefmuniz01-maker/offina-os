@@ -14,7 +14,7 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Super Admin | `/plataforma` | Acompanhar a plataforma e as oficinas sem operar uma oficina específica | `platform.*`; visão somente leitura na interface; parte do backend ainda depende da ponte MySQL e requer migração antes de mutações globais. |
 | Dono/Admin | `/` | Priorizar o comercial, operação, estoque e indicadores da própria oficina | `workspace.*` para contexto/dashboard; demais fluxos são híbridos durante a migração. |
 | Atendente | `/` | Receber solicitações, elaborar orçamentos e organizar agenda | A interface restringe a leitura financeira; a autoridade precisa permanecer no backend/RLS em cada router. |
-| Técnico | `/operacao`, `/os/:id` | Executar OS, checklist, apontamentos e consumo de itens | No modo Demo, operação e OS usam fachadas Supabase seguras por OS atribuída; fora dele, consumidores legados ainda coexistem. Não há acesso financeiro previsto. |
+| Técnico | `/operacao`, `/os/:id` | Executar OS, checklist e consumo de itens reservados | Operação e OS usam fachadas Supabase seguras por OS atribuída; anexos e apontamentos permanecem indisponíveis até haver contratos privados próprios. Não há acesso financeiro previsto. |
 | Cliente sem conta | `/solicitar/:slug`, `/orcamento/:token` | Solicitar, consultar e decidir orçamento | Fluxo público por slug/token; não cria sessão humana. |
 
 ## 2. Superfícies de interface e contratos
@@ -27,7 +27,7 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Solicitações | `Requests` em `/solicitacoes` | listagem, responsáveis, histórico, atualização de status, criação de orçamento sugerido | Demo usa `workspaceQuoteRequests` Supabase persistido; demais contextos ainda podem usar a ponte legada. |
 | Orçamentos | `Quotes` em `/orcamentos` | listagem/detalhe, envio e descontos | Demo usa `workspaceQuotes` Supabase; mutações ainda são restritas conforme o contrato migrado. |
 | Agenda e pátio | `Operations` em rotas de operação | agenda, kanban, agendar a partir de orçamento, membros | Demo usa `workspaceOperations` Supabase para agenda/pátio; agenda nasce de orçamento aprovado e herda a OS. |
-| Ordem de serviço | `WorkOrder` e `WorkOrderNotes` | detalhe, status, checklist, consumo, anexos e apontamentos | Demo usa `workspaceOperations.workOrders` com detalhe, checklist, notas e consumo por reserva; anexos de execução continuam explicitamente indisponíveis no Supabase. |
+| Ordem de serviço | `WorkOrder` e rota de apontamentos bloqueada | detalhe, status, checklist e consumo por reserva | `workspaceOperations.workOrderDetail`, checklist, status e consumo usam Supabase com projeção mínima; anexos e apontamentos não são exibidos nem gravados enquanto não houver contrato privado versionado. |
 | Estoque | `Inventory` em `/estoque` | lista, previsão e ajuste controlado | `workspaceInventory`; Supabase para saldo/previsão/ajuste. |
 | Compras | `Purchases` em `/compras` | catálogo, pedidos, recebimento | `workspaceCatalog` e `workspaceInventory`; Supabase. |
 | Catálogo | `Catalog`, `CatalogItems`, `Categories` | produtos, serviços, categorias e composição | `workspaceCatalog`; Supabase. Routers `catalog` continuam como ponte para consumidores legados. |
@@ -47,7 +47,7 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Triagem e orçamento | Solicitação pode gerar sugestão/orçamento | Histórico e status na superfície comercial | Na Demo, `workspaceQuoteRequests` e `workspaceQuotes` mantêm o vínculo persistido; fora dela, concluir a migração conjunta sem misturar IDs legados. |
 | Aprovação | Demo usa decisão pública por token via `publicQuotes` | Token seguro, proposta válida e reserva de estoque transacional; recusa não reserva | Completar o corte geral e validar expiração em todos os tenants. |
 | Agenda | Demo agenda a partir de orçamento aprovado e vincula a OS | Agenda herda cliente, veículo, itens, valores e reserva sem redigitação | Completar atribuição de profissional na interface e o corte para os demais tenants. |
-| OS e execução | Demo usa kanban, detalhe, checklist, notas e consumo por reserva em `workspaceOperations` | Técnico somente atua em OS atribuída; gestão opera tenant ativo; status, consumo e notas auditados | Upload de anexos de execução e corte geral dos consumidores legados permanecem pendentes. |
+| OS e execução | Kanban, detalhe, checklist, status e consumo por reserva usam `workspaceOperations` | Técnico somente atua em OS atribuída; gestão opera tenant ativo; status e consumo são auditados | Upload de anexos, apontamentos privados e eliminação dos consumidores legados remanescentes permanecem pendentes. |
 | Estoque e compras | Catálogo, saldo, previsão, pedidos e recebimento Supabase; Demo também reserva e consome por OS | Fachadas autenticadas, validação de tenant e rotinas transacionais no schema privado | Manter ponte para consumidores legados fora da Demo até a migração integral. |
 | Financeiro | Receitas/despesas e marcação de recebimento | Projeções Supabase da Demo omitem dados para papéis não autorizados | Completar mutations financeiras e substituir a ponte legada com permissões/RLS ponta a ponta. |
 
@@ -76,7 +76,7 @@ As evidências de runtime mostraram que a consulta global do painel recebeu erro
 |---|---|---|
 | P0 | Redirecionamento por erro não específico de autenticação | Remover o redirecionamento global por qualquer erro de query/mutation; cobrir com teste de regressão e validar sessão real. |
 | P0 | Intake/anexos públicos fora do tenant Demo | Concluir a migração geral mantendo o preview/intake da Demo limitado ao slug permitido, capacidade temporária e controles persistidos. |
-| P0 | Comercial, agenda e OS fora do modo Demo ainda em ponte MySQL | Migrar por cadeia inteira para todos os tenants: solicitação → orçamento → aprovação/reserva → agenda → OS → consumo. A Demo já valida esse recorte no Supabase. |
+| P0 | Consumidores MySQL remanescentes fora do fluxo comercial e operacional migrado | Concluir o corte de cada módulo sem misturar IDs de origem e Supabase; solicitação → orçamento → aprovação/reserva → agenda → OS → consumo já possui caminho Supabase versionado. |
 | P1 | Administração de equipe/configurações | Migrar membership e configurações ao Supabase com RLS antes de expor novas mutações administrativas. |
 | P1 | Financeiro e relatórios fora da Demo | Substituir o router legado apenas com permissões validadas no servidor e testes de isolamento; a Demo já usa a leitura Supabase. |
 | P1 | Plataforma global | Preservar leitura até que a autorização deixe de depender de usuário MySQL transitório. |
@@ -98,13 +98,13 @@ A oficina Demo passou a ser exercitável pelo mesmo workspace operacional, sem d
 |---|---|---|
 | Home e navegação | Usa a Central do dia, menu e cards reais com tenant `Auto Prime Centro Automotivo` | Não há fallback de tenant por ID no cliente; Demo continua Super Admin-only. |
 | Solicitações e orçamentos | Leitura Supabase persistida e decisão pública por token no mesmo componente | Solicitação não cria orçamento final automaticamente; aprovação pública cria reserva de forma atômica. |
-| Agenda, pátio e OS | Agenda/kanban e detalhe da OS usam RPCs Supabase; OS mostra itens, checklist, reservas, consumo e apontamentos | Status seguem transições permitidas; consumo mantém físico/reservado e registra movimento/auditoria. |
+| Agenda, pátio e OS | Agenda/kanban e detalhe da OS usam RPCs Supabase; OS mostra itens, checklist, reservas, status e consumo | Status seguem transições permitidas; consumo mantém físico/reservado e registra movimento/auditoria. Anexos e apontamentos ficam bloqueados até novo contrato privado. |
 | Financeiro e relatórios | Receitas, despesas, dashboard mensal e relatório usam consultas Supabase paginadas/tenant-scoped | Custos e resultado só aparecem para permissões financeiras autorizadas. |
 | Configurações e branding | Formulário real lê e grava `tenant_settings`/`tenant_branding` via RPCs | Alterações administrativas são auditadas e passam por `tenant.manage`. |
 | Notificações e auditoria | Lista, preferências, marcação de leitura e trilha de auditoria usam Supabase | Notificações são limitadas ao tenant e ao usuário atual ou alertas globais do tenant. |
 | Equipe | Consulta somente vínculos reais de `tenant_members` e `profiles` | Não são criadas contas Auth fictícias; a Demo permanece sem equipe operacional simulada. |
 | Público | `/solicitar/performance-garage` e `/orcamento/:token` reutilizam as páginas públicas existentes | O preview público é liberado somente para o slug Demo fixo; outros tenants Demo continuam bloqueados. |
 
-A base persistida atualmente contém 36 clientes, 40 veículos, 48 produtos, 24 serviços, 6 kits, 6 fornecedores, 5 compras, 36 solicitações, 24 orçamentos, 18 agendamentos, 20 OS, 6 receitas, 12 despesas e 8 notificações fictícias. Todos os registros do seed carregam `tenant_id=2`; dados pessoais reais, credenciais e contas Auth artificiais não são usados.
+Nenhum dado fictício, identidade, arquivo, execução de OS ou integração externa foi criado neste incremento. Qualquer ambiente de demonstração já existente permanece sujeito às mesmas regras de seleção administrativa, tenant e RLS; ele não deve ser tratado como prova de corte integral ou como substituto dos testes de isolamento entre tenants.
 
 > A Demo operacional não deve ser descrita como um cutover global. Fora de `demo=1`, os módulos ainda indicados como híbridos continuam sujeitos à ponte MySQL até a migração de seus contratos e mutations ser concluída.

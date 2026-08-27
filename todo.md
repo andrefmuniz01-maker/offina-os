@@ -203,3 +203,4 @@
 - [x] Migrar leituras de agenda e pátio para Supabase com projeção por papel, sem custos ou margens para perfis restritos.
 - [x] Migrar detalhe e execução de OS para Supabase, com checklist, transições auditadas e consumo apenas de reserva ativa, sem financeiro automático.
 - [x] Reconciliar e bloquear migrations Supabase aplicadas fora do repositório que expunham rotinas de OS ou dashboard sem fonte versionada.
+- [x] Reconciliar as migrations remotas 0044–0045 já aplicadas, restaurando a projeção mínima de OS e bloqueando apontamentos até haver contrato privado aprovado.
