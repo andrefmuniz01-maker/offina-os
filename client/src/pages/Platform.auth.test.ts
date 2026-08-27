@@ -113,4 +113,16 @@ describe("getPlatformAccessState", () => {
     expect(markup).toContain("Visíveis somente neste contexto Super Admin");
     expect(markup).not.toContain('href="/solicitar/ambiente-demo"');
   });
+
+  it("resume sinais de governança somente a partir das fontes globais disponíveis", () => {
+    states.metrics = ready({ tenants: 3, activeTenants: 2, users: 7, activeMemberships: 5 });
+    states.usage = ready([{ tenantId: 1, memberCount: 8, customerCount: 5, plan: { id: 1, name: "Essencial", maxUsers: 10, maxCustomers: 100, active: true } }]);
+    states.demoWorkspaces = ready([]);
+
+    const markup = renderPlatform("overview");
+    expect(markup).toContain("Acompanhamento de governança");
+    expect(markup).toContain("Oficinas fora de operação");
+    expect(markup).toContain("Limites para acompanhar");
+    expect(markup).toContain("Esta central não executa alterações");
+  });
 });

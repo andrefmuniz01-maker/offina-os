@@ -113,7 +113,7 @@
 - [x] Testar diretamente a guarda de Super Admin para comprovar que usuário comum e admin de tenant não acessam procedures globais.
 - [x] Adicionar barreira visual de Super Admin em `/plataforma`, mantendo as procedures do backend como fonte autoritativa de autorização.
 - [x] Criar navegação exclusiva do ambiente Platform em modo leitura, com Dashboard, Oficinas, Usuários, Planos, Uso, Indicadores, Auditoria, Segurança e Suporte.
-- [ ] Evoluir o painel de Super Admin com um resumo global de governança baseado somente em dados reais e estados explícitos, sem mutações ou suporte invasivo.
+- [x] Evoluir o painel de Super Admin com um resumo global de governança baseado somente em dados reais e estados explícitos, sem mutações ou suporte invasivo.
 - [x] Remover da superfície Platform os controles de criação, edição, associação, ativação e impersonação durante a etapa de consulta global.
 - [x] Diferenciar visualmente carregamento, estado vazio e indisponibilidade em métricas, oficinas, planos e uso.
 - [x] Cobrir com testes o contrato de seções read-only e a proteção dos estados principais da Platform.
