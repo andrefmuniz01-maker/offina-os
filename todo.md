@@ -14,7 +14,8 @@
 - [x] Verificar tipos, testes, build, console e visualização responsiva antes da entrega.
 - [x] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
 - [ ] Diagnosticar e corrigir o caminho de acesso à prévia navegável do OficinaOS.
-- [ ] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
+- [x] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
+- [x] Reorganizar a Home operacional como central do dia, preservando dados do workspace e ocultando leituras financeiras de papéis sem permissão.
 - [ ] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
 - [ ] Permitir que o Super Admin abra, de forma controlada, os links públicos de solicitação e orçamento de cada oficina.
 - [ ] Validar visualmente os ambientes do dono e do Super Admin em desktop e mobile, incluindo seus estados de acesso.
