@@ -95,7 +95,8 @@
 - [ ] Registrar evidência direta no domínio publicado de `auth.me` materializado para andrefmuniz01@gmail.com sem expor token, antes de concluir o cenário de Super Admin sem usuário MySQL legado.
 - [x] Verificar em modo somente leitura que andrefmuniz01@gmail.com não possui registro na tabela MySQL legada antes de considerar validado o cenário sem ponte transitória.
 - [x] Investigar a falha persistente de `auth.me` no domínio publicado após o login real de André, distinguindo token, backend e RLS antes de nova correção.
-- [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
+- [x] Cobrir com testes que um token Supabase sem profile ou com papel global inválido não materializa contexto nem aciona o backend temporário.
+- [x] Cobrir explicitamente a negação de identidade Supabase sem vínculo de tenant válido em procedure protegida, distinguindo autorização de materialização de contexto.
 - [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
 - [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para usuário sem vínculo ativo no tenant.

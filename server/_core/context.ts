@@ -45,6 +45,10 @@ function normalizeEmail(email: string | null | undefined) {
   return email?.trim().toLowerCase() ?? null;
 }
 
+function isValidSupabasePlatformRole(role: unknown): role is SupabaseProfile["platformRole"] {
+  return role === "platform_user" || role === "super_admin";
+}
+
 function getSupabaseDisplayName(identity: Awaited<ReturnType<typeof getSupabaseAuthUser>>) {
   const metadata = identity?.user_metadata;
   const candidates = [metadata?.full_name, metadata?.name, metadata?.display_name];
@@ -58,7 +62,7 @@ export function isSupabaseProfileIdentityMatch(
 ) {
   const identityEmail = normalizeEmail(identity.email);
   const profileEmail = normalizeEmail(profile?.email);
-  return Boolean(profile && identity.id === profile.id && identityEmail && profileEmail && identityEmail === profileEmail);
+  return Boolean(profile && isValidSupabasePlatformRole(profile.platformRole) && identity.id === profile.id && identityEmail && profileEmail && identityEmail === profileEmail);
 }
 
 export async function createContext(

@@ -5,7 +5,7 @@ vi.mock("./_core/supabase", () => ({
 }));
 
 import { createSupabaseClient } from "./_core/supabase";
-import { assertSupabasePlatformSuperAdmin, getSupabaseTenantAccess, hasSupabasePermission, resolveSupabasePermissions, type SupabaseTenantAccess } from "./supabaseTenantAccess";
+import { assertSupabasePlatformSuperAdmin, getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission, resolveSupabasePermissions, type SupabaseTenantAccess } from "./supabaseTenantAccess";
 
 const access = (permissions: SupabaseTenantAccess["permissions"], isPlatformSuperAdmin = false): SupabaseTenantAccess => ({
   tenantId: 1,
@@ -86,6 +86,20 @@ describe("permissões de tenant no Supabase", () => {
     expect(membershipQuery.eq).toHaveBeenCalledWith("tenant_id", 12);
     expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", "f3b9d977-1a0c-407a-b56b-7ca7337d9e88");
     expect(membershipQuery.eq).toHaveBeenCalledWith("active", true);
+  });
+
+  it("nega a autorização consumida pelos procedures quando a identidade Supabase não possui membership", async () => {
+    const user = {
+      id: "f3b9d977-1a0c-407a-b56b-7ca7337d9e88",
+      name: "Atendente",
+      email: "atendente@empresa.test",
+      platformRole: "platform_user" as const,
+      accessToken: "teste",
+    };
+
+    await expect(requireSupabaseTenantPermission(user, 12, "quotes.manage")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(membershipQuery.eq).toHaveBeenCalledWith("tenant_id", 12);
+    expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", user.id);
   });
 
   it.each([

@@ -14,6 +14,8 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 
 > Diagnóstico de sessão em 27 de agosto: a identidade administrativa autenticada possui profile Supabase correspondente e papel global válido. A falha de materialização era compatível com uma indisponibilidade da ponte MySQL ainda executada pelo contexto após a validação Supabase. O contexto agora preserva `supabaseUser` já validado quando essa compatibilidade falha; `auth.me` continua sem token e o fallback legado permanece apenas para routers não migrados. A `SUPABASE_SERVICE_ROLE_KEY` foi configurada somente no runtime do servidor e validada por chamada administrativa leve sem registro do valor. Uma sessão humana no domínio publicado confirmou a materialização de André Muniz como Super Admin global, com contexto Platform separado e sem vínculo de membro ou owner da Ruidão Performance. A prova integrada `createContext → auth.me` confirma que o contrato devolve apenas identificador, nome, e-mail e papel global, nunca o token interno.
 
+> A materialização também valida a enumeração do papel global em runtime: somente `platform_user` e `super_admin` são aceitos. Um profile com papel inesperado, mesmo que traga o UUID e o e-mail correspondentes ao token, não cria `supabaseUser`, não cria o fallback MySQL e não acessa routers protegidos. Essa checagem é coberta em testes de identidade e de contexto.
+
 > Não inserir a Performance Garage no Supabase até que pelo menos os caminhos de tenancy e os routers que a interface usa estejam migrados. Caso contrário, a aplicação atual não exibirá os dados criados no novo banco.
 
 ## Incrementos publicados nesta tarefa

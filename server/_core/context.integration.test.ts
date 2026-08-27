@@ -81,6 +81,20 @@ describe("createContext com Supabase", () => {
     expect(db.getUserByEmail).not.toHaveBeenCalled();
   });
 
+  it("não materializa contexto nem consulta a ponte legada quando o profile traz papel global inválido", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "finance_admin",
+    } as never);
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(context.supabaseUser).toBeNull();
+    expect(db.getUserByEmail).not.toHaveBeenCalled();
+  });
+
   it("preserva a identidade Supabase mesmo sem usuário legado durante a transição", async () => {
     vi.mocked(getSupabaseProfile).mockResolvedValue({
       id: "c577d57b-6375-431d-8549-971a4b20c0ed",

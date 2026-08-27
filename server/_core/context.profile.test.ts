@@ -39,4 +39,14 @@ describe("applySupabaseProfileRole", () => {
     expect(isSupabaseProfileIdentityMatch({ id: profile.id, email: "outro@example.com" }, profile)).toBe(false);
     expect(isSupabaseProfileIdentityMatch({ id: profile.id, email: null }, profile)).toBe(false);
   });
+
+  it("recusa um papel global fora da enumeração autorizada, mesmo se id e e-mail coincidirem", () => {
+    const profile = {
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "finance_admin",
+    } as unknown as Parameters<typeof isSupabaseProfileIdentityMatch>[1];
+
+    expect(isSupabaseProfileIdentityMatch({ id: "c577d57b-6375-431d-8549-971a4b20c0ed", email: "felipefmuniz@gmail.com" }, profile)).toBe(false);
+  });
 });
