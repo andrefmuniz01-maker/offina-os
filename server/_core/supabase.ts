@@ -37,11 +37,12 @@ export async function getSupabaseAuthUser(accessToken: string) {
   return data.user;
 }
 
-export async function getSupabaseProfile(accessToken: string): Promise<SupabaseProfile | null> {
+export async function getSupabaseProfile(accessToken: string, profileId: string): Promise<SupabaseProfile | null> {
   const supabase = createSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("profiles")
     .select("id, email, platform_role")
+    .eq("id", profileId)
     .maybeSingle();
 
   if (error || !data) return null;

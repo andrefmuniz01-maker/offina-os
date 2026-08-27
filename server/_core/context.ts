@@ -72,7 +72,7 @@ export async function createContext(
     try {
       const authenticatedIdentity = await getSupabaseAuthUser(accessToken);
       if (authenticatedIdentity) {
-        const profile = await getSupabaseProfile(accessToken);
+        const profile = await getSupabaseProfile(accessToken, authenticatedIdentity.id);
         if (profile && isSupabaseProfileIdentityMatch(authenticatedIdentity, profile)) {
           const email = normalizeEmail(profile.email);
           supabaseUser = {

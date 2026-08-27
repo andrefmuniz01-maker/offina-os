@@ -83,6 +83,7 @@ describe("createContext com Supabase", () => {
       email: "felipefmuniz@gmail.com",
       platformRole: "super_admin",
     });
+    expect(getSupabaseProfile).toHaveBeenCalledWith("supabase-token", "c577d57b-6375-431d-8549-971a4b20c0ed");
   });
 
   it("materializa o usuário legado somente após vínculo completo e aplica o papel do profile", async () => {

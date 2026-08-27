@@ -85,6 +85,8 @@
 - [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
 - [x] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
 - [ ] Validar ponta a ponta o convite único já enviado para andrefmuniz01@gmail.com no domínio publicado, incluindo definição de senha e sessão sem Magic Link recorrente.
+- [ ] Publicar e validar ponta a ponta a correção do callback pós-definição de senha quando a sessão Supabase é válida, mas o contexto tRPC não encontra o profile operacional de André.
+- [ ] Confirmar após o deploy que um Super Admin Supabase sem usuário MySQL legado recebe `auth.me` materializado e o destino permitido.
 - [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
 - [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
