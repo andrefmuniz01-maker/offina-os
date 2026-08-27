@@ -12,7 +12,7 @@ A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrig
 
 A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Os commits `eed2c34` e `b1fbcd7` expõem a identidade Supabase no contexto tRPC e fazem `auth.me` priorizá-la. O commit `2404bc6` adiciona uma camada de autorização Supabase com bloqueio explícito de elevação financeira para atendentes e técnicos. O commit `fd9226f` moveu a Home para as RPCs Supabase de listagem de workspace, criação de tenant, dashboard e notificações. O commit `1788d90` adicionou os namespaces `workspaceCatalog` e `workspaceInventory`: as telas de catálogo, categorias, itens por categoria, estoque e compras já usam o PostgreSQL. Os routers legados `catalog` e `inventory` continuam montados temporariamente para que comercial, orçamentos, operações e outros consumidores ainda não migrados não misturem IDs MySQL com registros Supabase.
 
-> Diagnóstico de sessão em 27 de agosto: a identidade administrativa autenticada possui profile Supabase correspondente e papel global válido. A falha de materialização era compatível com uma indisponibilidade da ponte MySQL ainda executada pelo contexto após a validação Supabase. O contexto agora preserva `supabaseUser` já validado quando essa compatibilidade falha; `auth.me` continua sem token e o fallback legado permanece apenas para routers não migrados. A `SUPABASE_SERVICE_ROLE_KEY` foi configurada somente no runtime do servidor e validada por chamada administrativa leve sem registro do valor.
+> Diagnóstico de sessão em 27 de agosto: a identidade administrativa autenticada possui profile Supabase correspondente e papel global válido. A falha de materialização era compatível com uma indisponibilidade da ponte MySQL ainda executada pelo contexto após a validação Supabase. O contexto agora preserva `supabaseUser` já validado quando essa compatibilidade falha; `auth.me` continua sem token e o fallback legado permanece apenas para routers não migrados. A `SUPABASE_SERVICE_ROLE_KEY` foi configurada somente no runtime do servidor e validada por chamada administrativa leve sem registro do valor. Uma sessão humana no domínio publicado confirmou a materialização de André Muniz como Super Admin global, com contexto Platform separado e sem vínculo de membro ou owner da Ruidão Performance. A prova integrada `createContext → auth.me` confirma que o contrato devolve apenas identificador, nome, e-mail e papel global, nunca o token interno.
 
 > Não inserir a Performance Garage no Supabase até que pelo menos os caminhos de tenancy e os routers que a interface usa estejam migrados. Caso contrário, a aplicação atual não exibirá os dados criados no novo banco.
 
@@ -61,7 +61,7 @@ O bucket **privado** `quote-request-attachments` foi aplicado com limite de 5 MB
 
 ## Validações disponíveis
 
-Com `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` configurados apenas no ambiente local, a última linha de base aprovada foi:
+Com as credenciais públicas Supabase e a Service Role exclusiva do runtime de servidor configuradas fora do repositório, a última linha de base aprovada foi:
 
 ```bash
 pnpm check
@@ -69,4 +69,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **112 arquivos de teste aprovados e 342 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.
+Resultado integrado mais recente: **112 arquivos de teste aprovados e 343 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.

@@ -182,10 +182,14 @@
 - [x] Exigir tenant comercialmente ativo em guardas internos Supabase, além das rotas públicas.
 - [x] Preparar orçamento a partir de solicitação Supabase do mesmo tenant, sem criar proposta, reserva ou efeito financeiro.
 - [x] Cobrir no roteador Supabase a negação e a validação de vínculo da preparação comercial por tenant.
-- [ ] Diagnosticar e corrigir o login publicado que permanece carregando após o envio de e-mail e senha.
+- [x] Diagnosticar e corrigir o login publicado que permanece carregando após o envio de e-mail e senha.
 - [x] Impedir que chamadas pendentes de autenticação Supabase mantenham o formulário de acesso em carregamento indefinido.
 - [x] Diagnosticar o profile operacional ausente após autenticação Supabase e corrigir somente o vínculo confirmado.
 - [x] Preservar a identidade Supabase já validada quando a ponte MySQL temporária estiver indisponível.
-- [ ] Rastrear a requisição auth.me da sessão publicada que ainda retorna perfil indisponível após login válido.
-- [ ] Capturar e corrigir a falha de auth.me no domínio atual após login Supabase aceito.
+- [x] Rastrear a requisição auth.me da sessão publicada que ainda retorna perfil indisponível após login válido.
+- [x] Capturar e corrigir a falha de auth.me no domínio atual após login Supabase aceito.
 - [x] Reabrir o campo seguro da Service Role após a solicitação anterior ficar indisponível.
+- [x] Confirmar que andrefmuniz01@gmail.com é somente Super Admin global e não possui vínculo de owner com a Ruidão Performance.
+- [ ] Capturar de forma segura a resposta publicada de auth.me após login válido, registrando o payload de Super Admin sem token.
+- [x] Cobrir a cadeia de contexto Supabase até auth.me em teste integrado, sem token ou identidade real.
+- [x] Adicionar uma prova de navegação autenticada que dependa do auth.me materializado antes de concluir a evidência publicada.

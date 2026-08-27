@@ -13,6 +13,7 @@ vi.mock("./supabase", () => ({
 }));
 
 import * as db from "../db";
+import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { getSupabaseAuthUser, getSupabaseProfile } from "./supabase";
 
@@ -97,6 +98,26 @@ describe("createContext com Supabase", () => {
       platformRole: "super_admin",
     });
     expect(getSupabaseProfile).toHaveBeenCalledWith("supabase-token", "c577d57b-6375-431d-8549-971a4b20c0ed");
+  });
+
+  it("materializa auth.me a partir do contexto Supabase sem expor o token interno", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+    vi.mocked(db.getUserByEmail).mockResolvedValue(undefined);
+
+    const context = await createContext(options());
+    const result = await appRouter.createCaller(context).auth.me();
+
+    expect(result).toEqual({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      name: null,
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+    expect(result).not.toHaveProperty("accessToken");
   });
 
   it("preserva a identidade Supabase quando a ponte MySQL falha durante a transição", async () => {
