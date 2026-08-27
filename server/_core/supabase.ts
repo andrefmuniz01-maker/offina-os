@@ -24,7 +24,7 @@ export function createSupabaseClient(accessToken?: string) {
   });
 }
 
-function createSupabaseServiceRoleClient() {
+export function createSupabaseServiceRoleClient() {
   if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) return null;
 
   return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
