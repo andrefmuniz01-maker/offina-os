@@ -78,22 +78,22 @@ function CategoryPanel({ title, description, icon: Icon, form, setForm, categori
 }
 
 export default function Categories() {
-  const mine = trpc.tenant.mine.useQuery();
+  const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [productForm, setProductForm] = useState<CategoryForm>(blankForm);
   const [serviceForm, setServiceForm] = useState<CategoryForm>(blankForm);
-  const products = trpc.catalog.categories.listProducts.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const services = trpc.catalog.categories.listServices.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const invalidateProducts = () => utils.catalog.categories.listProducts.invalidate();
-  const invalidateServices = () => utils.catalog.categories.listServices.invalidate();
-  const createProduct = trpc.catalog.categories.createProduct.useMutation({ onSuccess: () => { setProductForm(blankForm); toast.success("Categoria de produto criada."); invalidateProducts(); }, onError: error => toast.error(error.message) });
-  const createService = trpc.catalog.categories.createService.useMutation({ onSuccess: () => { setServiceForm(blankForm); toast.success("Categoria de serviço criada."); invalidateServices(); }, onError: error => toast.error(error.message) });
-  const updateProduct = trpc.catalog.categories.updateProduct.useMutation({ onSuccess: () => { toast.success("Categoria de produto atualizada."); invalidateProducts(); }, onError: error => toast.error(error.message) });
-  const updateService = trpc.catalog.categories.updateService.useMutation({ onSuccess: () => { toast.success("Categoria de serviço atualizada."); invalidateServices(); }, onError: error => toast.error(error.message) });
-  const deleteProduct = trpc.catalog.categories.deleteProduct.useMutation({ onSuccess: () => { toast.success("Categoria de produto excluída."); invalidateProducts(); }, onError: error => toast.error(error.message) });
-  const deleteService = trpc.catalog.categories.deleteService.useMutation({ onSuccess: () => { toast.success("Categoria de serviço excluída."); invalidateServices(); }, onError: error => toast.error(error.message) });
+  const products = trpc.workspaceCatalog.categories.listProducts.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const services = trpc.workspaceCatalog.categories.listServices.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const invalidateProducts = () => utils.workspaceCatalog.categories.listProducts.invalidate();
+  const invalidateServices = () => utils.workspaceCatalog.categories.listServices.invalidate();
+  const createProduct = trpc.workspaceCatalog.categories.createProduct.useMutation({ onSuccess: () => { setProductForm(blankForm); toast.success("Categoria de produto criada."); invalidateProducts(); }, onError: error => toast.error(error.message) });
+  const createService = trpc.workspaceCatalog.categories.createService.useMutation({ onSuccess: () => { setServiceForm(blankForm); toast.success("Categoria de serviço criada."); invalidateServices(); }, onError: error => toast.error(error.message) });
+  const updateProduct = trpc.workspaceCatalog.categories.updateProduct.useMutation({ onSuccess: () => { toast.success("Categoria de produto atualizada."); invalidateProducts(); }, onError: error => toast.error(error.message) });
+  const updateService = trpc.workspaceCatalog.categories.updateService.useMutation({ onSuccess: () => { toast.success("Categoria de serviço atualizada."); invalidateServices(); }, onError: error => toast.error(error.message) });
+  const deleteProduct = trpc.workspaceCatalog.categories.deleteProduct.useMutation({ onSuccess: () => { toast.success("Categoria de produto excluída."); invalidateProducts(); }, onError: error => toast.error(error.message) });
+  const deleteService = trpc.workspaceCatalog.categories.deleteService.useMutation({ onSuccess: () => { toast.success("Categoria de serviço excluída."); invalidateServices(); }, onError: error => toast.error(error.message) });
 
   if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-6xl"><Skeleton className="h-80" /></main></DashboardLayout>;
   if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-3xl"><Card><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Categorias de produtos e serviços pertencem a uma oficina ativa. Peça a um Super Admin para associar seu acesso antes de alterar o catálogo.</CardDescription></CardHeader></Card></main></DashboardLayout>;

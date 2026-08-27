@@ -28,7 +28,7 @@ const labels: Record<string, string> = {
 const statuses = ["draft", "ordered", "partially_received", "received", "cancelled"] as const;
 
 export default function Purchases() {
-  const mine = trpc.tenant.mine.useQuery();
+  const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
@@ -42,27 +42,27 @@ export default function Purchases() {
     () => ({ tenantId, page, pageSize: 10, ...(status === "all" ? {} : { status }), ...(search.trim() ? { search: search.trim() } : {}) }),
     [tenantId, page, search, status],
   );
-  const products = trpc.catalog.products.list.useQuery(productQueryInput, { enabled: Boolean(tenantId) });
-  const orders = trpc.inventory.purchaseOrders.list.useQuery(orderQueryInput, { enabled: Boolean(tenantId) });
+  const products = trpc.workspaceCatalog.products.list.useQuery(productQueryInput, { enabled: Boolean(tenantId) });
+  const orders = trpc.workspaceInventory.purchaseOrders.list.useQuery(orderQueryInput, { enabled: Boolean(tenantId) });
   const orderItems = orders.data?.items ?? [];
   const partialOrders = orderItems.filter(({ order }) => order.status === "partially_received").length;
   const openOrders = orderItems.filter(({ order }) => ["draft", "ordered", "partially_received"].includes(order.status)).length;
   const purchaseAction = getPurchaseWorkspaceAction(openOrders, partialOrders);
 
-  const create = trpc.inventory.purchaseOrders.create.useMutation({
+  const create = trpc.workspaceInventory.purchaseOrders.create.useMutation({
     onSuccess: data => {
       toast.success(`Pedido #${String(data.number).padStart(6, "0")} criado.`);
       setForm({ productId: "", quantity: "1", unitCost: "0", notes: "" });
       setPage(1);
-      utils.inventory.purchaseOrders.list.invalidate();
+      utils.workspaceInventory.purchaseOrders.list.invalidate();
     },
     onError: error => toast.error(error.message),
   });
-  const receive = trpc.inventory.purchaseOrders.receive.useMutation({
+  const receive = trpc.workspaceInventory.purchaseOrders.receive.useMutation({
     onSuccess: () => {
       toast.success("Recebimento registrado e estoque atualizado.");
-      utils.inventory.purchaseOrders.list.invalidate();
-      utils.inventory.list.invalidate();
+      utils.workspaceInventory.purchaseOrders.list.invalidate();
+      utils.workspaceInventory.list.invalidate();
     },
     onError: error => toast.error(error.message),
   });
@@ -122,8 +122,8 @@ export default function Purchases() {
             <CardContent>
               {orders.isLoading ? <Skeleton className="h-52" /> : orders.isError ? <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os pedidos. Atualize a página e tente novamente.</div> : orderItems.length ? <div className="space-y-2">
                 {orderItems.map(({ order, supplier, items }) => <div className="flex flex-col gap-3 rounded-xl border border-slate-100 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between" key={order.id}>
-                  <div><p className="font-medium text-slate-900">Pedido #{String(order.number).padStart(6, "0")}</p><p className="mt-1 text-xs text-slate-500">{supplier?.name ?? "Fornecedor a definir"} · {new Date(order.createdAt).toLocaleDateString("pt-BR")}</p><p className="mt-1 text-xs text-slate-500">{items.map(item => `${item.orderedQuantity} un`).join(" · ")}</p></div>
-                  <div className="flex items-center gap-2"><Badge variant="outline">{labels[order.status] ?? order.status}</Badge>{["draft", "ordered", "partially_received"].includes(order.status) ? <Button size="sm" disabled={receive.isPending} onClick={() => receive.mutate({ tenantId, purchaseOrderId: order.id, items: items.filter(item => Number(item.receivedQuantity) < Number(item.orderedQuantity)).map(item => ({ itemId: item.id, receivedQuantity: Number(item.orderedQuantity) - Number(item.receivedQuantity) })) })}>Receber</Button> : null}</div>
+                  <div><p className="font-medium text-slate-900">Pedido #{String(order.number).padStart(6, "0")}</p><p className="mt-1 text-xs text-slate-500">{supplier?.name ?? "Fornecedor a definir"} · {new Date(order.createdAt).toLocaleDateString("pt-BR")}</p><p className="mt-1 text-xs text-slate-500">{items.map((item: { orderedQuantity: number }) => `${item.orderedQuantity} un`).join(" · ")}</p></div>
+                  <div className="flex items-center gap-2"><Badge variant="outline">{labels[order.status] ?? order.status}</Badge>{["draft", "ordered", "partially_received"].includes(order.status) ? <Button size="sm" disabled={receive.isPending} onClick={() => receive.mutate({ tenantId, purchaseOrderId: order.id, items: items.filter((item: { receivedQuantity: number; orderedQuantity: number }) => Number(item.receivedQuantity) < Number(item.orderedQuantity)).map((item: { id: number; receivedQuantity: number; orderedQuantity: number }) => ({ itemId: item.id, receivedQuantity: Number(item.orderedQuantity) - Number(item.receivedQuantity) })) })}>Receber</Button> : null}</div>
                 </div>)}
                 <div className="flex items-center justify-between border-t border-slate-100 pt-4"><p className="text-sm text-slate-500">Página {orders.data?.page ?? page}</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(current => current - 1)}><ChevronLeft className="mr-1 h-4 w-4" />Anterior</Button><Button variant="outline" size="sm" disabled={!orders.data?.hasMore} onClick={() => setPage(current => current + 1)}>Próxima<ChevronRight className="ml-1 h-4 w-4" /></Button></div></div>
               </div> : <div className="py-12 text-center text-sm text-slate-500"><PackageCheck className="mx-auto mb-3 h-6 w-6 text-slate-400" />Nenhum pedido de compra neste filtro. Ajuste a busca ou o status.</div>}

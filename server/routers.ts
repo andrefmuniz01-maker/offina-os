@@ -2,7 +2,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { platformRouter, tenantRouter } from "./routers/platform";
 import { catalogRouter, customerRouter, vehicleRouter } from "./routers/catalog";
+import { supabaseCatalogRouter } from "./routers/supabaseCatalog";
 import { inventoryRouter } from "./routers/inventory";
+import { supabaseInventoryRouter } from "./routers/supabaseInventory";
 import { quoteRequestRouter, quoteRouter } from "./routers/quotes";
 import { appointmentRouter, workOrderRouter } from "./routers/operations";
 import { dashboardRouter, financialRouter, notificationRouter } from "./routers/management";
@@ -28,7 +30,9 @@ export const appRouter = router({
   customers: customerRouter,
   vehicles: vehicleRouter,
   catalog: catalogRouter,
+  workspaceCatalog: supabaseCatalogRouter,
   inventory: inventoryRouter,
+  workspaceInventory: supabaseInventoryRouter,
   quoteRequests: quoteRequestRouter,
   quotes: quoteRouter,
   appointments: appointmentRouter,
