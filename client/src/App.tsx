@@ -13,6 +13,7 @@ import Operations from "./pages/Operations";
 import Inventory from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import Platform from "./pages/Platform";
+import InternalDemo from "./pages/InternalDemo";
 import Catalog from "./pages/Catalog";
 import Categories from "./pages/Categories";
 import CatalogItems from "./pages/CatalogItems";
@@ -41,6 +42,7 @@ function Router() {
       <Route path={"/estoque"} component={Inventory} />
       <Route path={"/configuracoes"} component={Settings} />
       <Route path={"/plataforma"} component={Platform} />
+      <Route path={"/demo-interna"} component={InternalDemo} />
       <Route path={"/cadastros"} component={Catalog} />
       <Route path={"/cadastros/itens"} component={CatalogItems} />
       <Route path={"/categorias"} component={Categories} />
