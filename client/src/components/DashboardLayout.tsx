@@ -63,7 +63,7 @@ export function getPasswordAuthErrorMessage(error: SupabaseAuthError) {
   }
 
   if (error.code === "otp_disabled" || message.includes("signups not allowed")) {
-    return "Este e-mail ainda não está autorizado. Solicite o provisionamento a um Super Admin.";
+    return "Não foi possível preparar o acesso agora. Verifique as instruções recebidas ou tente novamente mais tarde.";
   }
 
   if (error.code === "invalid_credentials" || message.includes("invalid login credentials")) {
@@ -75,6 +75,10 @@ export function getPasswordAuthErrorMessage(error: SupabaseAuthError) {
   }
 
   return "Não foi possível concluir o acesso seguro. Tente novamente mais tarde.";
+}
+
+export function getPasswordSetupMessage() {
+  return "Enviaremos instruções seguras para criar ou redefinir a senha, caso o acesso esteja disponível.";
 }
 
 function PasswordAccess() {
@@ -120,8 +124,8 @@ function PasswordAccess() {
     <div className="flex items-center justify-center min-h-screen">
       <form onSubmit={signInWithPassword} className="flex flex-col items-center gap-5 p-8 max-w-md w-full">
         <div className="flex flex-col items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-center">Entre para continuar</h1>
-          <p className="text-sm text-muted-foreground text-center max-w-sm">Use seu e-mail autorizado e sua senha para acessar o OficinaOS.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-center">Acesse sua oficina</h1>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">Entre com seu e-mail e senha. No primeiro acesso, crie sua senha de forma segura.</p>
         </div>
         <input
           aria-label="E-mail de acesso"
@@ -145,7 +149,7 @@ function PasswordAccess() {
           placeholder="Sua senha"
         />
         <Button type="submit" disabled={status === "signing-in" || status === "resetting"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
-          {status === "signing-in" ? "Entrando…" : "Entrar"}
+          {status === "signing-in" ? "Entrando…" : "Entrar no painel"}
         </Button>
         <button
           type="button"
@@ -153,9 +157,9 @@ function PasswordAccess() {
           disabled={status === "signing-in" || status === "resetting"}
           className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
         >
-          {status === "resetting" ? "Preparando redefinição…" : "Criar ou redefinir senha"}
+          {status === "resetting" ? "Preparando redefinição…" : "Primeiro acesso ou esqueceu a senha?"}
         </button>
-        {status === "reset-sent" && <p className="text-center text-sm text-muted-foreground">Se este e-mail estiver autorizado, envie a definição de senha pelo e-mail recebido.</p>}
+        {status === "reset-sent" && <p className="text-center text-sm text-muted-foreground">{getPasswordSetupMessage()}</p>}
         {status === "error" && <p className="text-center text-sm text-destructive">{errorMessage}</p>}
       </form>
     </div>

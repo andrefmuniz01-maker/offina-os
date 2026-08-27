@@ -119,3 +119,6 @@
 - [x] Remover o identificador interno da oficina do catálogo público nos caminhos transitório e Supabase, mantendo o slug como chave externa.
 - [x] Exibir ao Super Admin exclusivamente a navegação Platform, mesmo quando houver vínculo operacional transitório, para evitar mistura de contextos.
 - [x] Remover métricas financeiras da resposta de dashboard para atendentes e técnicos, garantindo a proteção no banco e não apenas na interface.
+- [x] Simplificar a orientação de primeiro acesso e recuperação de senha, sem expor se um e-mail está provisionado.
+- [x] Substituir a mensagem de erro `otp_disabled` por uma resposta neutra que não revele se o e-mail está autorizado ou provisionado.
+- [x] Cobrir todo o fluxo de primeiro acesso para garantir que a interface não confirme cadastro, autorização ou inexistência de e-mail.
