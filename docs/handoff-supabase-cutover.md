@@ -47,6 +47,11 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 
 A migração não pode copiar senhas, tokens, e-mails pessoais ou dados reais ao Supabase. Contas de demonstração devem ser provisionadas pelo mecanismo administrativo de Auth com segredos fora do repositório. Todo novo endpoint precisa continuar filtrando `tenant_id` e respeitar as policies RLS; não usar `is_demo` como bypass de acesso. As funções públicas `public_get_workshop_catalog` e `public_submit_quote_request` usam `SECURITY DEFINER` por necessidade do fluxo sem login, mas aceitam apenas input validado, retornam dados comerciais limitados e não concedem `SELECT` anônimo às tabelas internas. Antes de liberar publicamente, acrescentar rate limit e migrar uploads para o bucket privado do Supabase; anexos não devem ser misturados ao Forge/S3 legado.
 
+Para os anexos, criar bucket **privado** `quote-request-attachments`, limites de 5 MB e MIME explícito. O upload anônimo deve exigir um token de upload de uso curto, vinculado a uma única solicitação e validado por policy/RPC; acesso interno deve usar RLS com associação ao `tenant_id`, e arquivos de cliente nunca devem usar URLs públicas. A estratégia decorre da documentação de buckets privados e policies de objetos do Supabase.[1][2]
+
+[1]: https://supabase.com/docs/guides/storage/buckets/fundamentals "Supabase Storage Buckets"
+[2]: https://supabase.com/docs/guides/storage/security/access-control "Supabase Storage Access Control"
+
 ## Validações disponíveis
 
 Com `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` configurados apenas no ambiente local, a última linha de base aprovada foi:
