@@ -15,6 +15,7 @@ import { supabasePublicIntakeRouter } from "./routers/supabasePublicIntake";
 import { supabaseQuoteRequestRouter } from "./routers/supabaseQuoteRequests";
 import { supabaseQuoteRouter } from "./routers/supabaseQuotes";
 import { supabasePublicQuoteRouter } from "./routers/supabasePublicQuotes";
+import { supabaseOperationsRouter } from "./routers/supabaseOperations";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -53,6 +54,7 @@ export const appRouter = router({
   publicQuotes: supabasePublicQuoteRouter,
   workspaceQuoteRequests: supabaseQuoteRequestRouter,
   workspaceQuotes: supabaseQuoteRouter,
+  workspaceOperations: supabaseOperationsRouter,
   quoteRequests: quoteRequestRouter,
   quotes: quoteRouter,
   appointments: appointmentRouter,

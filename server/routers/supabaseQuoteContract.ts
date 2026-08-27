@@ -153,3 +153,13 @@ export const publicQuoteDecisionSchema = z.object({
 export function parsePublicQuoteDecision(value: unknown) {
   return publicQuoteDecisionSchema.safeParse(value);
 }
+
+export const workspaceQuoteScheduleSchema = z.object({
+  appointmentId: z.number().int().positive(),
+  workOrderId: z.number().int().positive(),
+  workOrderNumber: z.number().int().positive(),
+}).strict();
+
+export function parseWorkspaceQuoteSchedule(value: unknown) {
+  return workspaceQuoteScheduleSchema.safeParse(value);
+}
