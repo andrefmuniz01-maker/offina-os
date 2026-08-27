@@ -24,6 +24,18 @@ export function createSupabaseClient(accessToken?: string) {
   });
 }
 
+function createSupabaseServiceRoleClient() {
+  if (!ENV.supabaseUrl || !ENV.supabaseServiceRoleKey) return null;
+
+  return createClient(ENV.supabaseUrl, ENV.supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 export function getBearerToken(value: string | undefined): string | null {
   if (!value?.startsWith("Bearer ")) return null;
   const token = value.slice("Bearer ".length).trim();
@@ -38,7 +50,10 @@ export async function getSupabaseAuthUser(accessToken: string) {
 }
 
 export async function getSupabaseProfile(accessToken: string, profileId: string): Promise<SupabaseProfile | null> {
-  const supabase = createSupabaseClient(accessToken);
+  // A identidade já é validada por getSupabaseAuthUser com o token recebido.
+  // A leitura subsequente usa Service Role apenas no servidor e fica limitada
+  // ao mesmo UUID validado, sem expor a chave ao cliente.
+  const supabase = createSupabaseServiceRoleClient() ?? createSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("profiles")
     .select("id, email, platform_role")

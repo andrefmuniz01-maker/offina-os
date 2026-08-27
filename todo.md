@@ -87,6 +87,7 @@
 - [ ] Validar ponta a ponta o convite único já enviado para andrefmuniz01@gmail.com no domínio publicado, incluindo definição de senha e sessão sem Magic Link recorrente.
 - [ ] Publicar e validar ponta a ponta a correção do callback pós-definição de senha quando a sessão Supabase é válida, mas o contexto tRPC não encontra o profile operacional de André.
 - [ ] Confirmar após o deploy que um Super Admin Supabase sem usuário MySQL legado recebe `auth.me` materializado e o destino permitido.
+- [ ] Investigar a falha persistente de `auth.me` no domínio publicado após o login real de André, distinguindo token, backend e RLS antes de nova correção.
 - [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
 - [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
