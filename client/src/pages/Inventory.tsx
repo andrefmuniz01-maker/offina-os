@@ -4,12 +4,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryAvailability, getInventoryTone } from "@/lib/inventoryPriority";
 import { inventoryBalanceLabels } from "@/lib/inventoryView";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, ArrowLeft, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, PackageCheck, PackageSearch, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const menu: DashboardMenuItem[] = [
   { icon: ArrowLeft, label: "Visão geral", path: "/" },
@@ -23,20 +25,31 @@ function defaultForecastDate() {
 }
 
 export default function Inventory() {
-  const mine = trpc.tenant.mine.useQuery();
+  const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [forecastUntil, setForecastUntil] = useState(defaultForecastDate);
+  const [adjustment, setAdjustment] = useState({ productId: "", quantityDelta: "", notes: "" });
+  const utils = trpc.useUtils();
   const until = useMemo(() => new Date(`${forecastUntil}T23:59:59.999Z`), [forecastUntil]);
   const stockInput = useMemo(() => ({ tenantId: tenant?.id ?? 0, search: search.trim() || undefined, page, pageSize: 20 }), [tenant?.id, search, page]);
-  const stock = trpc.inventory.list.useQuery(stockInput, { enabled: Boolean(tenant?.id) });
-  const forecast = trpc.inventory.forecast.useQuery({ tenantId: tenant?.id ?? 0, until }, { enabled: Boolean(tenant?.id) });
+  const stock = trpc.workspaceInventory.list.useQuery(stockInput, { enabled: Boolean(tenant?.id) });
+  const forecast = trpc.workspaceInventory.forecast.useQuery({ tenantId: tenant?.id ?? 0, until }, { enabled: Boolean(tenant?.id) });
   const stockItems = stock.data?.items ?? [];
   const criticalCount = stockItems.filter(item => item.availableQuantity <= item.minStock).length;
   const unavailableCount = stockItems.filter(item => item.availableQuantity <= 0).length;
   const reservedCount = stockItems.filter(item => item.reservedQuantity > 0).length;
   const forecastItems = forecast.data ?? [];
+  const adjust = trpc.workspaceInventory.adjust.useMutation({
+    onSuccess: () => {
+      toast.success("Ajuste registrado com auditoria.");
+      setAdjustment({ productId: "", quantityDelta: "", notes: "" });
+      utils.workspaceInventory.list.invalidate();
+      utils.workspaceInventory.forecast.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
 
   if (!mine.isLoading && !tenant) {
     return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-7xl space-y-7"><header className="border-b border-slate-200 pb-6"><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Estoque</h1></header><Card className="border-dashed border-slate-300"><CardContent className="p-8 text-center text-sm text-slate-600">Seu acesso ainda não está vinculado a uma oficina. Peça a um Super Admin para associá-lo ao tenant correto antes de consultar inventário, reservas e previsões.</CardContent></Card></main></DashboardLayout>;
@@ -92,6 +105,22 @@ export default function Inventory() {
               {!forecast.isLoading && !forecast.isError && forecastItems.length ? forecastItems.map(item => <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-3" key={item.productId}><div className="flex items-start justify-between gap-3"><p className="font-medium text-slate-900">{item.productName}</p><Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Repor</Badge></div><p className="mt-1 text-xs leading-5 text-slate-600">Disponível: {item.available} · Necessidade prevista: {item.futureNeed}</p><p className="text-xs leading-5 text-slate-600">Ainda não coberta por reserva: {item.unreservedFutureNeed} · Reservas ativas: {item.activeReservationDemand}</p><p className="text-xs leading-5 text-slate-600">Agendamentos afetados: {item.affectedAppointmentIds.length} · OS afetadas: {item.affectedWorkOrderIds.length}</p><p className="mt-2 text-sm font-semibold text-orange-800">Compra sugerida: {item.recommendedPurchaseQuantity}</p></div>) : null}
               {!forecast.isLoading && !forecast.isError && !forecast.data?.length ? <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Nenhuma necessidade crítica identificada para o período.</p> : null}
             </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader><CardTitle className="text-lg">Ajuste controlado de saldo</CardTitle><CardDescription>Use somente para divergências conferidas. O sistema bloqueia qualquer redução que deixe o físico abaixo das reservas ativas.</CardDescription></CardHeader>
+            <CardContent className="grid gap-4">
+              <div className="grid gap-2"><Label htmlFor="inventory-adjust-product">Produto</Label><select id="inventory-adjust-product" className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={adjustment.productId} onChange={event => setAdjustment({ ...adjustment, productId: event.target.value })}><option value="">Selecione um produto da página</option>{stockItems.map(item => <option key={item.id} value={item.id}>{item.name} — disponível {item.availableQuantity}</option>)}</select></div>
+              <div className="grid gap-2"><Label htmlFor="inventory-adjust-quantity">Variação física</Label><Input id="inventory-adjust-quantity" type="number" step="0.001" value={adjustment.quantityDelta} onChange={event => setAdjustment({ ...adjustment, quantityDelta: event.target.value })} placeholder="Ex.: 2 ou -1" /><p className="text-xs text-slate-500">Valores positivos adicionam; negativos reduzem o saldo físico.</p></div>
+              <div className="grid gap-2"><Label htmlFor="inventory-adjust-notes">Motivo</Label><Input id="inventory-adjust-notes" value={adjustment.notes} onChange={event => setAdjustment({ ...adjustment, notes: event.target.value })} maxLength={1000} placeholder="Ex.: conferência de inventário" /></div>
+              <Button disabled={adjust.isPending || !adjustment.productId || !Number(adjustment.quantityDelta) || adjustment.notes.trim().length < 3} onClick={() => adjust.mutate({ tenantId: tenant!.id, productId: Number(adjustment.productId), quantityDelta: Number(adjustment.quantityDelta), notes: adjustment.notes })}>{adjust.isPending ? "Registrando…" : "Registrar ajuste"}</Button>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader><CardTitle className="text-lg">Regra de disponibilidade</CardTitle><CardDescription>O saldo disponível é calculado no banco como estoque físico menos reservas de orçamentos aprovados e OS em andamento.</CardDescription></CardHeader>
+            <CardContent className="space-y-3 text-sm text-slate-600"><p>As movimentações ficam vinculadas ao produto, ao responsável e à origem. Recebimentos de compra atualizam o físico e o custo médio somente após confirmação.</p><p>Uma redução não pode consumir unidades já comprometidas; para liberar reserva, o fluxo correto será a alteração da aprovação ou da ordem de serviço correspondente.</p></CardContent>
           </Card>
         </section>
       </main>

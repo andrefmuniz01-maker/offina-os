@@ -6,11 +6,11 @@
 
 O projeto Supabase **OFFICINA OS** (`jpvvhowgpuinuuputoot`) está ativo em `sa-east-1`. As migrations de fundação, índices e RLS estão aplicadas. O commit `3c6a84b` adicionou e aplicou também o marcador administrativo `public.tenants.is_demo`, com valor padrão `false`, índice parcial e teste automatizado. O commit `fd9226f` aplicou as RPCs seguras de workspace; elas usam o JWT do Supabase Auth e não dependem do adaptador MySQL. O commit `a9466e3` converteu essas RPCs para `SECURITY INVOKER`, preservando RLS sem funções públicas de privilégio elevado. A revisão posterior confirmou que não restaram avisos para essas quatro funções.
 
-A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrigatória e com default `false`. A marcação não altera login, autorização, RLS, tenant isolation nem regras de negócio. O Security Advisor apresentou somente o aviso independente de **proteção contra senhas vazadas desativada** no Supabase Auth; esse controle deve ser habilitado pela administração do projeto antes do lançamento.
+A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrigatória e com default `false`. A marcação não altera login, autorização, RLS, tenant isolation nem regras de negócio. Após as migrations de catálogo, estoque e compras, o Security Advisor permanece com somente três avisos: as duas RPCs anônimas intencionais de catálogo/intake público e a **proteção contra senhas vazadas desativada** no Supabase Auth. As funções internas do catálogo, estoque e compras foram movidas ao schema `private`; o schema `public` contém apenas fachadas `SECURITY INVOKER` autenticadas.
 
 ## Estado do runtime
 
-A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Os commits `eed2c34` e `b1fbcd7` expõem a identidade Supabase no contexto tRPC e fazem `auth.me` priorizá-la. O commit `2404bc6` adiciona uma camada de autorização Supabase com bloqueio explícito de elevação financeira para atendentes e técnicos. O commit `fd9226f` moveu a Home para as RPCs Supabase de listagem de workspace, criação de tenant, dashboard e notificações. Contudo, `server/db.ts`, `server/tenantAccess.ts` e os routers de catálogo, estoque, comercial, operações, financeiro e plataforma ainda consultam o MySQL via Drizzle e IDs numéricos legados.
+A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Os commits `eed2c34` e `b1fbcd7` expõem a identidade Supabase no contexto tRPC e fazem `auth.me` priorizá-la. O commit `2404bc6` adiciona uma camada de autorização Supabase com bloqueio explícito de elevação financeira para atendentes e técnicos. O commit `fd9226f` moveu a Home para as RPCs Supabase de listagem de workspace, criação de tenant, dashboard e notificações. O commit `1788d90` adicionou os namespaces `workspaceCatalog` e `workspaceInventory`: as telas de catálogo, categorias, itens por categoria, estoque e compras já usam o PostgreSQL. Os routers legados `catalog` e `inventory` continuam montados temporariamente para que comercial, orçamentos, operações e outros consumidores ainda não migrados não misturem IDs MySQL com registros Supabase.
 
 > Não inserir a Performance Garage no Supabase até que pelo menos os caminhos de tenancy e os routers que a interface usa estejam migrados. Caso contrário, a aplicação atual não exibirá os dados criados no novo banco.
 
@@ -30,6 +30,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `24f3959` | Clientes e veículos migram para Supabase, com histórico e auditoria atômica. | Policies RLS e 72 arquivos/222 testes aprovados. |
 | `7cf4506` | Catálogo público limitado e intake anônimo de solicitações no Supabase. | View com alerta crítico removida; funções anônimas permanecem intencionais e limitadas. |
 | `b85528f` | Ajuste de estoque transacional migrado para Supabase. | Físico não pode cair abaixo do reservado; movimento e auditoria são atômicos. |
+| `1788d90` | Catálogo, fornecedores, produtos, serviços, kits, estoque, previsão e compras migrados sob `workspaceCatalog`/`workspaceInventory`. | Migrations `0014`–`0016` aplicadas, ACLs diretas de tabelas sensíveis revogadas, Advisor sem novos avisos e 87 arquivos/261 testes aprovados. |
 
 ## Sequência de implementação obrigatória
 
@@ -38,11 +39,11 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | 1 | Migrar o contrato de usuário interno de `users.id` numérico para `profiles.id` UUID e substituir o fallback MySQL no `createContext`. | Sessão Supabase gera contexto autenticado sem consulta a `users` legada. |
 | 2 | Migrar os endpoints remanescentes do Painel de Super Admin em `platform.ts`. | Planos, usuários, auditoria, relatórios e gestão global usam Supabase sob RLS. |
 | 3 | Migrar os endpoints de tenant remanescentes em `tenantAccess.ts` e `platform.ts`. | Branding, configurações, equipe e auditoria interna usam Supabase e IDs UUID. |
-| 4 | Migrar catálogo, fornecedores, produtos, serviços e kits. | A aplicação lê e grava o catálogo em Supabase, com testes Tenant A × Tenant B. O ajuste de saldo está disponível no banco, mas ainda não está exposto pela interface Supabase. |
+| 4 | Migrar catálogo, fornecedores, produtos, serviços, kits, estoque e compras. | **Concluído para as telas de workspace.** As migrations `0014`–`0016` aplicaram RPCs auditadas, projeções sem custo para perfis restritos, previsão e recebimento com custo médio. Routers legados persistem como ponte, sem compartilhar o namespace Supabase. |
 | 5 | Conectar o intake público e migrar a fila interna de solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | Solicitação pública, sugestão, aprovação e reserva funcionam no PostgreSQL. O schema do intake já está aplicado; Storage e UI ainda precisam de migração. |
-| 6 | Migrar agenda, OS, consumo, compras e financeiro. | Fluxo operacional completo não depende de MySQL. |
-| 7 | Implementar seed/reset da Performance Garage. | Dados demonstrativos, reset auditado e isolamento podem ser testados no Supabase. |
-| 8 | Remover adaptador MySQL, dependências Drizzle/MySQL e credenciais legadas somente após cobertura E2E e rollback validado. | Não restam queries de domínio contra MySQL. |
+| 6 | Migrar agenda, OS, consumo e financeiro. | Fluxo operacional completo não depende de MySQL; a baixa de reserva/consumo precisa preservar `físico >= reservado`. |
+| 7 | Migrar consumidores legados restantes e eliminar o adaptador MySQL. | Comercial, operações, plataforma, configurações e todos os routers usam Supabase sob RLS. |
+| 8 | Implementar seed/reset da Performance Garage. | Dados demonstrativos, reset auditado e isolamento podem ser testados no Supabase. |
 
 ## Regras de segurança para as próximas tarefas
 
@@ -63,4 +64,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado: **68 arquivos de teste e 216 testes aprovados**. O build ainda mostra avisos preexistentes de placeholders de analytics e bundle de cliente acima de 500 kB.
+Resultado integrado mais recente: **87 arquivos de teste e 261 testes aprovados**. O build ainda mostra avisos preexistentes de placeholders de analytics e bundle de cliente acima de 500 kB.
