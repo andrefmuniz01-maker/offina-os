@@ -56,10 +56,24 @@ export const workspaceQuoteDetailSchema = z.object({
   items: z.array(quoteItemSchema),
 }).strict();
 
+export const workspaceQuoteDiscountUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  tenantId: z.number().int().positive(),
+  status: z.literal("draft"),
+  subtotal: z.number().nonnegative(),
+  discountTotal: z.number().nonnegative(),
+  total: z.number().nonnegative(),
+  updatedAt: z.string(),
+}).strict();
+
 export function parseWorkspaceQuoteList(value: unknown) {
   return workspaceQuoteListSchema.safeParse(value);
 }
 
 export function parseWorkspaceQuoteDetail(value: unknown) {
   return workspaceQuoteDetailSchema.safeParse(value);
+}
+
+export function parseWorkspaceQuoteDiscountUpdate(value: unknown) {
+  return workspaceQuoteDiscountUpdateSchema.safeParse(value);
 }
