@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { financialErrorMessage, hasFinancialPermissionError } from "@/lib/financialStates";
 import { getFinanceWorkspaceAction } from "@/lib/financeWorkspace";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, ChevronLeft, ChevronRight, CircleDollarSign, Landmark, Plus, ReceiptText, Search, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,8 +33,10 @@ function Pager({ page, hasMore, onPrevious, onNext }: { page: number; hasMore: b
 }
 
 export default function Finance() {
-  const mine = trpc.tenant.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const demoMode = isDemoWorkspace();
+  const legacyMine = trpc.tenant.mine.useQuery(undefined, { enabled: !demoMode });
+  const workspaceMine = trpc.workspace.mine.useQuery(undefined, { enabled: demoMode });
+  const tenant = demoMode ? selectWorkspace(workspaceMine.data, true)?.tenant : legacyMine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [revenueStatus, setRevenueStatus] = useState<RevenueStatus>("all");
@@ -44,9 +47,16 @@ export default function Finance() {
   const [expensePage, setExpensePage] = useState(1);
   const [expense, setExpense] = useState({ category: "", amount: "0", date: new Date().toISOString().slice(0, 10) });
 
-  const dashboard = trpc.dashboard.overview.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const revenues = trpc.financial.revenues.list.useQuery({ tenantId, status: revenueStatus === "all" ? undefined : revenueStatus, search: revenueSearch.trim() || undefined, page: revenuePage, pageSize: 10 }, { enabled: Boolean(tenantId) });
-  const expenses = trpc.financial.expenses.list.useQuery({ tenantId, status: expenseStatus === "all" ? undefined : expenseStatus, search: expenseSearch.trim() || undefined, page: expensePage, pageSize: 10 }, { enabled: Boolean(tenantId) });
+  const legacyDashboard = trpc.dashboard.overview.useQuery({ tenantId }, { enabled: Boolean(tenantId) && !demoMode });
+  const demoDashboard = trpc.workspace.dashboardOverview.useQuery({ tenantId }, { enabled: Boolean(tenantId) && demoMode });
+  const dashboard = demoMode ? demoDashboard : legacyDashboard;
+  const legacyRevenues = trpc.financial.revenues.list.useQuery({ tenantId, status: revenueStatus === "all" ? undefined : revenueStatus, search: revenueSearch.trim() || undefined, page: revenuePage, pageSize: 10 }, { enabled: Boolean(tenantId) && !demoMode });
+  const demoRevenues = trpc.workspaceFinance.revenues.list.useQuery({ tenantId, status: revenueStatus === "all" ? undefined : revenueStatus, search: revenueSearch.trim() || undefined, page: revenuePage, pageSize: 10 }, { enabled: Boolean(tenantId) && demoMode });
+  const revenues = demoMode ? demoRevenues : legacyRevenues;
+  const legacyExpenses = trpc.financial.expenses.list.useQuery({ tenantId, status: expenseStatus === "all" ? undefined : expenseStatus, search: expenseSearch.trim() || undefined, page: expensePage, pageSize: 10 }, { enabled: Boolean(tenantId) && !demoMode });
+  const demoExpenses = trpc.workspaceFinance.expenses.list.useQuery({ tenantId, status: expenseStatus === "all" ? undefined : expenseStatus, search: expenseSearch.trim() || undefined, page: expensePage, pageSize: 10 }, { enabled: Boolean(tenantId) && demoMode });
+  const expenses = demoMode ? demoExpenses : legacyExpenses;
+  const tenantLoading = demoMode ? workspaceMine.isLoading : legacyMine.isLoading;
   const createExpense = trpc.financial.expenses.create.useMutation({
     onSuccess: () => {
       toast.success("Despesa registrada.");
@@ -65,7 +75,7 @@ export default function Finance() {
     },
     onError: error => toast.error(error.message),
   });
-  const metrics = dashboard.data?.finance ? [
+  const metrics = dashboard.data?.finance && dashboard.data.sales ? [
     { label: "Recebido no mês", value: money.format(dashboard.data.sales.billing), icon: TrendingUp },
     { label: "Receita prevista", value: money.format(dashboard.data.sales.expectedRevenue), icon: ReceiptText },
     { label: "Despesas pagas", value: money.format(dashboard.data.finance.expenses), icon: CircleDollarSign },
@@ -97,20 +107,20 @@ export default function Finance() {
           <CardContent className="grid gap-3">
             <div className="grid gap-2"><Label htmlFor="expense-category">Categoria</Label><Input id="expense-category" value={expense.category} onChange={event => setExpense({ ...expense, category: event.target.value })} placeholder="Ex.: aluguel, fornecedor, energia" /></div>
             <div className="grid grid-cols-2 gap-3"><div className="grid gap-2"><Label htmlFor="expense-amount">Valor</Label><Input id="expense-amount" type="number" min="0.01" step="0.01" value={expense.amount} onChange={event => setExpense({ ...expense, amount: event.target.value })} /></div><div className="grid gap-2"><Label htmlFor="expense-date">Data</Label><Input id="expense-date" type="date" value={expense.date} onChange={event => setExpense({ ...expense, date: event.target.value })} /></div></div>
-            <Button disabled={createExpense.isPending || !expense.category || Number(expense.amount) <= 0} onClick={() => createExpense.mutate({ tenantId, category: expense.category, amount: Number(expense.amount), expenseDate: new Date(`${expense.date}T12:00:00`) })}><Plus className="mr-2 h-4 w-4" />Registrar despesa</Button>
+            <Button disabled={demoMode || createExpense.isPending || !expense.category || Number(expense.amount) <= 0} onClick={() => createExpense.mutate({ tenantId, category: expense.category, amount: Number(expense.amount), expenseDate: new Date(`${expense.date}T12:00:00`) })}><Plus className="mr-2 h-4 w-4" />Registrar despesa</Button>
           </CardContent>
         </Card>
 
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle className="text-lg">Receitas</CardTitle><CardDescription>Busque por observação ou forma de recebimento, com paginação por oficina.</CardDescription></div><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1"><Label className="text-xs" htmlFor="revenue-search">Buscar</Label><div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" /><Input id="revenue-search" className="h-9 min-w-0 pl-8" value={revenueSearch} onChange={event => { setRevenueSearch(event.target.value); setRevenuePage(1); }} placeholder="Observação ou forma" aria-describedby="revenue-search-help" /></div><span id="revenue-search-help" className="sr-only">Busca por observação ou forma de recebimento.</span></div><div className="grid gap-1"><Label className="text-xs" htmlFor="revenue-status">Status</Label><select id="revenue-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" value={revenueStatus} onChange={event => { setRevenueStatus(event.target.value as RevenueStatus); setRevenuePage(1); }}><option value="all">Todos</option><option value="expected">Prevista</option><option value="received">Recebida</option><option value="cancelled">Cancelada</option></select></div></div></CardHeader>
-          <CardContent>{revenues.isLoading ? <Skeleton className="h-48" /> : revenues.isError ? <p className="py-10 text-center text-sm text-red-700">{financialErrorMessage("as receitas", revenues.error.data?.code)}</p> : revenues.data?.items.length ? <><div className="space-y-2">{revenues.data.items.map(item => <div className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between" key={item.id}><div><p className="font-medium text-slate-900">{money.format(Number(item.amount))}</p><p className="text-xs text-slate-500">{item.notes ?? "Sem observação"}</p></div><div className="flex items-center gap-2"><Badge variant="outline">{item.status}</Badge>{item.status === "expected" ? <Button size="sm" disabled={receiveRevenue.isPending} onClick={() => receiveRevenue.mutate({ tenantId, revenueId: item.id, paymentMethod: "manual" })}>Confirmar recebimento</Button> : null}</div></div>)}</div><Pager page={revenuePage} hasMore={revenues.data.hasMore} onPrevious={() => setRevenuePage(page => Math.max(1, page - 1))} onNext={() => setRevenuePage(page => page + 1)} /></> : <p className="py-10 text-center text-sm text-slate-500">Nenhuma receita neste filtro. Ajuste a busca ou o status.</p>}</CardContent>
+          <CardContent>{revenues.isLoading ? <Skeleton className="h-48" /> : revenues.isError ? <p className="py-10 text-center text-sm text-red-700">{financialErrorMessage("as receitas", revenues.error.data?.code)}</p> : revenues.data?.items.length ? <><div className="space-y-2">{revenues.data.items.map(item => <div className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between" key={item.id}><div><p className="font-medium text-slate-900">{money.format(Number(item.amount))}</p><p className="text-xs text-slate-500">{item.notes ?? "Sem observação"}</p></div><div className="flex items-center gap-2"><Badge variant="outline">{item.status}</Badge>{item.status === "expected" ? <Button size="sm" disabled={demoMode || receiveRevenue.isPending} onClick={() => receiveRevenue.mutate({ tenantId, revenueId: item.id, paymentMethod: "manual" })}>Confirmar recebimento</Button> : null}</div></div>)}</div><Pager page={revenuePage} hasMore={revenues.data.hasMore} onPrevious={() => setRevenuePage(page => Math.max(1, page - 1))} onNext={() => setRevenuePage(page => page + 1)} /></> : <p className="py-10 text-center text-sm text-slate-500">Nenhuma receita neste filtro. Ajuste a busca ou o status.</p>}</CardContent>
         </Card>
 
         <Card className="border-slate-200 shadow-sm lg:col-span-2">
           <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle className="text-lg">Despesas</CardTitle><CardDescription>Busque por categoria, recorrência ou observação no histórico isolado por tenant.</CardDescription></div><div className="grid gap-3 sm:grid-cols-2"><div className="grid gap-1"><Label className="text-xs" htmlFor="expense-search">Buscar</Label><div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" /><Input id="expense-search" className="h-9 min-w-0 pl-8" value={expenseSearch} onChange={event => { setExpenseSearch(event.target.value); setExpensePage(1); }} placeholder="Categoria ou observação" aria-describedby="expense-search-help" /></div><span id="expense-search-help" className="sr-only">Busca por categoria, recorrência ou observação.</span></div><div className="grid gap-1"><Label className="text-xs" htmlFor="expense-status">Status</Label><select id="expense-status" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2" value={expenseStatus} onChange={event => { setExpenseStatus(event.target.value as ExpenseStatus); setExpensePage(1); }}><option value="all">Todos</option><option value="planned">Planejada</option><option value="paid">Paga</option><option value="cancelled">Cancelada</option></select></div></div></CardHeader>
           <CardContent>{expenses.isLoading ? <Skeleton className="h-32" /> : expenses.isError ? <p className="py-10 text-center text-sm text-red-700">{financialErrorMessage("as despesas", expenses.error.data?.code)}</p> : expenses.data?.items.length ? <><div className="grid gap-2 sm:grid-cols-2">{expenses.data.items.map(item => <div className="rounded-xl border border-slate-100 p-3" key={item.id}><div className="flex justify-between gap-3"><p className="font-medium text-slate-900">{item.category}</p><Badge variant="outline">{item.status}</Badge></div><p className="mt-2 text-lg font-semibold text-slate-800">{money.format(Number(item.amount))}</p><p className="mt-1 text-xs text-slate-500">{new Date(item.expenseDate).toLocaleDateString("pt-BR")}</p></div>)}</div><Pager page={expensePage} hasMore={expenses.data.hasMore} onPrevious={() => setExpensePage(page => Math.max(1, page - 1))} onNext={() => setExpensePage(page => page + 1)} /></> : <p className="py-10 text-center text-sm text-slate-500">Nenhuma despesa neste filtro. Ajuste a busca ou o status.</p>}</CardContent>
         </Card>
-      </div> : tenant && financeForbidden ? <Card className="border-amber-200 bg-amber-50/60"><CardContent className="flex items-start gap-3 p-6 text-sm text-amber-950"><Landmark className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />Este perfil não pode consultar ou registrar dados financeiros. O acesso é definido pela oficina e validado no servidor.</CardContent></Card> : !mine.isLoading ? <Card className="border-dashed border-slate-300"><CardContent className="p-8 text-center text-sm text-slate-600">Seu acesso ainda não está vinculado a uma oficina. Peça a um Super Admin para associá-lo ao tenant correto antes de registrar ou consultar dados financeiros.</CardContent></Card> : null}
+      </div> : tenant && financeForbidden ? <Card className="border-amber-200 bg-amber-50/60"><CardContent className="flex items-start gap-3 p-6 text-sm text-amber-950"><Landmark className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />Este perfil não pode consultar ou registrar dados financeiros. O acesso é definido pela oficina e validado no servidor.</CardContent></Card> : !tenantLoading ? <Card className="border-dashed border-slate-300"><CardContent className="p-8 text-center text-sm text-slate-600">Seu acesso ainda não está vinculado a uma oficina. Peça a um Super Admin para associá-lo ao tenant correto antes de registrar ou consultar dados financeiros.</CardContent></Card> : null}
     </main>
   </DashboardLayout>;
 }

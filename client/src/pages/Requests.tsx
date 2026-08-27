@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { getQueueUrgency, getRequestNextAction, getRequestStatusTone, requestStatusLabels, type RequestQueueStatus } from "@/lib/requestQueue";
 import { AlertCircle, ArrowLeft, ChevronLeft, ChevronRight, Clock3, FileText, FilterX, History, ListChecks, PlusCircle, Search, Sparkles, UserRound } from "lucide-react";
 import { useState } from "react";
@@ -63,7 +64,7 @@ function formatCurrency(value: number) {
 
 export default function Requests() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const [status, setStatus] = useState<RequestStatus>("all");
   const [search, setSearch] = useState("");

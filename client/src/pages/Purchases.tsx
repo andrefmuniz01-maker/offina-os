@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPurchaseWorkspaceAction } from "@/lib/purchaseWorkspace";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardPlus, PackageCheck, Search, ShoppingCart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -29,7 +30,7 @@ const statuses = ["draft", "ordered", "partially_received", "received", "cancell
 
 export default function Purchases() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [status, setStatus] = useState<(typeof statuses)[number] | "all">("all");

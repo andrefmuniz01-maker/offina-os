@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, Boxes, Pencil, Plus, Save, Tags, Trash2, Wrench, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -79,7 +80,7 @@ function CategoryPanel({ title, description, icon: Icon, form, setForm, categori
 
 export default function Categories() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [productForm, setProductForm] = useState<CategoryForm>(blankForm);

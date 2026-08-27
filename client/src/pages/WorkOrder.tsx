@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CheckCircle2, ClipboardCheck, ImagePlus, NotebookPen, PackageMinus, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -39,14 +40,25 @@ async function asBase64(file: File) {
 export default function WorkOrder() {
   const [, params] = useRoute("/os/:id");
   const workOrderId = Number(params?.id ?? 0);
-  const mine = trpc.tenant.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const demoMode = isDemoWorkspace();
+  const legacyMine = trpc.tenant.mine.useQuery(undefined, { enabled: !demoMode });
+  const workspaceMine = trpc.workspace.mine.useQuery(undefined, { enabled: demoMode });
+  const tenant = demoMode ? selectWorkspace(workspaceMine.data, true)?.tenant : legacyMine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
+  const tenantLoading = demoMode ? workspaceMine.isLoading : legacyMine.isLoading;
   const utils = trpc.useUtils();
-  const detail = trpc.workOrders.detail.useQuery({ tenantId, workOrderId }, { enabled: Boolean(tenantId && workOrderId) });
-  const toggle = trpc.workOrders.toggleChecklist.useMutation({ onSuccess: () => utils.workOrders.detail.invalidate(), onError: error => toast.error(error.message) });
-  const updateStatus = trpc.workOrders.updateStatus.useMutation({ onSuccess: () => { toast.success("Status da OS atualizado."); utils.workOrders.detail.invalidate(); utils.workOrders.kanban.invalidate(); }, onError: error => toast.error(error.message) });
-  const consume = trpc.workOrders.consumeProduct.useMutation({ onSuccess: () => { toast.success("Consumo registrado e reserva atualizada."); setReservationId(""); setConsumptionQuantity("1"); utils.workOrders.detail.invalidate(); utils.inventory.list.invalidate(); }, onError: error => toast.error(error.message) });
+  const legacyDetail = trpc.workOrders.detail.useQuery({ tenantId, workOrderId }, { enabled: Boolean(tenantId && workOrderId && !demoMode) });
+  const demoDetail = trpc.workspaceOperations.workOrders.detail.useQuery({ tenantId, workOrderId }, { enabled: Boolean(tenantId && workOrderId && demoMode) });
+  const detail = demoMode ? demoDetail : legacyDetail;
+  const legacyToggle = trpc.workOrders.toggleChecklist.useMutation({ onSuccess: () => utils.workOrders.detail.invalidate(), onError: error => toast.error(error.message) });
+  const demoToggle = trpc.workspaceOperations.workOrders.toggleChecklist.useMutation({ onSuccess: () => utils.workspaceOperations.workOrders.detail.invalidate(), onError: error => toast.error(error.message) });
+  const toggle = demoMode ? demoToggle : legacyToggle;
+  const legacyUpdateStatus = trpc.workOrders.updateStatus.useMutation({ onSuccess: () => { toast.success("Status da OS atualizado."); utils.workOrders.detail.invalidate(); utils.workOrders.kanban.invalidate(); }, onError: error => toast.error(error.message) });
+  const demoUpdateStatus = trpc.workspaceOperations.workOrders.updateStatus.useMutation({ onSuccess: () => { toast.success("Status da OS atualizado."); utils.workspaceOperations.workOrders.detail.invalidate(); utils.workspaceOperations.listYard.invalidate(); }, onError: error => toast.error(error.message) });
+  const updateStatus = demoMode ? demoUpdateStatus : legacyUpdateStatus;
+  const legacyConsume = trpc.workOrders.consumeProduct.useMutation({ onSuccess: () => { toast.success("Consumo registrado e reserva atualizada."); setReservationId(""); setConsumptionQuantity("1"); utils.workOrders.detail.invalidate(); utils.inventory.list.invalidate(); }, onError: error => toast.error(error.message) });
+  const demoConsume = trpc.workspaceOperations.workOrders.consumeProduct.useMutation({ onSuccess: () => { toast.success("Consumo registrado e reserva atualizada."); setReservationId(""); setConsumptionQuantity("1"); utils.workspaceOperations.workOrders.detail.invalidate(); utils.workspaceInventory.invalidate(); }, onError: error => toast.error(error.message) });
+  const consume = demoMode ? demoConsume : legacyConsume;
   const upload = trpc.workOrders.uploadExecutionAttachment.useMutation({ onSuccess: () => utils.workOrders.detail.invalidate(), onError: error => toast.error(error.message) });
   const [reservationId, setReservationId] = useState("");
   const [consumptionQuantity, setConsumptionQuantity] = useState("1");
@@ -54,6 +66,10 @@ export default function WorkOrder() {
 
   const sendAttachments = async () => {
     if (!executionFiles.length) return;
+    if (demoMode) {
+      toast.info("O registro de anexos da Demo ficará disponível quando o storage Supabase de execução for habilitado.");
+      return;
+    }
     try {
       for (const file of executionFiles) {
         if (file.size > 5 * 1024 * 1024) throw new Error(`${file.name} ultrapassa 5 MB.`);
@@ -66,7 +82,7 @@ export default function WorkOrder() {
     }
   };
 
-  if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Skeleton className="mx-auto h-96 max-w-5xl" /></DashboardLayout>;
+  if (tenantLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Skeleton className="mx-auto h-96 max-w-5xl" /></DashboardLayout>;
   if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Ordens de serviço, consumo, checklist e evidências pertencem a uma oficina ativa. Peça a um Super Admin para associar seu acesso antes de consultar ou alterar esta OS.</CardDescription></CardHeader></Card></DashboardLayout>;
   if (detail.isLoading) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Skeleton className="mx-auto h-96 max-w-5xl" /></DashboardLayout>;
   if (detail.error || !detail.data) return <DashboardLayout menuItems={menu} workspaceName={tenant?.name ?? "OficinaOS"}><Card className="mx-auto max-w-lg"><CardHeader><CardTitle>Ordem de serviço indisponível</CardTitle><CardDescription>{detail.error?.message ?? "Não foi possível abrir esta OS."}</CardDescription></CardHeader></Card></DashboardLayout>;
@@ -98,7 +114,7 @@ export default function WorkOrder() {
 
       <Card className="border-slate-200 shadow-none"><CardHeader><CardTitle>Consumo de estoque</CardTitle><CardDescription>Selecione uma reserva ativa para baixar o estoque físico e reduzir o saldo reservado.</CardDescription></CardHeader><CardContent className="grid gap-3 sm:grid-cols-[1.4fr_.6fr_auto]"><select className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm" value={reservationId} onChange={event => setReservationId(event.target.value)}><option value="">Selecione uma reserva</option>{reservations.map(item => <option key={item.id} value={item.id}>Produto #{item.productId} · saldo reservado {item.quantity}</option>)}</select><Input type="number" min="0.001" step="0.001" value={consumptionQuantity} onChange={event => setConsumptionQuantity(event.target.value)} /><Button disabled={consume.isPending || !selectedReservation || Number(consumptionQuantity) <= 0 || Number(consumptionQuantity) > Number(selectedReservation.quantity)} onClick={() => selectedReservation && consume.mutate({ tenantId, workOrderId, productId: selectedReservation.productId, reservationId: selectedReservation.id, quantity: Number(consumptionQuantity) })}>Baixar consumo</Button></CardContent>{!reservations.length ? <p className="px-6 pb-5 text-xs text-slate-500">Não há reservas ativas para esta OS.</p> : null}</Card>
 
-      <Card className="border-slate-200"><CardHeader><div className="flex items-center gap-2"><ImagePlus className="h-5 w-5 text-orange-700" /><CardTitle>Fotos e vídeos da execução</CardTitle></div><CardDescription>Registre evidências reais do serviço para o histórico da OS.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-col gap-3 sm:flex-row"><Input className="flex-1" type="file" accept="image/*,video/*" multiple onChange={event => setExecutionFiles(Array.from(event.target.files ?? []).slice(0, 5))} /><Button disabled={upload.isPending || !executionFiles.length} onClick={sendAttachments}>{upload.isPending ? "Enviando…" : "Adicionar anexos"}</Button></div>{executionFiles.length ? <p className="text-xs text-slate-500">{executionFiles.length} arquivo(s) selecionado(s), com limite de 5 MB por arquivo.</p> : null}{executionAttachments.length ? <div className="grid gap-3 sm:grid-cols-3">{executionAttachments.map(attachment => <a className="rounded-xl border border-slate-100 p-3 text-sm font-medium text-orange-700 hover:border-orange-200" href={attachment.url} target="_blank" rel="noreferrer" key={attachment.id}>{attachment.filename}</a>)}</div> : <p className="text-sm text-slate-500">Ainda não há fotos ou vídeos registrados nesta OS.</p>}</CardContent></Card>
+      <Card className="border-slate-200"><CardHeader><div className="flex items-center gap-2"><ImagePlus className="h-5 w-5 text-orange-700" /><CardTitle>Fotos e vídeos da execução</CardTitle></div><CardDescription>Registre evidências reais do serviço para o histórico da OS.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex flex-col gap-3 sm:flex-row"><Input className="flex-1" type="file" accept="image/*,video/*" multiple onChange={event => setExecutionFiles(Array.from(event.target.files ?? []).slice(0, 5))} /><Button disabled={upload.isPending || !executionFiles.length} onClick={sendAttachments}>{upload.isPending ? "Enviando…" : "Adicionar anexos"}</Button></div>{executionFiles.length ? <p className="text-xs text-slate-500">{executionFiles.length} arquivo(s) selecionado(s), com limite de 5 MB por arquivo.</p> : null}{executionAttachments.length ? <div className="grid gap-3 sm:grid-cols-3">{executionAttachments.map(attachment => <a className="rounded-xl border border-slate-100 p-3 text-sm font-medium text-orange-700 hover:border-orange-200" href={attachment.url ?? undefined} target="_blank" rel="noreferrer" key={attachment.id}>{attachment.filename}</a>)}</div> : <p className="text-sm text-slate-500">Ainda não há fotos ou vídeos registrados nesta OS.</p>}</CardContent></Card>
     </main>
   </DashboardLayout>;
 }

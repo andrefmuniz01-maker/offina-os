@@ -88,3 +88,23 @@ Cada incremento deve conter contrato de banco, regra de negócio, autorização,
 ## 8. Verificação da demonstração administrativa
 
 O tenant de demonstração existente foi conferido em modo somente leitura. Ele está marcado como demonstração e não possui membros operacionais ativos. A migration `20260827_0018_exclude_demo_from_public_flows.sql` foi aplicada ao projeto Supabase existente: ela exige `not is_demo` tanto no catálogo público como na RPC de intake. Uma chamada anônima ao catálogo para o slug da demonstração retornou resposta vazia, sem expor dados comerciais. O Security Advisor permaneceu com apenas as exceções já conhecidas e intencionais de catálogo/intake anônimos com `SECURITY DEFINER`, além da pendência já registrada de proteção contra senhas vazadas.
+
+
+## 9. Atualização do workspace Demo
+
+A oficina Demo passou a ser exercitável pelo mesmo workspace operacional, sem dashboard ou páginas exclusivas de demonstração. O gate administrativo `/demo-interna` apenas valida Super Admin e redireciona para `/?demo=1`; a query é preservada nos links internos, enquanto o `tenant_id` é resolvido pelo retorno tenant-scoped de `workspace.mine`.
+
+| Área | Estado atualizado na Demo | Regra preservada |
+|---|---|---|
+| Home e navegação | Usa a Central do dia, menu e cards reais com tenant `Auto Prime Centro Automotivo` | Não há fallback de tenant por ID no cliente; Demo continua Super Admin-only. |
+| Solicitações e orçamentos | Leitura Supabase persistida e decisão pública por token no mesmo componente | Solicitação não cria orçamento final automaticamente; aprovação pública cria reserva de forma atômica. |
+| Agenda, pátio e OS | Agenda/kanban e detalhe da OS usam RPCs Supabase; OS mostra itens, checklist, reservas, consumo e apontamentos | Status seguem transições permitidas; consumo mantém físico/reservado e registra movimento/auditoria. |
+| Financeiro e relatórios | Receitas, despesas, dashboard mensal e relatório usam consultas Supabase paginadas/tenant-scoped | Custos e resultado só aparecem para permissões financeiras autorizadas. |
+| Configurações e branding | Formulário real lê e grava `tenant_settings`/`tenant_branding` via RPCs | Alterações administrativas são auditadas e passam por `tenant.manage`. |
+| Notificações e auditoria | Lista, preferências, marcação de leitura e trilha de auditoria usam Supabase | Notificações são limitadas ao tenant e ao usuário atual ou alertas globais do tenant. |
+| Equipe | Consulta somente vínculos reais de `tenant_members` e `profiles` | Não são criadas contas Auth fictícias; a Demo permanece sem equipe operacional simulada. |
+| Público | `/solicitar/performance-garage` e `/orcamento/:token` reutilizam as páginas públicas existentes | O preview público é liberado somente para o slug Demo fixo; outros tenants Demo continuam bloqueados. |
+
+A base persistida atualmente contém 36 clientes, 40 veículos, 48 produtos, 24 serviços, 6 kits, 6 fornecedores, 5 compras, 36 solicitações, 24 orçamentos, 18 agendamentos, 20 OS, 6 receitas, 12 despesas e 8 notificações fictícias. Todos os registros do seed carregam `tenant_id=2`; dados pessoais reais, credenciais e contas Auth artificiais não são usados.
+
+> A Demo operacional não deve ser descrita como um cutover global. Fora de `demo=1`, os módulos ainda indicados como híbridos continuam sujeitos à ponte MySQL até a migração de seus contratos e mutations ser concluída.

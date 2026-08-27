@@ -16,9 +16,10 @@ import { supabaseQuoteRequestRouter } from "./routers/supabaseQuoteRequests";
 import { supabaseQuoteRouter } from "./routers/supabaseQuotes";
 import { supabasePublicQuoteRouter } from "./routers/supabasePublicQuotes";
 import { supabaseOperationsRouter } from "./routers/supabaseOperations";
+import { supabaseFinanceRouter } from "./routers/supabaseFinance";
+import { supabaseManagementRouter } from "./routers/supabaseManagement";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => {
@@ -26,17 +27,11 @@ export const appRouter = router({
         const { id, name, email, platformRole } = opts.ctx.supabaseUser;
         return { id, name, email, platformRole };
       }
-
       if (!opts.ctx.user) return null;
-
       const { id, name, email, platformRole } = opts.ctx.user;
       return { id, name, email, platformRole: platformRole ?? "platform_user" };
     }),
-    logout: publicProcedure.mutation(() => {
-      return {
-        success: true,
-      } as const;
-    }),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
   platform: platformRouter,
   tenant: tenantRouter,
@@ -55,6 +50,8 @@ export const appRouter = router({
   workspaceQuoteRequests: supabaseQuoteRequestRouter,
   workspaceQuotes: supabaseQuoteRouter,
   workspaceOperations: supabaseOperationsRouter,
+  workspaceFinance: supabaseFinanceRouter,
+  workspaceManagement: supabaseManagementRouter,
   quoteRequests: quoteRequestRouter,
   quotes: quoteRouter,
   appointments: appointmentRouter,

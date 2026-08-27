@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, Boxes, ChevronLeft, ChevronRight, PackagePlus, Search, Tags, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -32,7 +33,7 @@ function PersistedItems({ title, items, loading, error, empty, search, onSearchC
 
 export default function CatalogItems() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [productSearch, setProductSearch] = useState("");

@@ -9,6 +9,7 @@ import { SafeLink as Link } from "@/components/SafeLink";
 import { getOperationNextAction, getYardStatusTone, type YardQueueStatus } from "@/lib/operationsQueue";
 import { canManageAppointments, getOperationsScopeCopy } from "@/lib/operationAccess";
 import type { WorkspaceRole } from "@/lib/homeWorkspace";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
 import { Activity, AlertCircle, ArrowLeft, CalendarClock, CarFront, CircleCheck, Search, UsersRound, Wrench } from "lucide-react";
@@ -41,10 +42,11 @@ function defaultAgendaEnd() {
 }
 
 export default function Operations() {
+  const demoMode = isDemoWorkspace();
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = demoMode ? selectWorkspace(mine.data, true)?.tenant : mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
-  const role = (mine.data?.[0]?.membership.role ?? "technician") as WorkspaceRole;
+  const role = (demoMode ? "owner" : mine.data?.[0]?.membership?.role ?? "technician") as WorkspaceRole;
   const canManageSchedule = canManageAppointments(role);
   const operationsScope = getOperationsScopeCopy(role);
   const utils = trpc.useUtils();

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, Boxes, CarFront, PackagePlus, Plus, Tags, Truck, Wrench } from "lucide-react";
 import { useState } from "react";
 import { SafeLink as Link } from "@/components/SafeLink";
@@ -18,7 +19,7 @@ const Field = ({ label, value, setValue, type = "text", ...props }: { label: str
 function Empty({ children }: { children: string }) { return <p className="py-10 text-center text-sm text-slate-500">{children}</p>; }
 
 export default function Catalog() {
-  const mine = trpc.workspace.mine.useQuery(); const tenant = mine.data?.[0]?.tenant; const tenantId = tenant?.id ?? 0; const utils = trpc.useUtils();
+  const mine = trpc.workspace.mine.useQuery(); const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant; const tenantId = tenant?.id ?? 0; const utils = trpc.useUtils();
   const products = trpc.workspaceCatalog.products.list.useQuery({ tenantId, page: 1, pageSize: 50 }, { enabled: Boolean(tenantId) });
   const services = trpc.workspaceCatalog.services.list.useQuery({ tenantId, page: 1, pageSize: 50 }, { enabled: Boolean(tenantId) });
   const customers = trpc.workspaceCustomers.listPaged.useQuery({ tenantId, page: 1, pageSize: 50 }, { enabled: Boolean(tenantId) });

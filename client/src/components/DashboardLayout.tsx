@@ -22,6 +22,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
+import { isDemoWorkspace, withDemoContext } from "@/lib/demoWorkspace";
 import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
 import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
@@ -207,7 +208,9 @@ function DashboardLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const currentPath = location.split("?")[0];
+  const demoMode = isDemoWorkspace();
+  const activeMenuItem = menuItems.find(item => item.path === currentPath);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -279,12 +282,12 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <nav aria-label="Navegação principal"><SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
-                const isActive = location === item.path;
+                const isActive = currentPath === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => !item.disabled && setLocation(item.path)}
+                      onClick={() => !item.disabled && setLocation(demoMode ? withDemoContext(item.path) : item.path)}
                       tooltip={item.label}
                       disabled={item.disabled}
                       className={`h-10 rounded-lg font-normal transition-all duration-150 active:scale-[0.99] data-[active=true]:font-semibold ${item.disabled ? "opacity-45" : ""}`}

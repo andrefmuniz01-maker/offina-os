@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getClientWorkspaceStep } from "@/lib/clientWorkspace";
 import { trpc } from "@/lib/trpc";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, CarFront, ChevronLeft, ChevronRight, ClipboardList, CircleUserRound, History, Plus, Search, ShieldCheck, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ function HistoryRows({ orders, showVehicle = false }: { orders: HistoryOrder[]; 
 
 export default function Clients() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [customerId, setCustomerId] = useState("");
