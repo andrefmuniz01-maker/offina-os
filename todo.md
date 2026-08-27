@@ -106,3 +106,7 @@
 - [x] Diferenciar visualmente carregamento, estado vazio e indisponibilidade em métricas, oficinas, planos e uso.
 - [x] Cobrir com testes o contrato de seções read-only e a proteção dos estados principais da Platform.
 - [x] Adicionar testes renderizados da Platform para navegação read-only e os estados loading, erro e vazio de métricas, oficinas, planos e uso.
+- [x] Registrar a auditoria Supabase dos avisos externos de funções públicas e proteção contra senhas vazadas.
+- [x] Endurecer as funções públicas do Supabase preservando apenas o catálogo comercial e a solicitação anônima estritamente necessários.
+- [x] Configurar ou documentar a pendência de proteção contra senhas vazadas no Supabase Auth antes da liberação comercial.
+- [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
