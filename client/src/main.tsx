@@ -6,7 +6,13 @@ import { httpBatchLink } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
+import { installAnalytics } from "./lib/analytics";
 import "./index.css";
+
+installAnalytics({
+  endpoint: import.meta.env.VITE_ANALYTICS_ENDPOINT,
+  websiteId: import.meta.env.VITE_ANALYTICS_WEBSITE_ID,
+}, document);
 
 const queryClient = new QueryClient();
 
