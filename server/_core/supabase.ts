@@ -7,7 +7,7 @@ export type SupabaseProfile = {
   platformRole: "platform_user" | "super_admin";
 };
 
-function createSupabaseAuthClient(accessToken?: string) {
+export function createSupabaseClient(accessToken?: string) {
   if (!ENV.supabaseUrl || !ENV.supabasePublishableKey) {
     throw new Error("Supabase Auth não está configurado no servidor.");
   }
@@ -31,14 +31,14 @@ export function getBearerToken(value: string | undefined): string | null {
 }
 
 export async function getSupabaseAuthUser(accessToken: string) {
-  const supabase = createSupabaseAuthClient();
+  const supabase = createSupabaseClient();
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) return null;
   return data.user;
 }
 
 export async function getSupabaseProfile(accessToken: string): Promise<SupabaseProfile | null> {
-  const supabase = createSupabaseAuthClient(accessToken);
+  const supabase = createSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("profiles")
     .select("id, email, platform_role")
