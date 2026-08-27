@@ -186,3 +186,6 @@
 - [x] Impedir que chamadas pendentes de autenticação Supabase mantenham o formulário de acesso em carregamento indefinido.
 - [x] Diagnosticar o profile operacional ausente após autenticação Supabase e corrigir somente o vínculo confirmado.
 - [x] Preservar a identidade Supabase já validada quando a ponte MySQL temporária estiver indisponível.
+- [ ] Rastrear a requisição auth.me da sessão publicada que ainda retorna perfil indisponível após login válido.
+- [ ] Capturar e corrigir a falha de auth.me no domínio atual após login Supabase aceito.
+- [x] Reabrir o campo seguro da Service Role após a solicitação anterior ficar indisponível.
