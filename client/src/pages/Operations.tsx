@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { getOperationNextAction, getYardStatusTone, type YardQueueStatus } from "@/lib/operationsQueue";
 import { canManageAppointments, getOperationsScopeCopy } from "@/lib/operationAccess";
+import { getApprovedQuoteIdFromSearch } from "@/lib/operationScheduleIntent";
 import type { WorkspaceRole } from "@/lib/homeWorkspace";
 import { trpc } from "@/lib/trpc";
 import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
@@ -53,7 +54,7 @@ export default function Operations() {
   const [agendaFrom, setAgendaFrom] = useState(() => dateInput(new Date()));
   const [agendaTo, setAgendaTo] = useState(defaultAgendaEnd);
   const [operationSearch, setOperationSearch] = useState("");
-  const [quoteId, setQuoteId] = useState("");
+  const [quoteId, setQuoteId] = useState(() => getApprovedQuoteIdFromSearch(window.location.search));
   const [date, setDate] = useState("");
   const [bay, setBay] = useState("");
   const [assignedToUserId, setAssignedToUserId] = useState("");
