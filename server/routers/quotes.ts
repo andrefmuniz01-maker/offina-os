@@ -54,6 +54,12 @@ export function calculateRequestQueueMinutes(createdAt: Date, lastStatusChangedA
   return Math.max(0, Math.floor((now.getTime() - (lastStatusChangedAt ?? createdAt).getTime()) / 60_000));
 }
 
+export const PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS = 10 * 60_000;
+
+export function isPublicRequestResubmissionBlocked(lastCreatedAt: Date | undefined, now = new Date()) {
+  return Boolean(lastCreatedAt && now.getTime() - lastCreatedAt.getTime() < PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS);
+}
+
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
 const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
   draft: ["ready", "cancelled"],
@@ -195,6 +201,20 @@ export const quoteRequestRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const tenant = (await db.select().from(tenants).where(and(eq(tenants.slug, input.tenantSlug), eq(tenants.active, true), eq(tenants.status, "active"))).limit(1))[0];
     if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "A oficina solicitada não está disponível." });
+    const latestMatchingPublicRequest = (await db
+      .select({ createdAt: quoteRequests.createdAt })
+      .from(quoteRequests)
+      .where(and(
+        eq(quoteRequests.tenantId, tenant.id),
+        eq(quoteRequests.requesterWhatsapp, input.whatsapp),
+        eq(quoteRequests.source, "public_link"),
+        gte(quoteRequests.createdAt, new Date(Date.now() - PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS)),
+      ))
+      .orderBy(desc(quoteRequests.createdAt))
+      .limit(1))[0];
+    if (isPublicRequestResubmissionBlocked(latestMatchingPublicRequest?.createdAt)) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Recebemos uma solicitação recente deste contato. Aguarde alguns minutos antes de enviar novamente." });
+    }
     if (input.serviceId) {
       const validService = (await db.select({ id: services.id }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0];
       if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });

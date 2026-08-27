@@ -122,3 +122,4 @@
 - [x] Simplificar a orientação de primeiro acesso e recuperação de senha, sem expor se um e-mail está provisionado.
 - [x] Substituir a mensagem de erro `otp_disabled` por uma resposta neutra que não revele se o e-mail está autorizado ou provisionado.
 - [x] Cobrir todo o fluxo de primeiro acesso para garantir que a interface não confirme cadastro, autorização ou inexistência de e-mail.
+- [x] Limitar reenvios públicos consecutivos pelo mesmo contato e oficina, sem bloquear o envio legítimo de uma nova solicitação após intervalo seguro.
