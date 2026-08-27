@@ -27,6 +27,8 @@ const requiredPaths = [
   "supabase/migrations/20260826_0002_foreign_key_indexes.sql",
   "supabase/migrations/20260826_0003_profile_rls_initplan.sql",
   "docs/environment-reference.md",
+  "docs/production-handoff.md",
+  "scripts/production-preflight.mjs",
   "docs/repository-portability.md",
   "docs/portability-inventory.md",
   "docs/mysql-to-supabase-mapping.md",

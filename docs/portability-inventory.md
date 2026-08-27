@@ -19,7 +19,7 @@ Este inventário relaciona tudo que é necessário para reconstruir o **código 
 | Scheduler | `server/scheduled.ts`, `server/_core/heartbeat.ts` | Credencial de serviço compatível antes de ativar jobs | Manter pausado até teste de serviço |
 | APIs e integrações | `server/_core/`, `server/routers/`, `docs/repository-portability.md` | Conectores e segredos específicos do ambiente | Validar cada integração separadamente |
 | Qualidade | `vitest.config.ts`, arquivos `*.test.ts`, `tsconfig.json` | Nenhuma | `pnpm test && pnpm check && pnpm build` |
-| Deploy | `README.md`, `template.json`, `server/_core/index.ts` | Host Node compatível e segredo configurado fora do Git | `pnpm build && pnpm start` |
+| Deploy | `README.md`, `docs/production-handoff.md`, `scripts/production-preflight.mjs`, `server/_core/index.ts` | Host Node compatível, segredos configurados fora do Git e destino de hospedagem confirmado | `pnpm production:preflight && pnpm build && pnpm start` |
 
 ## Configurações manuais que não podem ser versionadas
 
@@ -40,4 +40,4 @@ O comando abaixo confirma que os arquivos e documentos indicados neste inventár
 pnpm portability:check
 ```
 
-Ele verifica apenas a completude de código e documentação. Não tenta validar credenciais, bancos remotos, usuários Auth, objetos Storage ou dados de produção.
+Ele verifica apenas a completude de código e documentação. Não tenta validar credenciais, bancos remotos, usuários Auth, objetos Storage ou dados de produção. O preflight separado (`pnpm production:preflight`) verifica variáveis essenciais do ambiente de produção sem imprimir seus valores.

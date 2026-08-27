@@ -14,7 +14,8 @@
     "portability:check": "node scripts/check-portability.mjs",
     "schema:audit:legacy": "tsx scripts/audit-legacy-mysql-schema.mjs",
     "schema:audit:constraints": "tsx scripts/audit-legacy-mysql-constraints.mjs",
-    "auth:legacy-user:check": "node scripts/check-legacy-user-presence.mjs"
+    "auth:legacy-user:check": "node scripts/check-legacy-user-presence.mjs",
+    "production:preflight": "node scripts/production-preflight.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
