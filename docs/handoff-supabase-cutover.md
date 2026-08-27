@@ -31,7 +31,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `7cf4506` | Catálogo público limitado e intake anônimo de solicitações no Supabase. | View com alerta crítico removida; funções anônimas permanecem intencionais e limitadas. |
 | `b85528f` | Ajuste de estoque transacional migrado para Supabase. | Físico não pode cair abaixo do reservado; movimento e auditoria são atômicos. |
 | `1788d90` | Catálogo, fornecedores, produtos, serviços, kits, estoque, previsão e compras migrados sob `workspaceCatalog`/`workspaceInventory`. | Migrations `0014`–`0016` aplicadas, ACLs diretas de tabelas sensíveis revogadas, Advisor sem novos avisos e 87 arquivos/261 testes aprovados. |
-| `7db5d3b` | Oficina Demo interna `Performance Garage` provisionada no Supabase e tela `/demo-interna` exclusiva de Super Admin. | Tenant `performance-garage` ativo com `is_demo=true`, zero membros de tenant, 3 produtos/saldos, 2 serviços, 1 kit, 2 clientes/veículos e 1 compra; catálogo público bloqueado, reset incremental auditado e negação a perfil não administrativo confirmada. |
+| `7db5d3b` | Oficina Demo interna `Performance Garage` provisionada no Supabase e tela `/demo-interna` exclusiva de Super Admin. | Tenant `performance-garage` ativo com `is_demo=true`, zero membros de tenant, 3 produtos/saldos, 2 serviços, 1 kit, 2 clientes/veículos e 1 compra; catálogo público bloqueado, reset incremental auditado e negação a perfil não administrativo confirmada. A simulação posterior confirmou cinco negações para usuário autenticado não administrativo e cinco permissões para Super Admin. |
 
 ## Sequência de implementação obrigatória
 
