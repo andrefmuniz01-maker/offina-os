@@ -38,6 +38,16 @@ const preparation = {
   total: 839.9,
 } as const;
 
+const draft = {
+  id: 53,
+  tenantId: 4,
+  requestId: 14,
+  number: 18,
+  status: "draft",
+  validUntil: "2026-09-03T12:00:00.000Z",
+  total: 839.9,
+} as const;
+
 function context(user = supabaseUser) {
   return {
     req: {} as never,
@@ -87,6 +97,38 @@ describe("workspaceQuoteRequests.prepare", () => {
     await expect(caller.prepare({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
       code: "INTERNAL_SERVER_ERROR",
       message: "A preparação do orçamento retornou uma solicitação incompatível.",
+    });
+  });
+
+  it("cria o rascunho somente pela RPC Supabase com os dados comerciais permitidos", async () => {
+    mocks.rpc.mockResolvedValue({ data: draft, error: null });
+    const caller = supabaseQuoteRequestRouter.createCaller(context());
+
+    await expect(caller.createDraft({ tenantId: 4, quoteRequestId: 14, notes: "Conferir aplicação", terms: "Peças sob consulta", validUntil: "2026-09-03T12:00:00.000Z" })).resolves.toEqual(draft);
+    expect(mocks.requireSupabaseTenantPermission).toHaveBeenCalledWith(supabaseUser, 4, "quotes.manage");
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_create_quote_draft_from_request", {
+      target_tenant_id: 4,
+      target_request_id: 14,
+      notes_input: "Conferir aplicação",
+      terms_input: "Peças sob consulta",
+      valid_until_input: "2026-09-03T12:00:00.000Z",
+    });
+  });
+
+  it("nega a criação de rascunho sem uma identidade Supabase materializada", async () => {
+    const caller = supabaseQuoteRequestRouter.createCaller(context(null as never));
+
+    await expect(caller.createDraft({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("rejeita resposta de rascunho incompatível antes de chegar à interface", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...draft, requestId: 15 }, error: null });
+    const caller = supabaseQuoteRequestRouter.createCaller(context());
+
+    await expect(caller.createDraft({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "A criação do rascunho retornou dados incompatíveis.",
     });
   });
 });

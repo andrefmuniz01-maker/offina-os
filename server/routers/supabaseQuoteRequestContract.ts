@@ -92,6 +92,16 @@ export const workspaceQuotePreparationSchema = z.object({
   total: z.number().nonnegative(),
 }).strict();
 
+export const workspaceQuoteDraftSchema = z.object({
+  id: z.number().int().positive(),
+  tenantId: z.number().int().positive(),
+  requestId: z.number().int().positive(),
+  number: z.number().int().positive(),
+  status: z.literal("draft"),
+  validUntil: z.string(),
+  total: z.number().nonnegative(),
+}).strict();
+
 export type WorkspaceQuoteRequestList = z.infer<typeof workspaceQuoteRequestListSchema>;
 
 export function parseWorkspaceQuoteRequestList(value: unknown) {
@@ -104,4 +114,8 @@ export function parseWorkspaceQuoteRequestHistory(value: unknown) {
 
 export function parseWorkspaceQuotePreparation(value: unknown) {
   return workspaceQuotePreparationSchema.safeParse(value);
+}
+
+export function parseWorkspaceQuoteDraft(value: unknown) {
+  return workspaceQuoteDraftSchema.safeParse(value);
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
-import { parseWorkspaceQuotePreparation, parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
+import { parseWorkspaceQuoteDraft, parseWorkspaceQuotePreparation, parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
 
 const status = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -17,6 +17,7 @@ function databaseError(error: { code?: string | null; message?: string | null } 
   if (error?.code === "42501") return new TRPCError({ code: "FORBIDDEN", message: error.message ?? "Seu perfil não possui acesso à fila comercial desta oficina." });
   if (error?.code === "22023") return new TRPCError({ code: "BAD_REQUEST", message: error.message ?? "Dados inválidos." });
   if (error?.code === "P0002") return new TRPCError({ code: "NOT_FOUND", message: error.message ?? "Solicitação não encontrada nesta oficina." });
+  if (error?.code === "P0001") return new TRPCError({ code: "CONFLICT", message: error.message ?? "Esta solicitação já possui um orçamento criado." });
   return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível concluir esta operação no banco Supabase." });
 }
 
@@ -54,6 +55,28 @@ export const supabaseQuoteRequestRouter = router({
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A preparação do orçamento recebeu dados em formato inválido." });
     if (result.data.request.tenantId !== input.tenantId || result.data.request.id !== input.quoteRequestId) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A preparação do orçamento retornou uma solicitação incompatível." });
+    }
+    return result.data;
+  }),
+
+  createDraft: supabaseProtectedProcedure.input(tenantInput.extend({
+    quoteRequestId: z.number().int().positive(),
+    notes: z.string().trim().max(4000).optional(),
+    terms: z.string().trim().max(4000).optional(),
+    validUntil: z.string().datetime({ offset: true }).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_create_quote_draft_from_request", {
+      target_tenant_id: input.tenantId,
+      target_request_id: input.quoteRequestId,
+      notes_input: input.notes ?? null,
+      terms_input: input.terms ?? null,
+      valid_until_input: input.validUntil ?? null,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceQuoteDraft(data);
+    if (!result.success || result.data.tenantId !== input.tenantId || result.data.requestId !== input.quoteRequestId) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A criação do rascunho retornou dados incompatíveis." });
     }
     return result.data;
   }),

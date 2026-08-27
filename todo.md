@@ -181,6 +181,7 @@
 - [x] Cobrir a negação de acesso Supabase para tenants inativos ou suspensos antes da checagem de papel.
 - [x] Exigir tenant comercialmente ativo em guardas internos Supabase, além das rotas públicas.
 - [x] Preparar orçamento a partir de solicitação Supabase do mesmo tenant, sem criar proposta, reserva ou efeito financeiro.
+- [x] Criar rascunho de orçamento Supabase auditado a partir da solicitação em orçamento, sem envio, token público, reserva ou lançamento financeiro.
 - [x] Cobrir no roteador Supabase a negação e a validação de vínculo da preparação comercial por tenant.
 - [x] Diagnosticar e corrigir o login publicado que permanece carregando após o envio de e-mail e senha.
 - [x] Impedir que chamadas pendentes de autenticação Supabase mantenham o formulário de acesso em carregamento indefinido.
