@@ -100,10 +100,10 @@ export const supabaseOperationsRouter = router({
       if (error || !data) throw databaseError(error);
       return data as { success: true };
     }),
-    consumeProduct: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive(), productId: z.number().int().positive(), quantity: z.coerce.number().positive(), reservationId: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => {
+    consumeProduct: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive(), productId: z.number().int().positive().optional(), quantity: z.coerce.number().positive(), reservationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
       if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para registrar consumo." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_consume_work_order_product", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId, target_product_id: input.productId, target_quantity: input.quantity, target_reservation_id: input.reservationId ?? null });
+      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_consume_work_order_reservation", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId, target_reservation_id: input.reservationId, quantity_input: input.quantity });
       if (error || !data) throw databaseError(error);
       return data as { success: true };
     }),

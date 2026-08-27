@@ -14,7 +14,7 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Super Admin | `/plataforma` | Acompanhar a plataforma e as oficinas sem operar uma oficina específica | `platform.*`; visão somente leitura na interface; parte do backend ainda depende da ponte MySQL e requer migração antes de mutações globais. |
 | Dono/Admin | `/` | Priorizar o comercial, operação, estoque e indicadores da própria oficina | `workspace.*` para contexto/dashboard; demais fluxos são híbridos durante a migração. |
 | Atendente | `/` | Receber solicitações, elaborar orçamentos e organizar agenda | A interface restringe a leitura financeira; a autoridade precisa permanecer no backend/RLS em cada router. |
-| Técnico | `/operacao`, `/os/:id` | Executar OS, checklist, apontamentos e consumo de itens | Operação e OS ainda usam routers legados; não há acesso financeiro previsto. |
+| Técnico | `/operacao`, `/os/:id` | Executar OS, checklist, apontamentos e consumo de itens | No modo Demo, operação e OS usam fachadas Supabase seguras por OS atribuída; fora dele, consumidores legados ainda coexistem. Não há acesso financeiro previsto. |
 | Cliente sem conta | `/solicitar/:slug`, `/orcamento/:token` | Solicitar, consultar e decidir orçamento | Fluxo público por slug/token; não cria sessão humana. |
 
 ## 2. Superfícies de interface e contratos
@@ -24,32 +24,32 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Autenticação | `AuthCallback` e tela de acesso no layout | Supabase e-mail/senha, recuperação e `auth.me` | Supabase Auth é a única sessão humana; callback é reservado a convite/recuperação. |
 | Central do dia | `Home` em `/` | `workspace.mine`, `workspace.dashboardOverview`, `workspace.notifications` | Contexto e dashboard Supabase; métricas financeiras somente para owner/admin. |
 | Plataforma | `Platform` em `/plataforma` | `platform.metrics`, `platform.overview`, `platform.usage`, `platform.plans.list` | Interface somente leitura; router global ainda tem dependências legadas a remover antes de ações administrativas. |
-| Solicitações | `Requests` em `/solicitacoes` | listagem, responsáveis, histórico, atualização de status, criação de orçamento sugerido | Router `quoteRequests` legado/transitório. |
-| Orçamentos | `Quotes` em `/orcamentos` | listagem/detalhe, envio e descontos | Router `quotes` legado/transitório. |
-| Agenda e pátio | `Operations` em rotas de operação | agenda, kanban, agendar a partir de orçamento, membros | `appointments` e `workOrders` legados; consome orçamento e equipe. |
-| Ordem de serviço | `WorkOrder` e `WorkOrderNotes` | detalhe, status, checklist, consumo, anexos e apontamentos | `workOrders` legado; consumo afeta estoque e exige preservação de transação/auditoria no corte futuro. |
+| Solicitações | `Requests` em `/solicitacoes` | listagem, responsáveis, histórico, atualização de status, criação de orçamento sugerido | Demo usa `workspaceQuoteRequests` Supabase persistido; demais contextos ainda podem usar a ponte legada. |
+| Orçamentos | `Quotes` em `/orcamentos` | listagem/detalhe, envio e descontos | Demo usa `workspaceQuotes` Supabase; mutações ainda são restritas conforme o contrato migrado. |
+| Agenda e pátio | `Operations` em rotas de operação | agenda, kanban, agendar a partir de orçamento, membros | Demo usa `workspaceOperations` Supabase para agenda/pátio; agenda nasce de orçamento aprovado e herda a OS. |
+| Ordem de serviço | `WorkOrder` e `WorkOrderNotes` | detalhe, status, checklist, consumo, anexos e apontamentos | Demo usa `workspaceOperations.workOrders` com detalhe, checklist, notas e consumo por reserva; anexos de execução continuam explicitamente indisponíveis no Supabase. |
 | Estoque | `Inventory` em `/estoque` | lista, previsão e ajuste controlado | `workspaceInventory`; Supabase para saldo/previsão/ajuste. |
 | Compras | `Purchases` em `/compras` | catálogo, pedidos, recebimento | `workspaceCatalog` e `workspaceInventory`; Supabase. |
 | Catálogo | `Catalog`, `CatalogItems`, `Categories` | produtos, serviços, categorias e composição | `workspaceCatalog`; Supabase. Routers `catalog` continuam como ponte para consumidores legados. |
 | Clientes e veículos | `Clients` em `/clientes` | lista paginada, veículos, histórico e cadastro de veículo | `workspaceCustomers` e `workspaceVehicles`; Supabase. |
-| Financeiro | `Finance` em `/financeiro` | resumo, receitas, despesas, recebimento | `dashboard` e `financial` legados; acesso precisa ser protegido no backend além da ocultação da interface. |
-| Equipe | `Team` em `/equipe` | listar, vincular usuário existente e atualizar papel | Router `tenant` legado; ainda precisa do corte integral para membership Supabase/RLS. |
-| Configurações | `Settings` em `/configuracoes` | dados da oficina e identidade visual | Router `tenant` legado. |
-| Notificações | `Notifications` em `/notificacoes` | listar, marcar como lida e preferências | Router `notifications` legado. |
-| Auditoria e relatórios | `Audit`, `Reports` | histórico e indicadores mensais | Dependem do backend legado atual; devem seguir como leitura até o corte por domínio. |
-| Público | `PublicQuoteRequest` e `PublicQuote` | serviços públicos, envio da solicitação, consulta/decisão por token | Intake e orçamento públicos ainda são legados; há validação de arquivo, normalização de contato e throttle no servidor. |
+| Financeiro | `Finance` em `/financeiro` | resumo, receitas, despesas, recebimento | Demo usa `workspaceFinance` e dashboard Supabase tenant-scoped; fora dela, a ponte financeira legada permanece. |
+| Equipe | `Team` em `/equipe` | listar, vincular usuário existente e atualizar papel | Demo lê `tenant_members`/`profiles` reais via Supabase e não cria identidades fictícias; mutações continuam restritas. |
+| Configurações | `Settings` em `/configuracoes` | dados da oficina e identidade visual | Demo usa `workspaceManagement` Supabase para settings e branding; fora dela, a ponte legada permanece. |
+| Notificações | `Notifications` em `/notificacoes` | listar, marcar como lida e preferências | Demo usa `workspaceManagement` Supabase com paginação, preferências e leitura. |
+| Auditoria e relatórios | `Audit`, `Reports` | histórico e indicadores mensais | Demo usa `workspaceManagement` Supabase como leitura tenant-scoped; mutações globais continuam fora do escopo. |
+| Público | `PublicQuoteRequest` e `PublicQuote` | serviços públicos, envio da solicitação, consulta/decisão por token | Demo usa catálogo/intake e `publicQuotes` Supabase mediados pelo servidor; há validação de arquivo, normalização de contato, token seguro e throttle. |
 
 ## 3. Cadeia de negócio atual
 
 | Etapa | Implementação observada | Proteção/regra existente | Lacuna antes de declarar corte completo |
 |---|---|---|---|
-| Solicitação | Formulário público cria `quote_request` por `quoteRequests.submitPublic` | Serviço canônico, normalização de WhatsApp, limitação por contato/oficina e validação de anexos no backend | Migrar intake para RPC Supabase e Storage privado com rate limit persistido. |
-| Triagem e orçamento | Solicitação pode gerar sugestão/orçamento | Histórico e status na superfície comercial | Migrar `quoteRequests` e `quotes` como um fluxo, sem redirecionar consumidores legados isoladamente. |
-| Aprovação | Orçamento público decide por token | Token protege a experiência do cliente | Validar na migração as reservas transacionais de estoque e a expiração. |
-| Agenda | Agendamento nasce de orçamento | Agenda recebe orçamento e responsável | Migrar junto com OS e regras de duração/baia para evitar redigitação ou estados divididos. |
-| OS e execução | Kanban, checklist, anotações, consumo e anexos | Status e ações técnicos disponíveis na UI | Migrar anexos, consumo e auditoria como operação atômica no Supabase. |
-| Estoque e compras | Catálogo, saldo, previsão, pedidos e recebimento Supabase | Fachadas autenticadas, validação de tenant e rotinas transacionais no schema privado | Manter ponte para comercial/OS até os consumidores legados serem migrados integralmente. |
-| Financeiro | Receitas/despesas e marcação de recebimento | Projeção do dashboard já omite métricas financeiras para papéis não autorizados | Migrar router financeiro e validar permissões/RLS ponta a ponta. |
+| Solicitação | Demo usa formulário público, `publicIntake` e `quote_request` persistido no Supabase | Serviço canônico, normalização de WhatsApp, limitação por contato/oficina e validação de anexos no backend | Completar o corte geral do intake e manter o mesmo contrato para os demais tenants. |
+| Triagem e orçamento | Solicitação pode gerar sugestão/orçamento | Histórico e status na superfície comercial | Na Demo, `workspaceQuoteRequests` e `workspaceQuotes` mantêm o vínculo persistido; fora dela, concluir a migração conjunta sem misturar IDs legados. |
+| Aprovação | Demo usa decisão pública por token via `publicQuotes` | Token seguro, proposta válida e reserva de estoque transacional; recusa não reserva | Completar o corte geral e validar expiração em todos os tenants. |
+| Agenda | Demo agenda a partir de orçamento aprovado e vincula a OS | Agenda herda cliente, veículo, itens, valores e reserva sem redigitação | Completar atribuição de profissional na interface e o corte para os demais tenants. |
+| OS e execução | Demo usa kanban, detalhe, checklist, notas e consumo por reserva em `workspaceOperations` | Técnico somente atua em OS atribuída; gestão opera tenant ativo; status, consumo e notas auditados | Upload de anexos de execução e corte geral dos consumidores legados permanecem pendentes. |
+| Estoque e compras | Catálogo, saldo, previsão, pedidos e recebimento Supabase; Demo também reserva e consome por OS | Fachadas autenticadas, validação de tenant e rotinas transacionais no schema privado | Manter ponte para consumidores legados fora da Demo até a migração integral. |
+| Financeiro | Receitas/despesas e marcação de recebimento | Projeções Supabase da Demo omitem dados para papéis não autorizados | Completar mutations financeiras e substituir a ponte legada com permissões/RLS ponta a ponta. |
 
 ## 4. Regras de autorização e dados
 
@@ -62,7 +62,7 @@ O caminho de identidade deve ser mantido como **Supabase Auth → profile → me
 | Isolamento de catálogo/estoque/compras | RPCs privadas e fachadas públicas `SECURITY INVOKER` | Toda composição deve validar `tenant_id` no backend; não abrir REST direto. |
 | Financeiro | Dashboard Supabase projeta apenas para owner/admin/Super Admin | Repetir a verificação no router financeiro transitório e no corte definitivo. |
 | Acesso público | Somente catálogo/intake anônimos intencionais | Manter `search_path` vazio, ACL mínima e respostas sem identificador interno de tenant. |
-| Demo | Tenant Supabase marcado com `is_demo`, sem vínculo operacional ativo | A Platform o exibe em card administrativo separado; catálogo e intake anônimos retornam indisponibilidade para demos e não oferecem link comercial. |
+| Demo | Tenant Supabase marcado com `is_demo`, acessível no backoffice somente por Super Admin e selecionado por `demo=1` | RLS/guards impedem membros comuns; o catálogo/intake público é exceção controlada somente para `performance-garage`, e a navegação usa as mesmas páginas da oficina. |
 
 ## 5. Diagnóstico de navegação pós-login
 
@@ -75,10 +75,10 @@ As evidências de runtime mostraram que a consulta global do painel recebeu erro
 | Prioridade | Lacuna | Próximo passo seguro |
 |---|---|---|
 | P0 | Redirecionamento por erro não específico de autenticação | Remover o redirecionamento global por qualquer erro de query/mutation; cobrir com teste de regressão e validar sessão real. |
-| P0 | Intake/anexos públicos legados | Implementar somente após migração para RPC Supabase, capacidade temporária e controles persistidos definidos no desenho de segurança. |
-| P0 | Comercial, agenda e OS em ponte MySQL | Migrar por cadeia inteira: solicitação → orçamento → aprovação/reserva → agenda → OS → consumo. |
+| P0 | Intake/anexos públicos fora do tenant Demo | Concluir a migração geral mantendo o preview/intake da Demo limitado ao slug permitido, capacidade temporária e controles persistidos. |
+| P0 | Comercial, agenda e OS fora do modo Demo ainda em ponte MySQL | Migrar por cadeia inteira para todos os tenants: solicitação → orçamento → aprovação/reserva → agenda → OS → consumo. A Demo já valida esse recorte no Supabase. |
 | P1 | Administração de equipe/configurações | Migrar membership e configurações ao Supabase com RLS antes de expor novas mutações administrativas. |
-| P1 | Financeiro e relatórios | Substituir o router legado apenas com permissões validadas no servidor e testes de isolamento. |
+| P1 | Financeiro e relatórios fora da Demo | Substituir o router legado apenas com permissões validadas no servidor e testes de isolamento; a Demo já usa a leitura Supabase. |
 | P1 | Plataforma global | Preservar leitura até que a autorização deixe de depender de usuário MySQL transitório. |
 
 ## 7. Critério para próximos incrementos
