@@ -1,37 +1,46 @@
-# Handoff — validação real do banco da demonstração
+# Handoff — Oficina Demo Interna (Supabase-only)
 
-A implementação do tenant demonstrativo está sincronizada na branch `main` do repositório `andrefmuniz01-maker/offina-os`. Os commits relevantes são `01a46fa`, `b1a0b2c`, `53a5867` e `f42a0f4`.
+A Oficina Demo já foi provisionada no projeto Supabase **OFFICINA OS** como o tenant interno **Performance Garage**, com slug `performance-garage` e `is_demo=true`.
 
-## O que a outra tarefa precisa executar
+> Este ambiente é **exclusivo de Super Admins**. Ele não possui `tenant_members`, não aparece por fluxo público e não pode ser acessado por dono, atendente, técnico, cliente ou visitante anônimo. Essa regra está aplicada em RLS, funções privadas de autorização, RPCs de catálogo/estoque/compras e nas RPCs públicas de catálogo e intake.
 
-1. Configurar `DATABASE_URL` com uma conexão MySQL compatível com o projeto. Não registrar a credencial no repositório.
-2. Aplicar as migrações do Drizzle, incluindo `drizzle/0013_demo_tenant.sql`, usando o procedimento oficial do ambiente.
-3. Executar `pnpm seed:demo` para criar ou atualizar a **Performance Garage** como tenant real, com `isDemo = true`.
-4. Confirmar no banco que o tenant possui status ativo, identidade, configurações, usuários demonstrativos, catálogo, estoque, serviços, clientes, veículos e a solicitação nº 182.
-5. Validar que a aplicação encontra o tenant pelo slug público `performance-garage` e que o formulário público não exige login.
-6. Validar o fluxo operacional real: solicitação pública → fila interna → sugestão/orçamento → envio → visualização pública → aprovação → reserva de estoque → agendamento → OS → consumo → receita/financeiro → histórico.
-7. Validar os papéis separadamente: dono/admin pode acessar dados financeiros; atendente não deve visualizar custo, margem ou lucro quando as permissões não permitirem; mecânico deve acessar somente a operação atribuída e não o financeiro; Super Admin deve enxergar o tenant na plataforma e o selo **Ambiente demonstrativo**.
-8. Executar o botão **Resetar demonstração** no Painel de Super Admin, confirmar a ação e verificar que somente o tenant `performance-garage` foi limpo e repopulado, com evento `demo.reset` na auditoria.
-9. Testar isolamento criando ou utilizando um segundo tenant: nenhum cliente, veículo, produto, orçamento, OS, financeiro, anexo ou auditoria de outro tenant pode ser consultado ou associado por manipulação de IDs ou URL.
-10. Repetir a validação em desktop e mobile, registrando estados de carregamento, vazio, erro, foco visível e navegação por teclado nas rotas principais.
+## Estado comprovado
 
-## Comandos de validação
+| Item | Estado |
+|---|---:|
+| Tenant ativo e demonstrativo | Sim |
+| Membros de tenant | 0 |
+| Produtos e saldos | 3 / 3 |
+| Serviços e kits | 2 / 1 |
+| Clientes e veículos fictícios | 2 / 2 |
+| Pedido de compra demonstrativo | 1 |
+| Catálogo público pelo slug demo | Bloqueado |
+| Reset incremental auditado | Validado |
 
-```bash
-pnpm check
-pnpm seed:demo
-pnpm test
-pnpm build
-```
+A interface interna é a rota `/demo-interna`, protegida no cliente e por `supabaseAdminProcedure` no backend. O acesso de plataforma parte de `/plataforma`.
 
-Para restaurar a demonstração pelo terminal, somente em ambiente administrativo controlado:
+## Escopo do seed atual
 
-```bash
-pnpm seed:demo -- --reset
-```
+A demonstração contém apenas domínios cujo fluxo de workspace já usa Supabase: configurações e branding, categorias, fornecedores, produtos, saldos, serviços, kits, clientes, veículos, pedido de compra, itens e movimentações de estoque.
 
-O reset também está exposto ao Super Admin pelo roteador `platform.resetDemo` e pelo botão da página de plataforma. A rotina bloqueia o reset se o slug não estiver marcado como tenant demonstrativo. A execução do seed/reset deve ser feita apenas depois de confirmar a conexão correta e realizar backup conforme a política do ambiente.
+Não foram criados nem devem ser criados por enquanto: solicitações públicas, anexos, orçamentos, reservas, agenda, OS, consumo, receitas, despesas ou contas de usuários demonstrativos. Esses domínios aguardam migração completa para Supabase.
 
-## Resultado esperado
+## Operação administrativa
 
-A tarefa só deve marcar o processo como concluído após confirmar no banco e na interface o fluxo completo, os efeitos de estoque/financeiro/histórico, o isolamento entre tenants e o comportamento por papel. Os testes automatizados existentes cobrem 187 casos, mas não substituem a validação operacional com banco configurado.
+As operações abaixo usam RPCs Supabase autenticadas e somente permitem `platform_role = super_admin`:
+
+| Operação | RPC | Comportamento |
+|---|---|---|
+| Consultar estado | `platform_demo_status` | Retorna contagens do tenant interno. |
+| Provisionar | `platform_provision_incremental_demo` | Idempotente; cria somente se o slug não existir como tenant não-demo. |
+| Restaurar | `platform_reset_incremental_demo` | Preserva o tenant e auditoria; apaga/recria somente o escopo incremental. Bloqueia se houver dados nos domínios ainda não migrados. |
+
+A política é deliberada: **não executar `pnpm seed:demo`, migrations Drizzle ou scripts MySQL**. Eles pertencem ao fluxo descontinuado e não representam o estado atual.
+
+## Regras para tarefas futuras
+
+1. Nunca adicionar `tenant_members` ao tenant `performance-garage`; a demonstração deve continuar exclusiva de Super Admin.
+2. Nunca permitir `is_demo` como bypass de RLS, acesso de API ou rota pública.
+3. Ao ampliar o seed para um novo domínio, migrar e validar primeiro o fluxo desse domínio no Supabase.
+4. Manter o reset por ordem de chaves estrangeiras, com lock, escopo fixo pelo slug e auditoria append-only.
+5. Antes de publicar mudanças relacionadas, rodar `pnpm check`, `pnpm test` e `pnpm build`, revisar o Security Advisor e atualizar `docs/handoff-supabase-cutover.md`.
