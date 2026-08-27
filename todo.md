@@ -173,3 +173,5 @@
 - [x] Tipar os contratos da fila Supabase de solicitações para evitar dados imprecisos entre backend e interface.
 - [x] Simplificar o formulário público de solicitação, preservando etapas, anexos privados e confirmações comerciais.
 - [x] Evitar a exposição de mensagens técnicas inesperadas na decisão pública de orçamento.
+- [x] Cobrir em teste a negação de permissões financeiras e administrativas para papéis Supabase restritos.
+- [x] Restringir permissões customizadas de atendentes e técnicos ao conjunto autorizado pelo papel.

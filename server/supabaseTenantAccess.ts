@@ -75,7 +75,7 @@ export function resolveSupabasePermissions(role: TenantRole, custom: unknown) {
     : [];
   const roleSafeCustomPermissions = ["owner", "admin"].includes(role)
     ? customPermissions
-    : customPermissions.filter(permission => !financialPermissions.has(permission));
+    : customPermissions.filter(permission => rolePermissions[role].includes(permission));
   return Array.from(new Set([...rolePermissions[role], ...roleSafeCustomPermissions]));
 }
 

@@ -185,3 +185,7 @@ O carregamento, a indisponibilidade e a confirmação do intake público receber
 ## 27/08/2026 — Falha segura na decisão pública
 
 Falhas inesperadas ao aprovar ou recusar um orçamento por link público agora mostram uma orientação genérica, recuperável e sem detalhes de banco, token ou serviços internos. A decisão continua exigindo confirmação explícita e não dispara contato externo automaticamente. A checagem de tipos e a suíte completa mantiveram 108 arquivos de teste, 320 testes e uma suíte ignorada aprovados.
+
+## 27/08/2026 — RBAC Supabase sem elevação por configuração
+
+Permissões customizadas de atendente e técnico agora são limitadas ao conjunto próprio de cada papel. Assim, uma configuração indevida não concede gestão de equipe, tenant, OS administrativa ou financeiro a perfis restritos. A cobertura valida a retirada de permissões financeiras, o bloqueio de controles administrativos para técnico e a negação de operações globais a quem não é Super Admin. Tipos e a suíte integral aprovaram 108 arquivos de teste, 322 testes e uma suíte ignorada.
