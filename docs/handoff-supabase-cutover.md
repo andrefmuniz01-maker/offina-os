@@ -4,15 +4,26 @@
 
 ## Estado confirmado
 
-O projeto Supabase **OFFICINA OS** (`jpvvhowgpuinuuputoot`) está ativo em `sa-east-1`. As migrations de fundação, índices e RLS estão aplicadas. O commit `3c6a84b` adicionou e aplicou também o marcador administrativo `public.tenants.is_demo`, com valor padrão `false`, índice parcial e teste automatizado.
+O projeto Supabase **OFFICINA OS** (`jpvvhowgpuinuuputoot`) está ativo em `sa-east-1`. As migrations de fundação, índices e RLS estão aplicadas. O commit `3c6a84b` adicionou e aplicou também o marcador administrativo `public.tenants.is_demo`, com valor padrão `false`, índice parcial e teste automatizado. O commit `fd9226f` aplicou as RPCs seguras de workspace; elas usam o JWT do Supabase Auth e não dependem do adaptador MySQL.
 
 A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrigatória e com default `false`. A marcação não altera login, autorização, RLS, tenant isolation nem regras de negócio. O Security Advisor apresentou somente o aviso independente de **proteção contra senhas vazadas desativada** no Supabase Auth; esse controle deve ser habilitado pela administração do projeto antes do lançamento.
 
 ## Estado do runtime
 
-A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Contudo, `server/db.ts`, `server/tenantAccess.ts` e os routers de catálogo, estoque, comercial, operações, financeiro e plataforma continuam consultando o MySQL via Drizzle e IDs numéricos legados.
+A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Os commits `eed2c34` e `b1fbcd7` expõem a identidade Supabase no contexto tRPC e fazem `auth.me` priorizá-la. O commit `2404bc6` adiciona uma camada de autorização Supabase com bloqueio explícito de elevação financeira para atendentes e técnicos. O commit `fd9226f` moveu a Home para as RPCs Supabase de listagem de workspace, criação de tenant, dashboard e notificações. Contudo, `server/db.ts`, `server/tenantAccess.ts` e os routers de catálogo, estoque, comercial, operações, financeiro e plataforma ainda consultam o MySQL via Drizzle e IDs numéricos legados.
 
 > Não inserir a Performance Garage no Supabase até que pelo menos os caminhos de tenancy e os routers que a interface usa estejam migrados. Caso contrário, a aplicação atual não exibirá os dados criados no novo banco.
+
+## Incrementos publicados nesta tarefa
+
+| Commit | Conteúdo | Validação |
+|---|---|---|
+| `3c6a84b` | Marker `tenants.is_demo` no Supabase, índice parcial e teste. | Migração aplicada e coluna conferida no schema. |
+| `548ec30` | Procedure administrativa vinculada ao `platform_role` Supabase. | Teste de regressão aprovado. |
+| `eed2c34` | Identidade Supabase explícita no contexto tRPC. | Testes de contexto aprovados. |
+| `b1fbcd7` | `auth.me` prioriza sessão Supabase. | Tipos e testes de login aprovados. |
+| `2404bc6` | Camada Supabase de tenant access e bloqueio de escalada financeira. | Testes de permissões aprovados. |
+| `fd9226f` | RPCs de workspace e Home conectada a Supabase. | Tipos, 71 arquivos/221 testes e build aprovados. |
 
 ## Sequência de implementação obrigatória
 
