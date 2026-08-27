@@ -2,8 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
-import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
-import { parseWorkspaceQuoteSchedule } from "./supabaseQuoteContract";
+import { getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission } from "../supabaseTenantAccess";
+import { parseWorkspaceAppointmentList, parseWorkspaceQuoteSchedule, parseWorkspaceWorkOrderKanban } from "./supabaseQuoteContract";
 
 const scheduleInput = z.object({
   tenantId: z.number().int().positive(),
@@ -47,6 +47,26 @@ export const supabaseOperationsRouter = router({
     if (error || !data) throw databaseError(error);
     const result = parseWorkspaceQuoteSchedule(data);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O agendamento retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  listAppointments: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), from: z.string().datetime({ offset: true }), to: z.string().datetime({ offset: true }), search: z.string().trim().max(120).optional() })).query(async ({ ctx, input }) => {
+    const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
+    if (!hasSupabasePermission(access, "appointments.manage") && access.membership?.role !== "technician") throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso à operação desta oficina." });
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_appointments", { target_tenant_id: input.tenantId, from_at: input.from, to_at: input.to, search_input: input.search ?? null });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceAppointmentList(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A agenda retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  listYard: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), search: z.string().trim().max(120).optional() })).query(async ({ ctx, input }) => {
+    const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
+    if (!hasSupabasePermission(access, "work_orders.manage") && access.membership?.role !== "technician") throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso ao pátio desta oficina." });
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_work_order_kanban", { target_tenant_id: input.tenantId, search_input: input.search ?? null });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceWorkOrderKanban(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O pátio retornou dados incompatíveis." });
     return result.data;
   }),
 });

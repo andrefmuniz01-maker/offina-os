@@ -163,3 +163,22 @@ export const workspaceQuoteScheduleSchema = z.object({
 export function parseWorkspaceQuoteSchedule(value: unknown) {
   return workspaceQuoteScheduleSchema.safeParse(value);
 }
+
+const operationStatusSchema = z.enum(["scheduled", "confirmed", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed", "delivered", "cancelled"]);
+
+export const workspaceAppointmentListSchema = z.array(z.object({
+  appointment: z.object({ id: z.number().int().positive(), status: operationStatusSchema, scheduledStart: z.string().datetime({ offset: true }), scheduledEnd: z.string().datetime({ offset: true }), bay: z.string().nullable(), assignedToUserId: z.string().uuid().nullable(), workOrderId: z.number().int().positive().nullable() }).strict(),
+  customer: z.object({ name: z.string() }).strict(),
+  vehicle: z.object({ make: z.string(), model: z.string(), plate: z.string().nullable() }).strict(),
+  workOrder: z.object({ id: z.number().int().positive(), number: z.number().int().positive(), status: operationStatusSchema }).strict().nullable(),
+}).strict());
+
+export const workspaceWorkOrderKanbanSchema = z.array(z.object({
+  workOrder: z.object({ id: z.number().int().positive(), number: z.number().int().positive(), status: operationStatusSchema, appointmentId: z.number().int().positive().nullable(), assignedToUserId: z.string().uuid().nullable() }).strict(),
+  customer: z.object({ name: z.string() }).strict(),
+  vehicle: z.object({ make: z.string(), model: z.string(), plate: z.string().nullable() }).strict(),
+  appointment: z.object({ id: z.number().int().positive(), status: operationStatusSchema, scheduledStart: z.string().datetime({ offset: true }), scheduledEnd: z.string().datetime({ offset: true }), bay: z.string().nullable() }).strict().nullable(),
+}).strict());
+
+export function parseWorkspaceAppointmentList(value: unknown) { return workspaceAppointmentListSchema.safeParse(value); }
+export function parseWorkspaceWorkOrderKanban(value: unknown) { return workspaceWorkOrderKanbanSchema.safeParse(value); }
