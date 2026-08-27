@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canViewWorkspaceFinancials, getHomeNavigationContext, getWorkspaceMetrics, getWorkspaceNoTenantState } from "./Home";
+import { canViewWorkspaceFinancials, getHomeNavigationContext, getWorkspaceMetrics, getWorkspaceNoTenantState } from "@/lib/homeWorkspace";
 
 const stats = {
   sales: { billing: 1250, completedOrders: 2 },

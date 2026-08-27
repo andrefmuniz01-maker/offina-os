@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+// Regras reutilizáveis ficam fora do componente para manter a atualização rápida estável.
+import { getHomeNavigationContext, getWorkspaceMetrics, getWorkspaceNoTenantState, type WorkspaceRole } from "@/lib/homeWorkspace";
 import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, ClipboardList, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 const menuItems: DashboardMenuItem[] = [
   { icon: ChartNoAxesCombined, label: "Hoje", path: "/" },
@@ -28,36 +28,6 @@ const menuItems: DashboardMenuItem[] = [
 const platformMenuItems: DashboardMenuItem[] = [
   { icon: ShieldCheck, label: "Plataforma", path: "/plataforma" },
 ];
-
-type WorkspaceRole = "owner" | "admin" | "attendant" | "technician";
-type DashboardStats = {
-  sales?: { billing: number; completedOrders: number };
-  commercial: { pendingQuoteValue: number; pendingQuoteCount: number };
-  operation: { scheduled: number; inProgress: number; yard: number };
-  inventory: { critical: number; reservedProducts: number };
-};
-
-export function canViewWorkspaceFinancials(role: WorkspaceRole) {
-  return role === "owner" || role === "admin";
-}
-
-export function getWorkspaceMetrics(stats: DashboardStats, role: WorkspaceRole) {
-  const operational = [
-    { label: "Orçamentos em aberto", value: money.format(stats.commercial.pendingQuoteValue), detail: `${stats.commercial.pendingQuoteCount} oportunidade(s) aguardando` },
-    { label: "Operação em andamento", value: String(stats.operation.inProgress), detail: `${stats.operation.yard} veículo(s) no pátio` },
-    { label: "Estoque crítico", value: String(stats.inventory.critical), detail: `${stats.inventory.reservedProducts} produto(s) com reserva` },
-  ];
-  if (!canViewWorkspaceFinancials(role) || !stats.sales) return operational;
-  return [{ label: "Faturamento recebido", value: money.format(stats.sales.billing), detail: `${stats.sales.completedOrders} OS concluída(s) no período` }, ...operational];
-}
-
-export function getWorkspaceNoTenantState(platformRole?: string | null) {
-  return platformRole === "super_admin" ? "platform" : "membership_missing";
-}
-
-export function getHomeNavigationContext(platformRole?: string | null) {
-  return platformRole === "super_admin" ? "platform" : "workspace";
-}
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
   return <Card className="border-slate-200 shadow-none"><CardContent className="p-5"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p><p className="mt-3 text-2xl font-semibold tabular-nums tracking-tight text-slate-950">{value}</p><p className="mt-1.5 text-sm text-slate-500">{detail}</p></CardContent></Card>;

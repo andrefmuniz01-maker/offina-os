@@ -113,6 +113,8 @@
 - [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
 - [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
 - [x] Remover a exportação incompatível do painel de acesso extraindo helpers de mensagens, sem mudar o fluxo Supabase de e-mail/senha.
+- [x] Remover a exportação incompatível da Home extraindo a regra de visibilidade financeira, sem alterar o RBAC financeiro.
+- [x] Validar após a extração da Home a ausência de novo aviso Fast Refresh para `canViewWorkspaceFinancials` e executar regressão integral.
 - [ ] Migrar o intake público para a RPC Supabase antes de mover anexos, evitando dois caminhos de gravação.
 - [ ] Criar capacidade efêmera de upload e policies mínimas para anexos públicos em bucket Supabase privado, com limites de MIME, tamanho, escopo e expiração.
 - [ ] Implementar rate limiting persistido por tenant, contato e impressão de IP no intake Supabase, com testes de concorrência e expiração.
