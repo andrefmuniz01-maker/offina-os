@@ -33,7 +33,7 @@ O produto já concentra a operação em uma navegação curta. Para usuários de
 | Catálogo | `Catalog`, `CatalogItems`, `Categories` | produtos, serviços, categorias e composição | `workspaceCatalog`; Supabase. Routers `catalog` continuam como ponte para consumidores legados. |
 | Clientes e veículos | `Clients` em `/clientes` | lista paginada, veículos, histórico e cadastro de veículo | `workspaceCustomers` e `workspaceVehicles`; Supabase. |
 | Financeiro | `Finance` em `/financeiro` | resumo, receitas, despesas, recebimento | Demo usa `workspaceFinance` e dashboard Supabase tenant-scoped; fora dela, a ponte financeira legada permanece. |
-| Equipe | `Team` em `/equipe` | listar, vincular usuário existente e atualizar papel | Demo lê `tenant_members`/`profiles` reais via Supabase e não cria identidades fictícias; mutações continuam restritas. |
+| Equipe | `Team` em `/equipe` | listar membros e papéis efetivos | Todos os tenants usam `workspaceManagement.team.list` no Supabase, sob `tenant.manage` e contrato estrito. A interface é somente leitura: não cria identidades, vínculos, alterações de papel ou ativações. |
 | Configurações | `Settings` em `/configuracoes` | dados da oficina e identidade visual | Demo usa `workspaceManagement` Supabase para settings e branding; fora dela, a ponte legada permanece. |
 | Notificações | `Notifications` em `/notificacoes` | listar, marcar como lida e preferências | Demo usa `workspaceManagement` Supabase com paginação, preferências e leitura. |
 | Auditoria e relatórios | `Audit`, `Reports` | histórico e indicadores mensais | Demo usa `workspaceManagement` Supabase como leitura tenant-scoped; mutações globais continuam fora do escopo. |
@@ -77,7 +77,7 @@ As evidências de runtime mostraram que a consulta global do painel recebeu erro
 | P0 | Redirecionamento por erro não específico de autenticação | Remover o redirecionamento global por qualquer erro de query/mutation; cobrir com teste de regressão e validar sessão real. |
 | P0 | Intake/anexos públicos fora do tenant Demo | Concluir a migração geral mantendo o preview/intake da Demo limitado ao slug permitido, capacidade temporária e controles persistidos. |
 | P0 | Consumidores MySQL remanescentes fora do fluxo comercial e operacional migrado | Concluir o corte de cada módulo sem misturar IDs de origem e Supabase; solicitação → orçamento → aprovação/reserva → agenda → OS → consumo já possui caminho Supabase versionado. |
-| P1 | Administração de equipe/configurações | Migrar membership e configurações ao Supabase com RLS antes de expor novas mutações administrativas. |
+| P1 | Administração de equipe/configurações | A leitura de equipe já usa Supabase com autorização por tenant; migrar mutações somente após contratos, RLS, auditoria e fluxo administrativo aprovados. |
 | P1 | Financeiro e relatórios fora da Demo | Substituir o router legado apenas com permissões validadas no servidor e testes de isolamento; a Demo já usa a leitura Supabase. |
 | P1 | Plataforma global | Preservar leitura até que a autorização deixe de depender de usuário MySQL transitório. |
 

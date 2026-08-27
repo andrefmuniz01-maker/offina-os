@@ -6,6 +6,36 @@ import { requireSupabaseTenantPermission, getSupabaseTenantAccess, hasSupabasePe
 
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
 
+const workspaceTeamPermission = z.enum([
+  "tenant.manage",
+  "team.manage",
+  "customers.manage",
+  "catalog.manage",
+  "inventory.manage",
+  "purchases.manage",
+  "quotes.manage",
+  "appointments.manage",
+  "work_orders.manage",
+  "work_orders.execute",
+  "financial.view",
+  "financial.manage",
+  "reports.view",
+]);
+
+const workspaceTeamListSchema = z.array(z.object({
+  member: z.object({
+    userId: z.string().uuid(),
+    role: z.enum(["owner", "admin", "attendant", "technician"]),
+    permissions: z.array(workspaceTeamPermission).nullable(),
+    active: z.boolean(),
+  }).strict(),
+  user: z.object({
+    id: z.string().uuid(),
+    name: z.string().nullable(),
+    email: z.string().email().nullable(),
+  }).strict(),
+}).strict());
+
 function databaseError(error: { code?: string | null; message?: string | null } | null) {
   if (error?.code === "42501") return new TRPCError({ code: "FORBIDDEN", message: error.message ?? "Seu perfil não possui acesso a esta oficina." });
   if (error?.code === "P0002") return new TRPCError({ code: "NOT_FOUND", message: error.message ?? "Registro não encontrado nesta oficina." });
@@ -85,7 +115,9 @@ export const supabaseManagementRouter = router({
       await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_list_team_members", { target_tenant_id: input.tenantId });
       if (error) throw databaseError(error);
-      return (data ?? []) as Array<{ member: { userId: string; role: string; permissions: string[] | null; active: boolean }; user: { id: string; name: string | null; email: string | null } }>;
+      const result = workspaceTeamListSchema.safeParse(data ?? []);
+      if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A equipe retornou dados incompatíveis." });
+      return result.data;
     }),
   }),
 

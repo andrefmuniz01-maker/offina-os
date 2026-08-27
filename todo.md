@@ -204,3 +204,6 @@
 - [x] Migrar detalhe e execução de OS para Supabase, com checklist, transições auditadas e consumo apenas de reserva ativa, sem financeiro automático.
 - [x] Reconciliar e bloquear migrations Supabase aplicadas fora do repositório que expunham rotinas de OS ou dashboard sem fonte versionada.
 - [x] Reconciliar as migrations remotas 0044–0045 já aplicadas, restaurando a projeção mínima de OS e bloqueando apontamentos até haver contrato privado aprovado.
+- [x] Migrar a leitura de equipe e permissões para Supabase em todos os tenants, mantendo o módulo somente leitura até autorização explícita para vínculos ou alterações de papel.
+- [x] Inventariar e comparar o conteúdo enviado da Oficina Demo com o projeto atual, sem copiar código, dados ou migrations até revisão incremental explícita.
+- [x] Integrar apenas componentes compatíveis da Oficina Demo e publicar em produção somente após validação, sem aplicar seeds ou identidades fictícias.
