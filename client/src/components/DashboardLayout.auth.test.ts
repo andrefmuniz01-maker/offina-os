@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "./DashboardLayout";
+import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
 
 describe("getPasswordAuthErrorMessage", () => {
   it("explica o limite temporário de envio sem expor detalhes internos", () => {
