@@ -55,3 +55,82 @@ describe("workspaceOperations.scheduleFromApprovedQuote", () => {
     expect(JSON.stringify(yard)).not.toContain("estimatedCost");
   });
 });
+
+describe("workspaceOperations.workOrderDetail e execução", () => {
+  const workOrderInput = { tenantId: 4, workOrderId: 51 };
+  const detail = {
+    order: { id: 51, number: 14, status: "received", notes: null, assignedToUserId: user.id },
+    items: [{ id: 6, description: "Instalação", itemType: "service", quantity: 1 }],
+    checklist: [{ id: 9, label: "Conferir instalação", completed: false }],
+    reservations: [{ id: 12, description: "Junta de escape", quantity: 2 }],
+  };
+
+  beforeEach(() => {
+    mocks.rpc.mockReset();
+    mocks.permission.mockReset();
+    mocks.access.mockReset();
+    mocks.permission.mockResolvedValue({});
+    mocks.access.mockResolvedValue({ membership: { role: "attendant" }, permissions: ["work_orders.manage"] });
+  });
+
+  it("requer sessão Supabase antes de consultar uma OS", async () => {
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: null } as never);
+    await expect(caller.workOrderDetail(workOrderInput)).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.access).not.toHaveBeenCalled();
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("consulta o detalhe mínimo da OS com IDs de tenant e OS, sem projetar campos financeiros", async () => {
+    mocks.rpc.mockResolvedValue({ data: detail, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.workOrderDetail(workOrderInput)).resolves.toEqual(detail);
+    expect(mocks.access).toHaveBeenCalledWith(user, 4);
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_work_order_detail", { target_tenant_id: 4, target_work_order_id: 51 });
+    expect(JSON.stringify(detail)).not.toMatch(/cost|margin|unitPrice|whatsapp/i);
+  });
+
+  it("rejeita detalhe incompatível que tente expor custo, margem, contato ou saldo de estoque", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...detail, order: { ...detail.order, estimatedCost: 100 } }, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.workOrderDetail(workOrderInput)).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("delegará ao banco a atribuição explícita de técnico e traduz a negação de acesso", async () => {
+    mocks.access.mockResolvedValue({ membership: { role: "technician" }, permissions: ["work_orders.execute"] });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "Ordem de serviço indisponível para o seu perfil." } });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.workOrderDetail(workOrderInput)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_work_order_detail", { target_tenant_id: 4, target_work_order_id: 51 });
+  });
+
+  it("altera checklist somente pelo identificador do checklist e pelo estado booleano", async () => {
+    mocks.rpc.mockResolvedValue({ data: { success: true }, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.toggleWorkOrderChecklist({ tenantId: 4, checklistId: 9, completed: true })).resolves.toEqual({ success: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_toggle_work_order_checklist", { target_tenant_id: 4, target_checklist_id: 9, completed_input: true });
+  });
+
+  it("encaminha a transição de status e converte conflito operacional sem criar efeitos financeiros", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { success: true, status: "diagnosis" }, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.updateWorkOrderStatus({ ...workOrderInput, status: "diagnosis" })).resolves.toEqual({ success: true, status: "diagnosis" });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("workspace_update_work_order_status", { target_tenant_id: 4, target_work_order_id: 51, next_status_input: "diagnosis", notes_input: null });
+
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Saldo reservado incompatível." } });
+    await expect(caller.updateWorkOrderStatus({ ...workOrderInput, status: "delivered" })).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("consome exclusivamente uma reserva ativa, sem productId, preço, custo ou saldo no contrato", async () => {
+    mocks.rpc.mockResolvedValue({ data: { success: true }, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.consumeWorkOrderReservation({ ...workOrderInput, reservationId: 12, quantity: 1 })).resolves.toEqual({ success: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_consume_work_order_reservation", { target_tenant_id: 4, target_work_order_id: 51, target_reservation_id: 12, quantity_input: 1 });
+    await expect(caller.consumeWorkOrderReservation({ ...workOrderInput, reservationId: 12, quantity: 1, productId: 44 } as never)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejeita respostas de mutação com campos não autorizados", async () => {
+    mocks.rpc.mockResolvedValue({ data: { success: true, unitCost: 75 }, error: null });
+    const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
+    await expect(caller.consumeWorkOrderReservation({ ...workOrderInput, reservationId: 12, quantity: 1 })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+});

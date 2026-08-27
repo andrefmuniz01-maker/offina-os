@@ -166,6 +166,51 @@ export function parseWorkspaceQuoteSchedule(value: unknown) {
 
 const operationStatusSchema = z.enum(["scheduled", "confirmed", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed", "delivered", "cancelled"]);
 
+const workspaceWorkOrderItemSchema = z.object({
+  id: z.number().int().positive(),
+  description: z.string().min(1),
+  itemType: z.enum(["service", "product", "kit"]),
+  quantity: z.number().positive(),
+}).strict();
+
+const workspaceWorkOrderChecklistSchema = z.object({
+  id: z.number().int().positive(),
+  label: z.string().min(1),
+  completed: z.boolean(),
+}).strict();
+
+const workspaceWorkOrderReservationSchema = z.object({
+  id: z.number().int().positive(),
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+}).strict();
+
+export const workspaceWorkOrderDetailSchema = z.object({
+  order: z.object({
+    id: z.number().int().positive(),
+    number: z.number().int().positive(),
+    status: operationStatusSchema,
+    notes: z.string().nullable(),
+    assignedToUserId: z.string().uuid().nullable(),
+  }).strict(),
+  items: z.array(workspaceWorkOrderItemSchema),
+  checklist: z.array(workspaceWorkOrderChecklistSchema),
+  reservations: z.array(workspaceWorkOrderReservationSchema),
+}).strict();
+
+export const workspaceWorkOrderChecklistUpdateSchema = z.object({
+  success: z.literal(true),
+}).strict();
+
+export const workspaceWorkOrderStatusUpdateSchema = z.object({
+  success: z.literal(true),
+  status: operationStatusSchema,
+}).strict();
+
+export const workspaceWorkOrderReservationConsumptionSchema = z.object({
+  success: z.literal(true),
+}).strict();
+
 export const workspaceAppointmentListSchema = z.array(z.object({
   appointment: z.object({ id: z.number().int().positive(), status: operationStatusSchema, scheduledStart: z.string().datetime({ offset: true }), scheduledEnd: z.string().datetime({ offset: true }), bay: z.string().nullable(), assignedToUserId: z.string().uuid().nullable(), workOrderId: z.number().int().positive().nullable() }).strict(),
   customer: z.object({ name: z.string() }).strict(),
@@ -182,3 +227,7 @@ export const workspaceWorkOrderKanbanSchema = z.array(z.object({
 
 export function parseWorkspaceAppointmentList(value: unknown) { return workspaceAppointmentListSchema.safeParse(value); }
 export function parseWorkspaceWorkOrderKanban(value: unknown) { return workspaceWorkOrderKanbanSchema.safeParse(value); }
+export function parseWorkspaceWorkOrderDetail(value: unknown) { return workspaceWorkOrderDetailSchema.safeParse(value); }
+export function parseWorkspaceWorkOrderChecklistUpdate(value: unknown) { return workspaceWorkOrderChecklistUpdateSchema.safeParse(value); }
+export function parseWorkspaceWorkOrderStatusUpdate(value: unknown) { return workspaceWorkOrderStatusUpdateSchema.safeParse(value); }
+export function parseWorkspaceWorkOrderReservationConsumption(value: unknown) { return workspaceWorkOrderReservationConsumptionSchema.safeParse(value); }

@@ -1,9 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import type { SupabaseSessionUser } from "../_core/context";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission } from "../supabaseTenantAccess";
-import { parseWorkspaceAppointmentList, parseWorkspaceQuoteSchedule, parseWorkspaceWorkOrderKanban } from "./supabaseQuoteContract";
+import {
+  parseWorkspaceAppointmentList,
+  parseWorkspaceQuoteSchedule,
+  parseWorkspaceWorkOrderChecklistUpdate,
+  parseWorkspaceWorkOrderDetail,
+  parseWorkspaceWorkOrderKanban,
+  parseWorkspaceWorkOrderReservationConsumption,
+  parseWorkspaceWorkOrderStatusUpdate,
+} from "./supabaseQuoteContract";
 
 const scheduleInput = z.object({
   tenantId: z.number().int().positive(),
@@ -15,18 +24,46 @@ const scheduleInput = z.object({
   notes: z.string().trim().max(4000).optional(),
 });
 
-function clientFor(user: { accessToken: string } | null) {
+const workOrderReferenceInput = z.object({
+  tenantId: z.number().int().positive(),
+  workOrderId: z.number().int().positive(),
+}).strict();
+
+const workOrderChecklistInput = z.object({
+  tenantId: z.number().int().positive(),
+  checklistId: z.number().int().positive(),
+  completed: z.boolean(),
+}).strict();
+
+const workOrderStatusInput = workOrderReferenceInput.extend({
+  status: z.enum(["scheduled", "confirmed", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed", "delivered", "cancelled"]),
+  notes: z.string().trim().max(4000).optional(),
+}).strict();
+
+const workOrderConsumptionInput = workOrderReferenceInput.extend({
+  reservationId: z.number().int().positive(),
+  quantity: z.number().finite().positive().max(1000000),
+}).strict();
+
+function clientFor(user: SupabaseSessionUser | null) {
   if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "Autenticação Supabase obrigatória." });
   return createSupabaseClient(user.accessToken);
 }
 
 function databaseError(error: { code?: string | null; message?: string | null } | null) {
-  if (error?.code === "42501") return new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para agendar nesta oficina." });
-  if (error?.code === "22023") return new TRPCError({ code: "BAD_REQUEST", message: error.message ?? "Dados de agendamento inválidos." });
-  if (error?.code === "P0002") return new TRPCError({ code: "NOT_FOUND", message: error.message ?? "Proposta aprovada não encontrada nesta oficina." });
-  if (error?.code === "23505") return new TRPCError({ code: "CONFLICT", message: "Esta proposta já possui um agendamento." });
+  if (error?.code === "42501") return new TRPCError({ code: "FORBIDDEN", message: error.message ?? "Seu perfil não possui permissão para esta operação nesta oficina." });
+  if (error?.code === "22023") return new TRPCError({ code: "BAD_REQUEST", message: error.message ?? "Dados operacionais inválidos." });
+  if (error?.code === "P0002") return new TRPCError({ code: "NOT_FOUND", message: error.message ?? "Registro operacional não encontrado nesta oficina." });
+  if (error?.code === "23505") return new TRPCError({ code: "CONFLICT", message: "Este registro já possui uma operação relacionada." });
   if (error?.code === "P0001" || error?.code === "40001") return new TRPCError({ code: "CONFLICT", message: error.message ?? "O registro foi alterado em outra sessão. Atualize a tela e tente novamente." });
-  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível criar o agendamento agora." });
+  return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível concluir esta operação agora." });
+}
+
+async function requireWorkOrderAccess(user: SupabaseSessionUser, tenantId: number) {
+  const access = await getSupabaseTenantAccess(user, tenantId);
+  if (!hasSupabasePermission(access, "work_orders.manage") && access.membership?.role !== "technician") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso à ordem de serviço desta oficina." });
+  }
 }
 
 export const supabaseOperationsRouter = router({
@@ -70,49 +107,56 @@ export const supabaseOperationsRouter = router({
     return result.data;
   }),
 
-  workOrders: router({
-    detail: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive() })).query(async ({ ctx, input }) => {
-      const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
-      if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso à OS desta oficina." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_work_order_detail", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId });
-      if (error || !data) throw databaseError(error);
-      return data as {
-        order: { id: number; tenantId: number; number: number; quoteId: number | null; appointmentId: number | null; customerId: number; vehicleId: number; status: string; assignedToUserId: string | null; estimatedTotal: number | string; notes: string | null; completedAt: string | null; deliveredAt: string | null; createdAt: string };
-        items: Array<{ id: number; workOrderId: number; productId: number | null; serviceId: number | null; description: string; itemType: string; quantity: number | string; unitPrice: number | string }>;
-        checklist: Array<{ id: number; label: string; completed: boolean; completedAt: string | null; sortOrder: number }>;
-        consumption: Array<{ id: number; workOrderId: number; productId: number; reservationId: number | null; quantity: number | string; createdAt: string }>;
-        reservations: Array<{ id: number; productId: number; quoteId: number | null; workOrderId: number | null; quantity: number | string; status: string }>;
-        executionAttachments: Array<{ id: number; filename: string; mimeType: string; sizeBytes: number; url: string | null; createdAt: string }>;
-        notes: Array<{ id: number; body: string; createdAt: string }>;
-      };
-    }),
-    updateStatus: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive(), status: z.enum(["scheduled", "received", "diagnosis", "awaiting_approval", "awaiting_part", "in_service", "completed", "delivered", "cancelled"]), notes: z.string().max(4000).optional() })).mutation(async ({ ctx, input }) => {
-      const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
-      if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para atualizar a OS." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_update_work_order_status", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId, next_status: input.status, notes_input: input.notes ?? null });
-      if (error || !data) throw databaseError(error);
-      return data as { success: true; status: string; idempotent?: boolean };
-    }),
-    toggleChecklist: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), checklistId: z.number().int().positive(), completed: z.boolean() })).mutation(async ({ ctx, input }) => {
-      const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
-      if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para atualizar o checklist." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_toggle_work_order_checklist", { target_tenant_id: input.tenantId, target_checklist_id: input.checklistId, completed_input: input.completed });
-      if (error || !data) throw databaseError(error);
-      return data as { success: true };
-    }),
-    consumeProduct: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive(), productId: z.number().int().positive().optional(), quantity: z.coerce.number().positive(), reservationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-      const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
-      if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para registrar consumo." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_consume_work_order_reservation", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId, target_reservation_id: input.reservationId, quantity_input: input.quantity });
-      if (error || !data) throw databaseError(error);
-      return data as { success: true };
-    }),
-    addNote: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), workOrderId: z.number().int().positive(), body: z.string().trim().min(1).max(4000) })).mutation(async ({ ctx, input }) => {
-      const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
-      if (!hasSupabasePermission(access, "work_orders.manage") && !hasSupabasePermission(access, "work_orders.execute")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui permissão para adicionar apontamentos." });
-      const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_add_work_order_note", { target_tenant_id: input.tenantId, target_work_order_id: input.workOrderId, body_input: input.body });
-      if (error || !data) throw databaseError(error);
-      return data as { id: number };
-    }),
+  workOrderDetail: supabaseProtectedProcedure.input(workOrderReferenceInput).query(async ({ ctx, input }) => {
+    await requireWorkOrderAccess(ctx.supabaseUser!, input.tenantId);
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_work_order_detail", {
+      target_tenant_id: input.tenantId,
+      target_work_order_id: input.workOrderId,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceWorkOrderDetail(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A ordem de serviço retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  toggleWorkOrderChecklist: supabaseProtectedProcedure.input(workOrderChecklistInput).mutation(async ({ ctx, input }) => {
+    await requireWorkOrderAccess(ctx.supabaseUser!, input.tenantId);
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_toggle_work_order_checklist", {
+      target_tenant_id: input.tenantId,
+      target_checklist_id: input.checklistId,
+      completed_input: input.completed,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceWorkOrderChecklistUpdate(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O checklist retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  updateWorkOrderStatus: supabaseProtectedProcedure.input(workOrderStatusInput).mutation(async ({ ctx, input }) => {
+    await requireWorkOrderAccess(ctx.supabaseUser!, input.tenantId);
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_update_work_order_status", {
+      target_tenant_id: input.tenantId,
+      target_work_order_id: input.workOrderId,
+      next_status_input: input.status,
+      notes_input: input.notes ?? null,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceWorkOrderStatusUpdate(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A atualização de status retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  consumeWorkOrderReservation: supabaseProtectedProcedure.input(workOrderConsumptionInput).mutation(async ({ ctx, input }) => {
+    await requireWorkOrderAccess(ctx.supabaseUser!, input.tenantId);
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_consume_work_order_reservation", {
+      target_tenant_id: input.tenantId,
+      target_work_order_id: input.workOrderId,
+      target_reservation_id: input.reservationId,
+      quantity_input: input.quantity,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceWorkOrderReservationConsumption(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O consumo retornou dados incompatíveis." });
+    return result.data;
   }),
 });
