@@ -63,6 +63,8 @@ As chamadas do aplicativo são expostas por tRPC sob `/api/trpc`. Os contratos e
 
 ## Qualidade e publicação
 
+Antes de escolher um provedor ou publicar o serviço, leia o [handoff para produção](docs/production-handoff.md), que reúne ambiente, Supabase, secrets, smoke tests, limitações atuais e rollback.
+
 Execute os três comandos abaixo antes de qualquer publicação ou merge:
 
 ```bash
