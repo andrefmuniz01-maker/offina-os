@@ -1,6 +1,6 @@
 # Handoff — cutover funcional para Supabase
 
-**Atualizado em 26 de agosto de 2026.** Este documento coordena as tarefas que trabalham no repositório `andrefmuniz01-maker/offina-os` após a adoção de Supabase como arquitetura-alvo.
+**Atualizado em 27 de agosto de 2026.** Este documento coordena as tarefas que trabalham no repositório `andrefmuniz01-maker/offina-os` após a adoção de Supabase como arquitetura-alvo.
 
 ## Estado confirmado
 
@@ -33,7 +33,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `1788d90` | Catálogo, fornecedores, produtos, serviços, kits, estoque, previsão e compras migrados sob `workspaceCatalog`/`workspaceInventory`. | Migrations `0014`–`0016` aplicadas, ACLs diretas de tabelas sensíveis revogadas, Advisor sem novos avisos e 87 arquivos/261 testes aprovados. |
 | `7db5d3b` | Oficina Demo interna `Performance Garage` provisionada no Supabase e tela `/demo-interna` exclusiva de Super Admin. | Tenant `performance-garage` ativo com `is_demo=true`, zero membros de tenant, 3 produtos/saldos, 2 serviços, 1 kit, 2 clientes/veículos e 1 compra; catálogo público bloqueado, reset incremental auditado e negação a perfil não administrativo confirmada. A simulação posterior confirmou cinco negações para usuário autenticado não administrativo e cinco permissões para Super Admin. |
 | `0f55804` | Intake público movido para `publicIntake`, com envio direto ao Supabase Storage privado. | Bucket `quote-request-attachments` privado, limites de 5 MB/MIME, capacidade opaca de 10 minutos por solicitação, throttle persistido por contato/origem, sem RPC pública de criação/finalização e sem leitura anônima. Advisor não registrou alerta novo. |
-| `pendente de publicação` | Fila interna de solicitações migrada para `workspaceQuoteRequests`. | Listagem paginada, busca, histórico, atribuição e transições usam RPCs Supabase auditadas; Super Admin, owner/admin/atendente são autorizados e tenant demo continua exclusivo de Super Admin. A geração de orçamento foi explicitamente desabilitada nesta tela até o próximo corte, evitando misturar IDs Supabase e MySQL. |
+| `c3236f7` | Preparação comercial Supabase a partir da solicitação interna. | As migrations `0024`–`0025` exigem tenant ativo em `trial`/`active` nos guardas internos e permitem ao Super Admin operar a demo somente nesse contexto. A fila pode revisar cliente, veículo, serviço, preço de venda e sinal de disponibilidade da mesma solicitação/tenant, sem custo, margem, proposta persistida, token público, reserva, agenda, OS ou lançamento financeiro. Contratos Zod, tipos, 109 arquivos de teste/331 testes e build aprovados. |
 
 ## Sequência de implementação obrigatória
 
@@ -43,7 +43,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | 2 | Migrar os endpoints remanescentes do Painel de Super Admin em `platform.ts`. | Planos, usuários, auditoria, relatórios e gestão global usam Supabase sob RLS. |
 | 3 | Migrar os endpoints de tenant remanescentes em `tenantAccess.ts` e `platform.ts`. | Branding, configurações, equipe e auditoria interna usam Supabase e IDs UUID. |
 | 4 | Migrar catálogo, fornecedores, produtos, serviços, kits, estoque e compras. | **Concluído para as telas de workspace.** As migrations `0014`–`0016` aplicaram RPCs auditadas, projeções sem custo para perfis restritos, previsão e recebimento com custo médio. Routers legados persistem como ponte, sem compartilhar o namespace Supabase. |
-| 5 | Conectar o intake público e migrar a fila interna de solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | O formulário público, anexos privados e a fila interna de solicitações já usam Supabase. **Pendente:** migrar sugestão, criação, aprovação e reserva de orçamento para que toda a cadeia comercial funcione no PostgreSQL. |
+| 5 | Conectar o intake público e migrar a fila interna de solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | O formulário público, anexos privados, fila interna e a **preparação somente-leitura** de composição já usam Supabase. **Pendente:** criar rascunho transacional auditado, editar itens/preços com controle de permissão, envio/decisão segura e aprovação que reserve estoque antes de liberar agenda/OS. |
 | 6 | Migrar agenda, OS, consumo e financeiro. | Fluxo operacional completo não depende de MySQL; a baixa de reserva/consumo precisa preservar `físico >= reservado`. |
 | 7 | Migrar consumidores legados restantes e eliminar o adaptador MySQL. | Comercial, operações, plataforma, configurações e todos os routers usam Supabase sob RLS. |
 | 8 | Implementar seed/reset da Performance Garage. | **Concluído para o escopo incremental.** Tenant interno Supabase-only, dados de catálogo/estoque/compras/clientes/veículos, reset auditado e interface exclusiva de Super Admin foram validados. Não semear ainda solicitações, orçamentos, reservas, agenda, OS, consumo ou financeiro. |
@@ -67,4 +67,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **105 arquivos de teste aprovados, 1 ignorado e 314 testes aprovados**. A divisão de rotas não críticas reduziu o JavaScript inicial de **1.146.750 bytes para 740.140 bytes** (aproximadamente 35%); cada página não crítica passou a ser carregada sob demanda. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado. Permanece apenas o aviso de chunk inicial acima de 500 kB.
+Resultado integrado mais recente: **109 arquivos de teste aprovados, 1 ignorado e 331 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.
