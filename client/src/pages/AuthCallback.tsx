@@ -4,8 +4,10 @@ import { LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
-export function getPostLoginPath(platformRole: string | null | undefined) {
-  return platformRole === "super_admin" ? "/plataforma" : "/";
+export function getPostLoginPath(_platformRole: string | null | undefined) {
+  // A Home já usa o workspace Supabase. O Painel de Plataforma permanece em
+  // migração e não deve ser o destino automático até abandonar o MySQL legado.
+  return "/";
 }
 
 export function isValidPassword(password: string) {

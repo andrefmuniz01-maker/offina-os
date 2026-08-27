@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { getPostLoginPath, isValidPassword } from "./AuthCallback";
 
 describe("getPostLoginPath", () => {
-  it("direciona Super Admin ao painel global", () => {
-    expect(getPostLoginPath("super_admin")).toBe("/plataforma");
+  it("direciona Super Admin à Home Supabase enquanto o painel global é migrado", () => {
+    expect(getPostLoginPath("super_admin")).toBe("/");
   });
 
   it("mantém os demais perfis no início da operação", () => {

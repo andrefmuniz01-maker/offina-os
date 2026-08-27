@@ -6,12 +6,14 @@ import { inventoryRouter } from "./routers/inventory";
 import { quoteRequestRouter, quoteRouter } from "./routers/quotes";
 import { appointmentRouter, workOrderRouter } from "./routers/operations";
 import { dashboardRouter, financialRouter, notificationRouter } from "./routers/management";
+import { supabaseWorkspaceRouter } from "./routers/supabaseWorkspace";
+import { supabaseCustomerRouter, supabaseVehicleRouter } from "./routers/supabaseCustomers";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => opts.ctx.supabaseUser ?? opts.ctx.user),
     logout: publicProcedure.mutation(() => {
       return {
         success: true,
@@ -20,6 +22,9 @@ export const appRouter = router({
   }),
   platform: platformRouter,
   tenant: tenantRouter,
+  workspace: supabaseWorkspaceRouter,
+  workspaceCustomers: supabaseCustomerRouter,
+  workspaceVehicles: supabaseVehicleRouter,
   customers: customerRouter,
   vehicles: vehicleRouter,
   catalog: catalogRouter,
