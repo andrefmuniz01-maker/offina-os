@@ -189,3 +189,7 @@ Falhas inesperadas ao aprovar ou recusar um orçamento por link público agora m
 ## 27/08/2026 — RBAC Supabase sem elevação por configuração
 
 Permissões customizadas de atendente e técnico agora são limitadas ao conjunto próprio de cada papel. Assim, uma configuração indevida não concede gestão de equipe, tenant, OS administrativa ou financeiro a perfis restritos. A cobertura valida a retirada de permissões financeiras, o bloqueio de controles administrativos para técnico e a negação de operações globais a quem não é Super Admin. Tipos e a suíte integral aprovaram 108 arquivos de teste, 322 testes e uma suíte ignorada.
+
+## 27/08/2026 — Contexto Supabase sem fallback implícito
+
+O contexto autenticado foi coberto contra dois casos de negação antes da ponte MySQL: token sem identidade Supabase válida e identidade sem profile correspondente. Em ambos, `user` e `supabaseUser` permanecem nulos, sem consulta ao usuário legado. A suíte integral aprovou 108 arquivos de teste, 323 testes e uma suíte ignorada.

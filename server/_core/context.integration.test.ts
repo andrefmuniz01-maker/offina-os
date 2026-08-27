@@ -51,6 +51,18 @@ describe("createContext com Supabase", () => {
     const context = await createContext(options());
 
     expect(context.user).toBeNull();
+    expect(context.supabaseUser).toBeNull();
+    expect(db.getUserByEmail).not.toHaveBeenCalled();
+  });
+
+  it("não materializa contexto quando o token não identifica uma sessão Supabase válida", async () => {
+    vi.mocked(getSupabaseAuthUser).mockResolvedValue(null);
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(context.supabaseUser).toBeNull();
+    expect(getSupabaseProfile).not.toHaveBeenCalled();
     expect(db.getUserByEmail).not.toHaveBeenCalled();
   });
 
@@ -64,6 +76,7 @@ describe("createContext com Supabase", () => {
     const context = await createContext(options());
 
     expect(context.user).toBeNull();
+    expect(context.supabaseUser).toBeNull();
     expect(db.getUserByEmail).not.toHaveBeenCalled();
   });
 
