@@ -18,7 +18,7 @@ type WorkspaceRow = {
 };
 
 type DashboardOverview = {
-  sales: {
+  sales?: {
     billing: number | string;
     expectedRevenue: number | string;
     averageTicket: number | string;
@@ -79,13 +79,17 @@ function numeric(value: number | string) {
 
 function mapDashboard(value: DashboardOverview) {
   return {
-    sales: {
-      billing: numeric(value.sales.billing),
-      expectedRevenue: numeric(value.sales.expectedRevenue),
-      averageTicket: numeric(value.sales.averageTicket),
-      completedOrders: Number(value.sales.completedOrders ?? 0),
-      quoteApprovalRate: numeric(value.sales.quoteApprovalRate),
-    },
+    ...(value.sales
+      ? {
+          sales: {
+            billing: numeric(value.sales.billing),
+            expectedRevenue: numeric(value.sales.expectedRevenue),
+            averageTicket: numeric(value.sales.averageTicket),
+            completedOrders: Number(value.sales.completedOrders ?? 0),
+            quoteApprovalRate: numeric(value.sales.quoteApprovalRate),
+          },
+        }
+      : {}),
     ...(value.finance
       ? {
           finance: {

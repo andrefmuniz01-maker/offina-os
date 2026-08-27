@@ -118,3 +118,4 @@
 - [x] Impedir que o Super Admin crie tenants pela Home operacional; direcionar a identidade global ao ambiente Platform em modo leitura.
 - [x] Remover o identificador interno da oficina do catálogo público nos caminhos transitório e Supabase, mantendo o slug como chave externa.
 - [x] Exibir ao Super Admin exclusivamente a navegação Platform, mesmo quando houver vínculo operacional transitório, para evitar mistura de contextos.
+- [x] Remover métricas financeiras da resposta de dashboard para atendentes e técnicos, garantindo a proteção no banco e não apenas na interface.

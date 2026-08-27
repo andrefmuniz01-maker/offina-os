@@ -38,6 +38,10 @@ A migration `20260827_0013_remove_public_tenant_id.sql` foi aplicada ao projeto 
 
 As migrations de catálogo e estoque integradas (`20260827_0014`, `20260827_0015` e `20260827_0016`) já estavam aplicadas no projeto por uma tarefa paralela. A nova consulta ao Security Advisor retorna somente três advertências: as duas RPCs públicas intencionais do fluxo anônimo — catálogo comercial e envio de solicitação — e a proteção contra senhas vazadas, que é um recurso pago no plano atual. Não há advertências novas para catálogo interno, estoque ou compras.
 
+## Projeção financeira na central do dia
+
+A migration `20260827_0017_dashboard_financial_projection.sql` foi aplicada para que o `workspace_dashboard_overview` não calcule nem devolva `sales` ou `finance` a atendentes e técnicos. A verificação direta confirmou que a função permanece `SECURITY INVOKER`, conserva `EXECUTE` somente para `authenticated` e contém a guarda `if can_view_finance then`. A interface passa a tratar a ausência desses blocos como uma restrição de permissão, não como valores financeiros zerados.
+
 ## Referências
 
 [1]: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable "Supabase Database Linter — Public Can Execute SECURITY DEFINER Function"

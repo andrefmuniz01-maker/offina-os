@@ -22,6 +22,11 @@ describe("central operacional do workspace", () => {
     expect(getWorkspaceMetrics(stats, "technician")).toHaveLength(3);
   });
 
+  it("não interpreta a ausência de vendas como zero quando o banco oculta finanças", () => {
+    const statsWithoutSales = { ...stats, sales: undefined };
+    expect(getWorkspaceMetrics(statsWithoutSales, "owner").map(metric => metric.label)).not.toContain("Faturamento recebido");
+  });
+
   it("direciona Super Admin sem oficina ao contexto Platform, sem abrir criação operacional", () => {
     expect(getWorkspaceNoTenantState("super_admin")).toBe("platform");
     expect(getWorkspaceNoTenantState("owner")).toBe("membership_missing");

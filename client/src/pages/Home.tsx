@@ -31,7 +31,7 @@ const platformMenuItems: DashboardMenuItem[] = [
 
 type WorkspaceRole = "owner" | "admin" | "attendant" | "technician";
 type DashboardStats = {
-  sales: { billing: number; completedOrders: number };
+  sales?: { billing: number; completedOrders: number };
   commercial: { pendingQuoteValue: number; pendingQuoteCount: number };
   operation: { scheduled: number; inProgress: number; yard: number };
   inventory: { critical: number; reservedProducts: number };
@@ -47,7 +47,7 @@ export function getWorkspaceMetrics(stats: DashboardStats, role: WorkspaceRole) 
     { label: "Operação em andamento", value: String(stats.operation.inProgress), detail: `${stats.operation.yard} veículo(s) no pátio` },
     { label: "Estoque crítico", value: String(stats.inventory.critical), detail: `${stats.inventory.reservedProducts} produto(s) com reserva` },
   ];
-  if (!canViewWorkspaceFinancials(role)) return operational;
+  if (!canViewWorkspaceFinancials(role) || !stats.sales) return operational;
   return [{ label: "Faturamento recebido", value: money.format(stats.sales.billing), detail: `${stats.sales.completedOrders} OS concluída(s) no período` }, ...operational];
 }
 
