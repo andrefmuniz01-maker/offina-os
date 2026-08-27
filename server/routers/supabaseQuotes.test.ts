@@ -13,6 +13,7 @@ const row = { quote, customer: { id: 7, name: "Cliente", whatsapp: "11999999999"
 const detail = { quote: { ...quote, notes: null, terms: null }, customer: row.customer, vehicle: row.vehicle, items: [{ id: 71, itemType: "service", description: "Instalação", quantity: 1, unitPrice: 750, discount: 0, sortOrder: 0 }] } as const;
 const discountUpdate = { id: 53, tenantId: 4, status: "draft", subtotal: 839.9, discountTotal: 40, total: 799.9, updatedAt: "2026-08-27T12:05:00.000Z" } as const;
 const finalized = { id: 53, tenantId: 4, requestId: 14, status: "ready", updatedAt: "2026-08-27T12:06:00.000Z" } as const;
+const preparedShare = { id: 53, tenantId: 4, requestId: 14, status: "sent", updatedAt: "2026-08-27T12:07:00.000Z", publicToken: "a".repeat(64), messageTemplate: "Olá {{cliente}}, {{link}}", customerName: "Cliente", vehicleName: "BMW 320i", workshopName: "Oficina", total: 799.9 } as const;
 
 function context(supabaseUser = user) {
   return { req: {} as never, res: {} as never, user: null, supabaseUser } as never;
@@ -43,6 +44,12 @@ describe("workspaceQuotes", () => {
     const caller = supabaseQuoteRouter.createCaller(context());
     await expect(caller.list({ tenantId: 4 })).resolves.toEqual({ items: [row], page: 1, pageSize: 25, hasMore: false });
     expect(mocks.rpc).toHaveBeenCalledWith("workspace_list_quotes", { target_tenant_id: 4, target_status: null, search_input: null, page_input: 1, page_size_input: 25 });
+  });
+
+  it("rejeita uma listagem que tente expor token de compartilhamento interno", async () => {
+    mocks.rpc.mockResolvedValue({ data: { items: [{ ...row, quote: { ...row.quote, publicToken: "a".repeat(64) } }], page: 1, pageSize: 25, hasMore: false }, error: null });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.list({ tenantId: 4 })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
   });
 
   it("rejeita detalhe que não corresponda ao tenant e orçamento solicitados", async () => {
@@ -85,5 +92,22 @@ describe("workspaceQuotes", () => {
     mocks.rpc.mockResolvedValue({ data: { ...finalized, tenantId: 5 }, error: null });
     const caller = supabaseQuoteRouter.createCaller(context());
     await expect(caller.finalizeDraft({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:05:00.000Z" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("prepara o link rotacionado somente após autorização e controle de concorrência", async () => {
+    mocks.rpc.mockResolvedValue({ data: preparedShare, error: null });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.prepareManualShare({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:06:00.000Z" })).resolves.toEqual(preparedShare);
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_prepare_quote_manual_share", {
+      target_tenant_id: 4,
+      target_quote_id: 53,
+      expected_updated_at_input: "2026-08-27T12:06:00.000Z",
+    });
+  });
+
+  it("rejeita preparo de compartilhamento que não pertença ao tenant consultado", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...preparedShare, tenantId: 5 }, error: null });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.prepareManualShare({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:06:00.000Z" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
   });
 });

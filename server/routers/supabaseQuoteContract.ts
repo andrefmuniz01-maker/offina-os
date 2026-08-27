@@ -74,6 +74,53 @@ export const workspaceQuoteFinalizeSchema = z.object({
   updatedAt: z.string(),
 }).strict();
 
+export const workspaceQuoteManualShareSchema = z.object({
+  id: z.number().int().positive(),
+  tenantId: z.number().int().positive(),
+  requestId: z.number().int().positive(),
+  status: z.literal("sent"),
+  updatedAt: z.string(),
+  publicToken: z.string().length(64),
+  messageTemplate: z.string().min(1).max(1600),
+  customerName: z.string().min(1),
+  vehicleName: z.string().min(1),
+  workshopName: z.string().min(1),
+  total: z.number().nonnegative(),
+}).strict();
+
+export const publicQuoteViewSchema = z.object({
+  workshop: z.object({
+    name: z.string().min(1),
+    branding: z.object({
+      primaryColor: z.string().nullable(),
+      secondaryColor: z.string().nullable(),
+      accentColor: z.string().nullable(),
+      publicTitle: z.string().nullable(),
+    }).strict(),
+  }).strict(),
+  customer: z.object({ name: z.string().min(1) }).strict(),
+  vehicle: z.object({
+    make: z.string().min(1),
+    model: z.string().min(1),
+    modelYear: z.number().int().nullable(),
+  }).strict(),
+  quote: z.object({
+    number: z.number().int().positive(),
+    status: z.literal("viewed"),
+    validUntil: z.string(),
+    total: z.number().nonnegative(),
+    notes: z.string().nullable(),
+    terms: z.string().nullable(),
+  }).strict(),
+  items: z.array(z.object({
+    description: z.string().min(1),
+    quantity: z.number().positive(),
+    unitPrice: z.number().nonnegative(),
+    discount: z.number().nonnegative(),
+    total: z.number().nonnegative(),
+  }).strict()),
+}).strict();
+
 export function parseWorkspaceQuoteList(value: unknown) {
   return workspaceQuoteListSchema.safeParse(value);
 }
@@ -88,4 +135,12 @@ export function parseWorkspaceQuoteDiscountUpdate(value: unknown) {
 
 export function parseWorkspaceQuoteFinalize(value: unknown) {
   return workspaceQuoteFinalizeSchema.safeParse(value);
+}
+
+export function parseWorkspaceQuoteManualShare(value: unknown) {
+  return workspaceQuoteManualShareSchema.safeParse(value);
+}
+
+export function parsePublicQuoteView(value: unknown) {
+  return publicQuoteViewSchema.safeParse(value);
 }
