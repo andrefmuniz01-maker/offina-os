@@ -15,6 +15,12 @@
 - [x] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
 - [x] Investigar e documentar a causa histórica do problema de acesso à prévia/publicação: tratou-se de quota de leitura de logs da infraestrutura, sem defeito de aplicação confirmado.
 - [x] Verificar que o domínio publicado atual carrega normalmente a tela de acesso por e-mail e senha.
+- [x] Diagnosticar e corrigir o redirecionamento indevido que ocorre cerca de cinco segundos após o login no painel global.
+- [ ] Validar em sessão humana publicada que uma falha local de módulo não troca o painel global pela tela de acesso e que o logout explícito continua funcionando.
+- [x] Produzir um mapa verificável de módulos, regras de negócio, integrações e lacunas, priorizado para o uso diário com poucas interfaces objetivas.
+- [ ] Revisar os fluxos existentes de ponta a ponta e consolidar melhorias de maior impacto antes de criar novas abas ou recursos.
+- [ ] Integrar continuamente a branch principal compartilhada sem sobrescrever commits, preservando a oficina demo exclusivamente no contexto de Super Admin.
+- [ ] Evoluir os fluxos administrativos da oficina a partir do mapa de regras e responsabilidades, priorizando poucos caminhos completos de uso diário.
 - [x] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
 - [x] Reorganizar a Home operacional como central do dia, preservando dados do workspace e ocultando leituras financeiras de papéis sem permissão.
 - [x] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
@@ -107,6 +113,7 @@
 - [x] Testar diretamente a guarda de Super Admin para comprovar que usuário comum e admin de tenant não acessam procedures globais.
 - [x] Adicionar barreira visual de Super Admin em `/plataforma`, mantendo as procedures do backend como fonte autoritativa de autorização.
 - [x] Criar navegação exclusiva do ambiente Platform em modo leitura, com Dashboard, Oficinas, Usuários, Planos, Uso, Indicadores, Auditoria, Segurança e Suporte.
+- [ ] Evoluir o painel de Super Admin com um resumo global de governança baseado somente em dados reais e estados explícitos, sem mutações ou suporte invasivo.
 - [x] Remover da superfície Platform os controles de criação, edição, associação, ativação e impersonação durante a etapa de consulta global.
 - [x] Diferenciar visualmente carregamento, estado vazio e indisponibilidade em métricas, oficinas, planos e uso.
 - [x] Cobrir com testes o contrato de seções read-only e a proteção dos estados principais da Platform.
