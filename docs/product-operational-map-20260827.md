@@ -62,13 +62,13 @@ O caminho de identidade deve ser mantido como **Supabase Auth → profile → me
 | Isolamento de catálogo/estoque/compras | RPCs privadas e fachadas públicas `SECURITY INVOKER` | Toda composição deve validar `tenant_id` no backend; não abrir REST direto. |
 | Financeiro | Dashboard Supabase projeta apenas para owner/admin/Super Admin | Repetir a verificação no router financeiro transitório e no corte definitivo. |
 | Acesso público | Somente catálogo/intake anônimos intencionais | Manter `search_path` vazio, ACL mínima e respostas sem identificador interno de tenant. |
-| Demo | Entrega concorrente prevista | A oficina demo deve ser marcada e visível apenas em contexto Super Admin, fora de métricas e links comerciais públicos. |
+| Demo | Tenant Supabase marcado com `is_demo`, sem vínculo operacional ativo | A Platform o exibe em card administrativo separado; catálogo e intake anônimos retornam indisponibilidade para demos e não oferecem link comercial. |
 
 ## 5. Diagnóstico de navegação pós-login
 
-As evidências de runtime mostram que a consulta global do painel recebeu erro HTTP 401 em uma sessão que já tinha autenticado. O cliente atual trata **qualquer** `TRPCClientError` com a mensagem genérica de não autenticado como motivo para executar `window.location.href = "/"`. Assim, uma falha transitória de uma consulta do painel derruba a navegação, embora não constitua por si só uma prova de perda da sessão Supabase.
+As evidências de runtime mostraram que a consulta global do painel recebeu erro HTTP 401 em uma sessão que já tinha autenticado. O cliente tratava **qualquer** `TRPCClientError` com a mensagem genérica de não autenticado como motivo para executar `window.location.href = "/"`. Assim, uma falha transitória de uma consulta do painel derrubava a navegação, embora não constituísse por si só uma prova de perda da sessão Supabase. A reação global foi removida: a identidade continua sendo determinada por `auth.me`, enquanto erros de módulos permanecem no respectivo módulo.
 
-> A correção deve limitar a troca para a tela de acesso ao estado real de `auth.me`/Supabase, ou simplesmente permitir que o layout responda à ausência real do usuário. Erros de módulos devem ser exibidos no próprio módulo, sem realizar logout implícito.
+> As consultas globais de leitura também passaram a exigir diretamente a identidade Supabase de Super Admin. Elas não dependem mais de uma conta MySQL transitória, enquanto as mutações legadas continuam deliberadamente bloqueadas sem essa migração completa.
 
 ## 6. Lacunas priorizadas
 
@@ -84,3 +84,7 @@ As evidências de runtime mostram que a consulta global do painel recebeu erro H
 ## 7. Critério para próximos incrementos
 
 Cada incremento deve conter contrato de banco, regra de negócio, autorização, estado de carregamento/erro/vazio, auditoria quando houver efeito operacional ou financeiro, testes e validação visual. Uma nova página só é justificável quando não puder ser resolvida pelas seis jornadas consolidadas: **Central do dia; solicitações e orçamentos; agenda e pátio; estoque e compras; clientes e equipe; configurações e plataforma**.
+
+## 8. Verificação da demonstração administrativa
+
+O tenant de demonstração existente foi conferido em modo somente leitura. Ele está marcado como demonstração e não possui membros operacionais ativos. A migration `20260827_0018_exclude_demo_from_public_flows.sql` foi aplicada ao projeto Supabase existente: ela exige `not is_demo` tanto no catálogo público como na RPC de intake. Uma chamada anônima ao catálogo para o slug da demonstração retornou resposta vazia, sem expor dados comerciais. O Security Advisor permaneceu com apenas as exceções já conhecidas e intencionais de catálogo/intake anônimos com `SECURITY DEFINER`, além da pendência já registrada de proteção contra senhas vazadas.

@@ -15,6 +15,7 @@ vi.mock("@/lib/trpc", () => ({
       tenantAudit: { useQuery: () => states.audit },
       users: { list: { useQuery: () => states.users } },
     },
+    workspace: { mine: { useQuery: () => states.demoWorkspaces } },
   },
 }));
 
@@ -42,6 +43,7 @@ beforeEach(() => {
     report: ready({ totals: {}, items: [] }),
     audit: ready({ items: [], page: 1, hasMore: false }),
     users: ready({ items: [], page: 1, hasMore: false }),
+    demoWorkspaces: ready([]),
   };
 });
 
@@ -97,5 +99,18 @@ describe("getPlatformAccessState", () => {
     expect(inactiveMarkup).toContain("Formulário público indisponível para oficina inativa.");
     expect(inactiveMarkup).not.toContain('href="/solicitar/oficina-inativa"');
     expect(inactiveMarkup).not.toContain("/orcamento/");
+  });
+
+  it("mostra ambientes demo somente na central global e sem atalho comercial", () => {
+    states.demoWorkspaces = ready([{
+      tenant: { id: 22, name: "Ambiente Demo", slug: "ambiente-demo", active: true, status: "active", isDemo: true },
+      membership: { role: "owner", permissions: [], active: true },
+    }]);
+
+    const markup = renderPlatform("tenants");
+    expect(markup).toContain("Ambientes de demonstração");
+    expect(markup).toContain("Ambiente Demo");
+    expect(markup).toContain("Visíveis somente neste contexto Super Admin");
+    expect(markup).not.toContain('href="/solicitar/ambiente-demo"');
   });
 });

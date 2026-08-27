@@ -157,3 +157,5 @@
 - [x] Adicionar cobertura direta do AuthCallback para o estado de convite até a tela de definição de senha, além do helper isolado.
 - [x] Redigir cabeçalhos e valores sensíveis no coletor local de depuração para impedir que tokens de sessão apareçam nos logs de diagnóstico.
 - [x] Permitir leitura global da Platform para Super Admin autenticado somente no Supabase, sem reativar mutações legadas nem criar uma sessão paralela.
+- [x] Impedir que tenants marcados como demonstração apareçam nos fluxos públicos ou operacionais, mantendo sua visibilidade apenas para Super Admin.
+- [x] Restringir a navegação diária por papel para reduzir abas e não oferecer atalhos financeiros, administrativos ou estratégicos a atendentes e técnicos.
