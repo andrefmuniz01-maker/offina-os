@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getInventoryAccessMessage } from "@/lib/inventoryAccess";
 import { getInventoryAvailability, getInventoryTone } from "@/lib/inventoryPriority";
 import { inventoryBalanceLabels } from "@/lib/inventoryView";
 import { trpc } from "@/lib/trpc";
@@ -41,6 +42,7 @@ export default function Inventory() {
   const unavailableCount = stockItems.filter(item => item.availableQuantity <= 0).length;
   const reservedCount = stockItems.filter(item => item.reservedQuantity > 0).length;
   const forecastItems = forecast.data ?? [];
+  const inventoryForbidden = stock.error?.data?.code === "FORBIDDEN" || forecast.error?.data?.code === "FORBIDDEN";
   const adjust = trpc.workspaceInventory.adjust.useMutation({
     onSuccess: () => {
       toast.success("Ajuste registrado com auditoria.");
@@ -78,7 +80,7 @@ export default function Inventory() {
             </CardHeader>
             <CardContent>
               {stock.isLoading ? <div className="space-y-3"><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : null}
-              {stock.isError ? <p className="rounded-lg bg-red-50 p-4 text-sm text-red-900">Não foi possível carregar o inventário desta oficina.</p> : null}
+              {stock.isError ? <p className="rounded-lg bg-red-50 p-4 text-sm text-red-900">{getInventoryAccessMessage(stock.error.data?.code)}</p> : null}
               {!stock.isLoading && !stock.isError && stock.data?.items.length ? <>
                 <div className="space-y-3 md:hidden">
                   {stockItems.map(item => {
@@ -93,7 +95,7 @@ export default function Inventory() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm">
+          {!inventoryForbidden ? <Card className="border-slate-200 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-orange-700" /><CardTitle className="text-lg">Previsão de necessidade</CardTitle></div><CalendarRange className="h-4 w-4 text-slate-500" /></div>
               <CardDescription>Considere reservas, agenda e ordens de serviço ativas até a data escolhida.</CardDescription>
@@ -105,10 +107,10 @@ export default function Inventory() {
               {!forecast.isLoading && !forecast.isError && forecastItems.length ? forecastItems.map(item => <div className="rounded-xl border border-orange-100 bg-orange-50/50 p-3" key={item.productId}><div className="flex items-start justify-between gap-3"><p className="font-medium text-slate-900">{item.productName}</p><Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Repor</Badge></div><p className="mt-1 text-xs leading-5 text-slate-600">Disponível: {item.available} · Necessidade prevista: {item.futureNeed}</p><p className="text-xs leading-5 text-slate-600">Ainda não coberta por reserva: {item.unreservedFutureNeed} · Reservas ativas: {item.activeReservationDemand}</p><p className="text-xs leading-5 text-slate-600">Agendamentos afetados: {item.affectedAppointmentIds.length} · OS afetadas: {item.affectedWorkOrderIds.length}</p><p className="mt-2 text-sm font-semibold text-orange-800">Compra sugerida: {item.recommendedPurchaseQuantity}</p></div>) : null}
               {!forecast.isLoading && !forecast.isError && !forecast.data?.length ? <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">Nenhuma necessidade crítica identificada para o período.</p> : null}
             </CardContent>
-          </Card>
+          </Card> : <Card className="border-amber-200 bg-amber-50/60 shadow-sm"><CardHeader><CardTitle className="text-lg">Inventário restrito</CardTitle><CardDescription>As previsões e os ajustes são exibidos apenas para perfis com responsabilidade de estoque.</CardDescription></CardHeader></Card>}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
+        {!inventoryForbidden ? <section className="grid gap-4 lg:grid-cols-[.9fr_1.1fr]">
           <Card className="border-slate-200 shadow-sm">
             <CardHeader><CardTitle className="text-lg">Ajuste controlado de saldo</CardTitle><CardDescription>Use somente para divergências conferidas. O sistema bloqueia qualquer redução que deixe o físico abaixo das reservas ativas.</CardDescription></CardHeader>
             <CardContent className="grid gap-4">
@@ -122,7 +124,7 @@ export default function Inventory() {
             <CardHeader><CardTitle className="text-lg">Regra de disponibilidade</CardTitle><CardDescription>O saldo disponível é calculado no banco como estoque físico menos reservas de orçamentos aprovados e OS em andamento.</CardDescription></CardHeader>
             <CardContent className="space-y-3 text-sm text-slate-600"><p>As movimentações ficam vinculadas ao produto, ao responsável e à origem. Recebimentos de compra atualizam o físico e o custo médio somente após confirmação.</p><p>Uma redução não pode consumir unidades já comprometidas; para liberar reserva, o fluxo correto será a alteração da aprovação ou da ordem de serviço correspondente.</p></CardContent>
           </Card>
-        </section>
+        </section> : null}
       </main>
     </DashboardLayout>
   );

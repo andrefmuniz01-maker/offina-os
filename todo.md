@@ -162,3 +162,4 @@
 - [x] Ocultar ações de agendamento e dados de escala para técnicos na Agenda e Pátio, preservando a execução somente das OS atribuídas.
 - [x] Conectar o orçamento aprovado à Agenda e Pátio com pré-seleção segura, reduzindo uma etapa manual sem recriar cliente, veículo ou itens.
 - [x] Exigir que a solicitação esteja em orçamento antes de gerar proposta, preservando a transição comercial e evitando criação antecipada de orçamento.
+- [x] Diferenciar indisponibilidade de estoque e bloqueio de permissão para orientar acessos diretos sem expor controles de inventário a papéis não autorizados.
