@@ -26,6 +26,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `fd9226f` | RPCs de workspace e Home conectada a Supabase. | Tipos, 71 arquivos/221 testes e build aprovados. |
 | `5ee0f55` | Link da Home abre a solicitação pública real do tenant. | Tipos e testes de navegação aprovados. |
 | `a9466e3` | RPCs de workspace convertidas para `SECURITY INVOKER`. | Advisor não aponta mais execução autenticada de função elevada. |
+| `638d6d4` | Super Admin passa a iniciar pela Home Supabase durante a migração. | Evita o Painel de Plataforma ainda dependente de MySQL. |
 
 ## Sequência de implementação obrigatória
 
