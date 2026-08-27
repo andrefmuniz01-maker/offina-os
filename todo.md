@@ -23,7 +23,7 @@
 - [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
 - [ ] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
 - [ ] Manter futuras alterações estritamente limitadas ao código e às solicitações explícitas do repositório-fonte.
-- [ ] Comparar cada tabela de drizzle/schema.ts com information_schema.columns, registrando colunas ausentes, extras, tipos e defaults divergentes.
+- [x] Comparar cada tabela de drizzle/schema.ts com information_schema.columns, registrando colunas ausentes, extras, tipos e defaults divergentes.
 - [ ] Identificar os e-mails existentes no banco e conceder o papel de Super Admin ao usuário autenticado, preservando os demais registros.
 - [x] Auditar os quatro registros marcados como Super Admin e confirmar os dois acessos autorizados antes de qualquer rebaixamento.
 - [ ] Manter somente andrefmuniz01@gmail.com e felipefmuniz@gmail.com como Super Admins, rebaixando registros duplicados sem excluir usuários.
@@ -33,8 +33,8 @@
 - [x] Comparar a versão publicada com o ZIP original e auditar a oficina já existente sem alterar dados.
 - [x] Verificar se o repositório contém dump, seed ou configuração de banco para reproduzir a oficina existente.
 - [x] Concluir a validação da integridade de OpenID e da hierarquia Super Admin → donos → funcionários sem criar novas interfaces.
-- [ ] Validar por tabela os índices únicos e constraints críticas em information_schema, não apenas por contagem agregada.
-- [ ] Executar e registrar uma verificação automatizada completa do schema antes de marcar a auditoria como concluída.
+- [x] Validar por tabela os índices únicos e constraints críticas em information_schema, não apenas por contagem agregada.
+- [x] Executar e registrar uma verificação automatizada completa do schema antes de marcar a auditoria como concluída.
 - [ ] Validar um login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.
 - [x] Auditar a arquitetura atual contra Supabase Auth, PostgreSQL, RLS e Storage sem criar novas telas ou funcionalidades.
 - [x] Inventariar autenticação, banco, migrations, isolamento multi-tenant, permissões, rotas, secrets e serviços externos.
@@ -125,3 +125,7 @@
 - [x] Limitar reenvios públicos consecutivos pelo mesmo contato e oficina, sem bloquear o envio legítimo de uma nova solicitação após intervalo seguro.
 - [x] Normalizar o WhatsApp da solicitação pública antes de deduplicar cliente, limitar reenvio e salvar o contato.
 - [x] Usar o nome canônico do serviço cadastrado quando a solicitação pública referencia um serviço do catálogo.
+- [x] Criar um utilitário somente leitura e versionado para comparar Drizzle com INFORMATION_SCHEMA sem registrar dados operacionais ou credenciais.
+- [x] Comparar os tipos SQL exatos, incluindo precisão e escala, entre Drizzle e o MySQL legado.
+- [x] Comparar os defaults e a geração/on-update de cada coluna sem reduzir a verificação à mera presença de default.
+- [ ] Revisar e priorizar as 43 divergências de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
