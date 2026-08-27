@@ -29,6 +29,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `638d6d4` | Super Admin passa a iniciar pela Home Supabase durante a migração. | Evita o Painel de Plataforma ainda dependente de MySQL. |
 | `24f3959` | Clientes e veículos migram para Supabase, com histórico e auditoria atômica. | Policies RLS e 72 arquivos/222 testes aprovados. |
 | `7cf4506` | Catálogo público limitado e intake anônimo de solicitações no Supabase. | View com alerta crítico removida; funções anônimas permanecem intencionais e limitadas. |
+| `b85528f` | Ajuste de estoque transacional migrado para Supabase. | Físico não pode cair abaixo do reservado; movimento e auditoria são atômicos. |
 
 ## Sequência de implementação obrigatória
 
@@ -37,7 +38,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | 1 | Migrar o contrato de usuário interno de `users.id` numérico para `profiles.id` UUID e substituir o fallback MySQL no `createContext`. | Sessão Supabase gera contexto autenticado sem consulta a `users` legada. |
 | 2 | Migrar os endpoints remanescentes do Painel de Super Admin em `platform.ts`. | Planos, usuários, auditoria, relatórios e gestão global usam Supabase sob RLS. |
 | 3 | Migrar os endpoints de tenant remanescentes em `tenantAccess.ts` e `platform.ts`. | Branding, configurações, equipe e auditoria interna usam Supabase e IDs UUID. |
-| 4 | Migrar catálogo, fornecedores, produtos, serviços e kits. | A aplicação lê e grava o catálogo em Supabase, com testes Tenant A × Tenant B. |
+| 4 | Migrar catálogo, fornecedores, produtos, serviços e kits. | A aplicação lê e grava o catálogo em Supabase, com testes Tenant A × Tenant B. O ajuste de saldo está disponível no banco, mas ainda não está exposto pela interface Supabase. |
 | 5 | Conectar o intake público e migrar a fila interna de solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | Solicitação pública, sugestão, aprovação e reserva funcionam no PostgreSQL. O schema do intake já está aplicado; Storage e UI ainda precisam de migração. |
 | 6 | Migrar agenda, OS, consumo, compras e financeiro. | Fluxo operacional completo não depende de MySQL. |
 | 7 | Implementar seed/reset da Performance Garage. | Dados demonstrativos, reset auditado e isolamento podem ser testados no Supabase. |
@@ -46,6 +47,11 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 ## Regras de segurança para as próximas tarefas
 
 A migração não pode copiar senhas, tokens, e-mails pessoais ou dados reais ao Supabase. Contas de demonstração devem ser provisionadas pelo mecanismo administrativo de Auth com segredos fora do repositório. Todo novo endpoint precisa continuar filtrando `tenant_id` e respeitar as policies RLS; não usar `is_demo` como bypass de acesso. As funções públicas `public_get_workshop_catalog` e `public_submit_quote_request` usam `SECURITY DEFINER` por necessidade do fluxo sem login, mas aceitam apenas input validado, retornam dados comerciais limitados e não concedem `SELECT` anônimo às tabelas internas. Antes de liberar publicamente, acrescentar rate limit e migrar uploads para o bucket privado do Supabase; anexos não devem ser misturados ao Forge/S3 legado.
+
+Para os anexos, criar bucket **privado** `quote-request-attachments`, limites de 5 MB e MIME explícito. O upload anônimo deve exigir um token de upload de uso curto, vinculado a uma única solicitação e validado por policy/RPC; acesso interno deve usar RLS com associação ao `tenant_id`, e arquivos de cliente nunca devem usar URLs públicas. A estratégia decorre da documentação de buckets privados e policies de objetos do Supabase.[1][2]
+
+[1]: https://supabase.com/docs/guides/storage/buckets/fundamentals "Supabase Storage Buckets"
+[2]: https://supabase.com/docs/guides/storage/security/access-control "Supabase Storage Access Control"
 
 ## Validações disponíveis
 
