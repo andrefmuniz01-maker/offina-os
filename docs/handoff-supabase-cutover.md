@@ -6,7 +6,7 @@
 
 O projeto Supabase **OFFICINA OS** (`jpvvhowgpuinuuputoot`) está ativo em `sa-east-1`. As migrations de fundação, índices e RLS estão aplicadas. O commit `3c6a84b` adicionou e aplicou também o marcador administrativo `public.tenants.is_demo`, com valor padrão `false`, índice parcial e teste automatizado. O commit `fd9226f` aplicou as RPCs seguras de workspace; elas usam o JWT do Supabase Auth e não dependem do adaptador MySQL. O commit `a9466e3` converteu essas RPCs para `SECURITY INVOKER`, preservando RLS sem funções públicas de privilégio elevado. A revisão posterior confirmou que não restaram avisos para essas quatro funções.
 
-A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrigatória e com default `false`. A marcação não altera login, autorização, RLS, tenant isolation nem regras de negócio. Após as migrations de catálogo, estoque e compras, o Security Advisor permanece com somente três avisos: as duas RPCs anônimas intencionais de catálogo/intake público e a **proteção contra senhas vazadas desativada** no Supabase Auth. As funções internas do catálogo, estoque e compras foram movidas ao schema `private`; o schema `public` contém apenas fachadas `SECURITY INVOKER` autenticadas.
+A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrigatória e com default `false`. A marcação não altera login, autorização, RLS, tenant isolation nem regras de negócio. O commit `7db5d3b` adicionou uma exceção de segurança explícita para o único tenant demonstrativo interno: quando `is_demo=true`, **somente Super Admins** podem lê-lo ou operá-lo. Esse bloqueio existe nas funções RLS, nos guardas de catálogo/estoque/compras e nas RPCs públicas, portanto a flag não constitui bypass nem pode expor o ambiente por associação de membro, URL ou formulário público. Após as migrations de catálogo, estoque e compras, o Security Advisor permanece com somente três avisos: as duas RPCs anônimas intencionais de catálogo/intake público e a **proteção contra senhas vazadas desativada** no Supabase Auth. As funções internas do catálogo, estoque e compras foram movidas ao schema `private`; o schema `public` contém apenas fachadas `SECURITY INVOKER` autenticadas.
 
 ## Estado do runtime
 
@@ -31,6 +31,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `7cf4506` | Catálogo público limitado e intake anônimo de solicitações no Supabase. | View com alerta crítico removida; funções anônimas permanecem intencionais e limitadas. |
 | `b85528f` | Ajuste de estoque transacional migrado para Supabase. | Físico não pode cair abaixo do reservado; movimento e auditoria são atômicos. |
 | `1788d90` | Catálogo, fornecedores, produtos, serviços, kits, estoque, previsão e compras migrados sob `workspaceCatalog`/`workspaceInventory`. | Migrations `0014`–`0016` aplicadas, ACLs diretas de tabelas sensíveis revogadas, Advisor sem novos avisos e 87 arquivos/261 testes aprovados. |
+| `7db5d3b` | Oficina Demo interna `Performance Garage` provisionada no Supabase e tela `/demo-interna` exclusiva de Super Admin. | Tenant `performance-garage` ativo com `is_demo=true`, zero membros de tenant, 3 produtos/saldos, 2 serviços, 1 kit, 2 clientes/veículos e 1 compra; catálogo público bloqueado, reset incremental auditado e negação a perfil não administrativo confirmada. |
 
 ## Sequência de implementação obrigatória
 
@@ -43,11 +44,11 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | 5 | Conectar o intake público e migrar a fila interna de solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | Solicitação pública, sugestão, aprovação e reserva funcionam no PostgreSQL. O schema do intake já está aplicado; Storage e UI ainda precisam de migração. |
 | 6 | Migrar agenda, OS, consumo e financeiro. | Fluxo operacional completo não depende de MySQL; a baixa de reserva/consumo precisa preservar `físico >= reservado`. |
 | 7 | Migrar consumidores legados restantes e eliminar o adaptador MySQL. | Comercial, operações, plataforma, configurações e todos os routers usam Supabase sob RLS. |
-| 8 | Implementar seed/reset da Performance Garage. | Dados demonstrativos, reset auditado e isolamento podem ser testados no Supabase. |
+| 8 | Implementar seed/reset da Performance Garage. | **Concluído para o escopo incremental.** Tenant interno Supabase-only, dados de catálogo/estoque/compras/clientes/veículos, reset auditado e interface exclusiva de Super Admin foram validados. Não semear ainda solicitações, orçamentos, reservas, agenda, OS, consumo ou financeiro. |
 
 ## Regras de segurança para as próximas tarefas
 
-A migração não pode copiar senhas, tokens, e-mails pessoais ou dados reais ao Supabase. Contas de demonstração devem ser provisionadas pelo mecanismo administrativo de Auth com segredos fora do repositório. Todo novo endpoint precisa continuar filtrando `tenant_id` e respeitar as policies RLS; não usar `is_demo` como bypass de acesso. As funções públicas `public_get_workshop_catalog` e `public_submit_quote_request` usam `SECURITY DEFINER` por necessidade do fluxo sem login, mas aceitam apenas input validado, retornam dados comerciais limitados e não concedem `SELECT` anônimo às tabelas internas. Antes de liberar publicamente, acrescentar rate limit e migrar uploads para o bucket privado do Supabase; anexos não devem ser misturados ao Forge/S3 legado.
+A migração não pode copiar senhas, tokens, e-mails pessoais ou dados reais ao Supabase. A demonstração interna não cria contas de tenant nem `tenant_members`; ela é acessada exclusivamente pelos Super Admins globais existentes. Se forem necessárias identidades demo futuramente, elas devem ser provisionadas pelo mecanismo administrativo de Auth com segredos fora do repositório e nunca podem receber acesso ao tenant `is_demo=true`. Todo novo endpoint precisa continuar filtrando `tenant_id` e respeitar as policies RLS; não usar `is_demo` como bypass de acesso. As funções públicas `public_get_workshop_catalog` e `public_submit_quote_request` usam `SECURITY DEFINER` por necessidade do fluxo sem login, mas aceitam apenas input validado, retornam dados comerciais limitados e não concedem `SELECT` anônimo às tabelas internas. Antes de liberar publicamente, acrescentar rate limit e migrar uploads para o bucket privado do Supabase; anexos não devem ser misturados ao Forge/S3 legado.
 
 Para os anexos, criar bucket **privado** `quote-request-attachments`, limites de 5 MB e MIME explícito. O upload anônimo deve exigir um token de upload de uso curto, vinculado a uma única solicitação e validado por policy/RPC; acesso interno deve usar RLS com associação ao `tenant_id`, e arquivos de cliente nunca devem usar URLs públicas. A estratégia decorre da documentação de buckets privados e policies de objetos do Supabase.[1][2]
 
@@ -64,4 +65,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **87 arquivos de teste e 261 testes aprovados**. O build ainda mostra avisos preexistentes de placeholders de analytics e bundle de cliente acima de 500 kB.
+Resultado integrado mais recente: **97 arquivos de teste aprovados, 1 ignorado e 289 testes aprovados**. O build ainda mostra avisos preexistentes de placeholders de analytics e bundle de cliente acima de 500 kB.
