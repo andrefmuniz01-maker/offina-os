@@ -52,6 +52,21 @@ function createContext(): TrpcContext {
   };
 }
 
+function createSupabaseOnlySuperAdminContext(): TrpcContext {
+  return {
+    user: null,
+    supabaseUser: {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      name: "Super Admin Supabase",
+      email: "admin@example.com",
+      platformRole: "super_admin",
+      accessToken: "test-access-token",
+    },
+    req: {} as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
+
 describe("platform — ciclo administrativo de tenants", () => {
   beforeEach(() => {
     mocks.audit.mockReset();
@@ -71,9 +86,18 @@ describe("platform — ciclo administrativo de tenants", () => {
 
   it("consolida as métricas globais para o painel de Super Admin", async () => {
     mocks.db = buildDb([[{ total: 3 }], [{ total: 2 }], [{ total: 12 }], [{ total: 8 }]]);
-    const caller = platformRouter.createCaller(createContext());
+    const caller = platformRouter.createCaller(createSupabaseOnlySuperAdminContext());
 
     await expect(caller.metrics()).resolves.toEqual({ tenants: 3, activeTenants: 2, users: 12, activeMemberships: 8 });
+  });
+
+  it("permite leitura global para Super Admin somente Supabase sem liberar mutações legadas", async () => {
+    mocks.db = buildDb([[{ total: 3 }], [{ total: 2 }], [{ total: 12 }], [{ total: 8 }]]);
+    const caller = platformRouter.createCaller(createSupabaseOnlySuperAdminContext());
+
+    await expect(caller.metrics()).resolves.toEqual({ tenants: 3, activeTenants: 2, users: 12, activeMemberships: 8 });
+    await expect(caller.createTenant({ name: "Oficina Centro", slug: "oficina-centro" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.createTenant).not.toHaveBeenCalled();
   });
 
   it("altera a ativação de um tenant e deixa trilha de auditoria global", async () => {

@@ -24,6 +24,10 @@ function context(): TrpcContext {
   return { user: { id: 7, openId: "platform-admin", role: "user", platformRole: "super_admin", name: "Super Admin", email: "admin@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
 }
 
+function readContext(): TrpcContext {
+  return { user: null, supabaseUser: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Super Admin", email: "admin@example.com", platformRole: "super_admin", accessToken: "test-access-token" }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
+}
+
 describe("platform.users — gestão global auditável", () => {
   beforeEach(() => { mocks.audit.mockReset(); mocks.assertSuperAdmin.mockReset(); });
 
@@ -33,8 +37,8 @@ describe("platform.users — gestão global auditável", () => {
     const select = vi.fn().mockReturnValueOnce(chain(userRows)).mockReturnValueOnce(chain(membershipRows));
     mocks.db = { select };
 
-    await expect(platformRouter.createCaller(context()).users.list({ page: 1, pageSize: 10 })).resolves.toEqual({ items: [{ ...userRows[0], memberships: [{ tenantId: 4, tenantName: "Ruidão", tenantSlug: "ruidao", role: "attendant", active: true, primaryOwner: false }] }], page: 1, pageSize: 10, hasMore: false });
-    expect(mocks.assertSuperAdmin).toHaveBeenCalled();
+    await expect(platformRouter.createCaller(readContext()).users.list({ page: 1, pageSize: 10 })).resolves.toEqual({ items: [{ ...userRows[0], memberships: [{ tenantId: 4, tenantName: "Ruidão", tenantSlug: "ruidao", role: "attendant", active: true, primaryOwner: false }] }], page: 1, pageSize: 10, hasMore: false });
+    expect(mocks.assertSuperAdmin).not.toHaveBeenCalled();
   });
 
   it("atualiza vínculo não proprietário com auditoria e bloqueia o proprietário primário", async () => {

@@ -19,7 +19,7 @@ function chain(result: unknown) {
 }
 
 function context(): TrpcContext {
-  return { user: { id: 7, openId: "platform-admin", role: "user", platformRole: "super_admin", name: "Super Admin", email: "admin@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
+  return { user: null, supabaseUser: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Super Admin", email: "admin@example.com", platformRole: "super_admin", accessToken: "test-access-token" }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
 }
 
 describe("platform.report — consolidação global por tenant", () => {
@@ -36,6 +36,6 @@ describe("platform.report — consolidação global por tenant", () => {
     const result = await platformRouter.createCaller(context()).report({ from: new Date("2026-08-01T00:00:00.000Z"), to: new Date("2026-08-31T23:59:59.999Z") });
     expect(result.totals).toEqual({ tenants: 2, newCustomers: 3, quotes: 5, approvedQuotes: 3, deliveredWorkOrders: 2, receivedRevenue: 825.4 });
     expect(result.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: 4, newCustomers: 3, quotes: 4, approvedQuotes: 2, deliveredWorkOrders: 2, receivedRevenue: 725.5 }), expect.objectContaining({ id: 5, newCustomers: 0, quotes: 1, approvedQuotes: 1, deliveredWorkOrders: 0, receivedRevenue: 99.9 })]));
-    expect(mocks.assertSuperAdmin).toHaveBeenCalled();
+    expect(mocks.assertSuperAdmin).not.toHaveBeenCalled();
   });
 });

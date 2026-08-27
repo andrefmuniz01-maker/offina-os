@@ -155,3 +155,5 @@
 - [x] Validar a credencial Service Role exclusivamente no servidor por leitura administrativa mínima antes de enviar o convite de André.
 - [x] Tratar o callback Supabase de convite como fluxo seguro de definição de senha antes de redirecionar o Super Admin ao painel.
 - [x] Adicionar cobertura direta do AuthCallback para o estado de convite até a tela de definição de senha, além do helper isolado.
+- [x] Redigir cabeçalhos e valores sensíveis no coletor local de depuração para impedir que tokens de sessão apareçam nos logs de diagnóstico.
+- [x] Permitir leitura global da Platform para Super Admin autenticado somente no Supabase, sem reativar mutações legadas nem criar uma sessão paralela.

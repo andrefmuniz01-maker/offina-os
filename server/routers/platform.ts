@@ -5,22 +5,20 @@ import { auditLogs, customers, plans, quotes, revenues, tenantBranding, tenantMe
 import { createTenantForOwner, getDb, listUserTenants, writeAuditLog } from "../db";
 import { assertTenantPlanCapacity } from "../planLimits";
 import { assertPlatformSuperAdmin, getTenantAccess, requireTenantPermission } from "../tenantAccess";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, router, supabaseAdminProcedure } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const roleInput = z.enum(["owner", "admin", "attendant", "technician"]);
 const employeeRoleInput = z.enum(["admin", "attendant", "technician"]);
 
 export const platformRouter = router({
-  overview: protectedProcedure.query(async ({ ctx }) => {
-    assertPlatformSuperAdmin(ctx.user);
+  overview: supabaseAdminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     return db.select().from(tenants).orderBy(desc(tenants.createdAt));
   }),
 
-  metrics: protectedProcedure.query(async ({ ctx }) => {
-    assertPlatformSuperAdmin(ctx.user);
+  metrics: supabaseAdminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const [tenantCount, activeCount, userCount, memberships] = await Promise.all([
@@ -32,8 +30,7 @@ export const platformRouter = router({
     return { tenants: Number(tenantCount[0]?.total ?? 0), activeTenants: Number(activeCount[0]?.total ?? 0), users: Number(userCount[0]?.total ?? 0), activeMemberships: Number(memberships[0]?.total ?? 0) };
   }),
 
-  report: protectedProcedure.input(z.object({ from: z.date().optional(), to: z.date().optional() }).refine(input => !input.from || !input.to || input.from <= input.to, "O período inicial deve anteceder o final.")).query(async ({ ctx, input }) => {
-    assertPlatformSuperAdmin(ctx.user);
+  report: supabaseAdminProcedure.input(z.object({ from: z.date().optional(), to: z.date().optional() }).refine(input => !input.from || !input.to || input.from <= input.to, "O período inicial deve anteceder o final.")).query(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const to = input.to ?? new Date();
@@ -56,8 +53,7 @@ export const platformRouter = router({
     return { from, to, items, totals: { tenants: items.length, newCustomers: items.reduce((sum, item) => sum + item.newCustomers, 0), quotes: items.reduce((sum, item) => sum + item.quotes, 0), approvedQuotes: items.reduce((sum, item) => sum + item.approvedQuotes, 0), deliveredWorkOrders: items.reduce((sum, item) => sum + item.deliveredWorkOrders, 0), receivedRevenue: items.reduce((sum, item) => sum + item.receivedRevenue, 0) } };
   }),
 
-  usage: protectedProcedure.query(async ({ ctx }) => {
-    assertPlatformSuperAdmin(ctx.user);
+  usage: supabaseAdminProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const [tenantRows, memberRows, customerRows] = await Promise.all([
@@ -75,8 +71,7 @@ export const platformRouter = router({
     }));
   }),
 
-  tenantAudit: protectedProcedure.input(tenantIdInput.extend({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(50).default(10) })).query(async ({ ctx, input }) => {
-    assertPlatformSuperAdmin(ctx.user);
+  tenantAudit: supabaseAdminProcedure.input(tenantIdInput.extend({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(50).default(10) })).query(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const tenant = (await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, input.tenantId)).limit(1))[0];
@@ -90,8 +85,7 @@ export const platformRouter = router({
   }),
 
   users: router({
-    list: protectedProcedure.input(z.object({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ ctx, input }) => {
-      assertPlatformSuperAdmin(ctx.user);
+    list: supabaseAdminProcedure.input(z.object({ search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       const search = input.search ? `%${input.search}%` : null;
@@ -179,8 +173,7 @@ export const platformRouter = router({
   }),
 
   plans: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      assertPlatformSuperAdmin(ctx.user);
+    list: supabaseAdminProcedure.query(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
       return db.select().from(plans).orderBy(desc(plans.createdAt));
