@@ -15,7 +15,17 @@ export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.supabaseUser ?? opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (opts.ctx.supabaseUser) {
+        const { id, name, email, platformRole } = opts.ctx.supabaseUser;
+        return { id, name, email, platformRole };
+      }
+
+      if (!opts.ctx.user) return null;
+
+      const { id, name, email, platformRole } = opts.ctx.user;
+      return { id, name, email, platformRole: platformRole ?? "platform_user" };
+    }),
     logout: publicProcedure.mutation(() => {
       return {
         success: true,

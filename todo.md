@@ -82,12 +82,13 @@
 - [x] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
 - [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
 - [x] Arquivado pela decisão de e-mail/senha: repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
-- [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
+- [x] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
 - [x] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
-- [ ] Validar ponta a ponta o convite único já enviado para andrefmuniz01@gmail.com no domínio publicado, incluindo definição de senha e sessão sem Magic Link recorrente.
-- [ ] Publicar e validar ponta a ponta a correção do callback pós-definição de senha quando a sessão Supabase é válida, mas o contexto tRPC não encontra o profile operacional de André.
-- [ ] Confirmar após o deploy que um Super Admin Supabase sem usuário MySQL legado recebe `auth.me` materializado e o destino permitido.
-- [ ] Investigar a falha persistente de `auth.me` no domínio publicado após o login real de André, distinguindo token, backend e RLS antes de nova correção.
+- [ ] Reexecutar um callback real de redefinição de senha para andrefmuniz01@gmail.com no domínio publicado e confirmar que ele segue diretamente após salvar a senha, sem Magic Link recorrente.
+- [ ] Registrar evidência no domínio publicado de que o callback pós-definição de senha materializa o profile de André sem tela de indisponibilidade.
+- [ ] Registrar evidência direta no domínio publicado de `auth.me` materializado para andrefmuniz01@gmail.com sem expor token, antes de concluir o cenário de Super Admin sem usuário MySQL legado.
+- [x] Verificar em modo somente leitura que andrefmuniz01@gmail.com não possui registro na tabela MySQL legada antes de considerar validado o cenário sem ponte transitória.
+- [x] Investigar a falha persistente de `auth.me` no domínio publicado após o login real de André, distinguindo token, backend e RLS antes de nova correção.
 - [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
 - [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
@@ -116,6 +117,7 @@
 - [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
 - [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
 - [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
+- [x] Remover o access token Supabase do payload de `auth.me`, preservando-o exclusivamente no contexto interno do servidor.
 - [x] Remover a exportação incompatível do painel de acesso extraindo helpers de mensagens, sem mudar o fluxo Supabase de e-mail/senha.
 - [x] Remover a exportação incompatível da Home extraindo a regra de visibilidade financeira, sem alterar o RBAC financeiro.
 - [x] Validar após a extração da Home a ausência de novo aviso Fast Refresh para `canViewWorkspaceFinancials` e executar regressão integral.
