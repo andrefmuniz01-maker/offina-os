@@ -34,6 +34,10 @@ A proteção contra senhas vazadas continua desligada. A configuração foi loca
 
 A migration `20260827_0013_remove_public_tenant_id.sql` foi aplicada ao projeto `OFFICINA OS`. A verificação direta no catálogo PostgreSQL confirmou que `public_get_workshop_catalog` não contém mais o par de retorno `id`/`target_tenant.id`, mantém `search_path=""` e conserva somente a permissão `anon` para o endpoint público. O slug continua sendo a chave externa do formulário; nenhum ID interno de tenant é necessário para a solicitação.
 
+## Situação após a integração de catálogo e estoque
+
+As migrations de catálogo e estoque integradas (`20260827_0014`, `20260827_0015` e `20260827_0016`) já estavam aplicadas no projeto por uma tarefa paralela. A nova consulta ao Security Advisor retorna somente três advertências: as duas RPCs públicas intencionais do fluxo anônimo — catálogo comercial e envio de solicitação — e a proteção contra senhas vazadas, que é um recurso pago no plano atual. Não há advertências novas para catálogo interno, estoque ou compras.
+
 ## Referências
 
 [1]: https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable "Supabase Database Linter — Public Can Execute SECURITY DEFINER Function"
