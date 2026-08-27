@@ -18,10 +18,10 @@ export default function PublicQuote() {
   const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
 
   if (quote.isLoading) {
-    return <main className="grid min-h-screen place-items-center bg-stone-50"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></main>;
+    return <main className="grid min-h-screen place-items-center bg-stone-50" aria-live="polite"><div className="flex items-center gap-3 text-sm text-slate-600" role="status"><Loader2 className="h-6 w-6 animate-spin text-orange-700" aria-hidden="true" /><span>Carregando orçamento…</span></div></main>;
   }
   if (quote.error || !quote.data || ("expired" in quote.data && quote.data.expired)) {
-    return <main className="grid min-h-screen place-items-center bg-stone-50 p-6"><Card className="w-full max-w-md"><CardHeader><CircleAlert className="h-8 w-8 text-red-600" /><CardTitle className="mt-3">Orçamento indisponível</CardTitle><p className="text-sm text-slate-500">{"expired" in (quote.data ?? {}) ? "Este link de orçamento expirou." : quote.error?.message ?? "Não foi possível localizar este orçamento."}</p></CardHeader></Card></main>;
+    return <main className="grid min-h-screen place-items-center bg-stone-50 p-6" aria-live="assertive"><Card className="w-full max-w-md border-slate-200 shadow-sm" role="alert"><CardHeader><CircleAlert className="h-7 w-7 text-red-700" aria-hidden="true" /><h1 className="mt-3 text-xl font-semibold text-slate-950">Orçamento indisponível</h1><p className="text-sm leading-6 text-slate-600">{"expired" in (quote.data ?? {}) ? "Este link de orçamento expirou." : "Não foi possível localizar este orçamento."}</p></CardHeader></Card></main>;
   }
 
   const data = quote.data;
