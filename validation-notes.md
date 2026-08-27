@@ -193,3 +193,7 @@ Permissões customizadas de atendente e técnico agora são limitadas ao conjunt
 ## 27/08/2026 — Contexto Supabase sem fallback implícito
 
 O contexto autenticado foi coberto contra dois casos de negação antes da ponte MySQL: token sem identidade Supabase válida e identidade sem profile correspondente. Em ambos, `user` e `supabaseUser` permanecem nulos, sem consulta ao usuário legado. A suíte integral aprovou 108 arquivos de teste, 323 testes e uma suíte ignorada.
+
+## 27/08/2026 — Guardas de procedimento Supabase
+
+Procedimentos Supabase protegidos passaram a ter cobertura direta para três fronteiras: ausência de identidade materializada, papel global insuficiente e acesso global válido. A proteção interrompe a chamada antes de qualquer operação de domínio quando a identidade não existe e mantém ações globais exclusivamente para Super Admin. A suíte integral aprovou 109 arquivos de teste, 326 testes e uma suíte ignorada.

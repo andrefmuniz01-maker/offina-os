@@ -176,3 +176,4 @@
 - [x] Cobrir em teste a negação de permissões financeiras e administrativas para papéis Supabase restritos.
 - [x] Restringir permissões customizadas de atendentes e técnicos ao conjunto autorizado pelo papel.
 - [x] Cobrir a negação de token Supabase sem identidade ou profile válido antes do fallback legado.
+- [x] Cobrir a negação de procedimentos Supabase sem identidade materializada ou papel global autorizado.
