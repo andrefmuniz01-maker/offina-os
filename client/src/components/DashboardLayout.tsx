@@ -19,12 +19,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { startLogin } from "@/const";
+import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
+import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
@@ -44,6 +45,91 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+function PasswordAccess() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "signing-in" | "resetting" | "reset-sent" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const signInWithPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("signing-in");
+    setErrorMessage(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setErrorMessage(getPasswordAuthErrorMessage(error));
+      setStatus("error");
+      return;
+    }
+
+    window.location.assign("/auth/callback");
+  };
+
+  const requestPasswordSetup = async () => {
+    if (!email) {
+      setErrorMessage("Informe seu e-mail para criar ou redefinir a senha.");
+      setStatus("error");
+      return;
+    }
+
+    setStatus("resetting");
+    setErrorMessage(null);
+    const redirectTo = new URL("/auth/callback", window.location.origin).toString();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      setErrorMessage(getPasswordAuthErrorMessage(error));
+      setStatus("error");
+      return;
+    }
+    setStatus("reset-sent");
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <form onSubmit={signInWithPassword} className="flex flex-col items-center gap-5 p-8 max-w-md w-full">
+        <div className="flex flex-col items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-center">Acesse sua oficina</h1>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">Entre com seu e-mail e senha. No primeiro acesso, crie sua senha de forma segura.</p>
+        </div>
+        <input
+          aria-label="E-mail de acesso"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          type="email"
+          value={email}
+          onChange={event => setEmail(event.target.value)}
+          required
+          autoComplete="email"
+          placeholder="voce@empresa.com"
+        />
+        <input
+          aria-label="Senha"
+          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
+          type="password"
+          value={password}
+          onChange={event => setPassword(event.target.value)}
+          required
+          minLength={10}
+          autoComplete="current-password"
+          placeholder="Sua senha"
+        />
+        <Button type="submit" disabled={status === "signing-in" || status === "resetting"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
+          {status === "signing-in" ? "Entrando…" : "Entrar no painel"}
+        </Button>
+        <button
+          type="button"
+          onClick={requestPasswordSetup}
+          disabled={status === "signing-in" || status === "resetting"}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+        >
+          {status === "resetting" ? "Preparando redefinição…" : "Primeiro acesso ou esqueceu a senha?"}
+        </button>
+        {status === "reset-sent" && <p className="text-center text-sm text-muted-foreground">{getPasswordSetupMessage()}</p>}
+        {status === "error" && <p className="text-center text-sm text-destructive">{errorMessage}</p>}
+      </form>
+    </div>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -70,25 +156,7 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-center">
-              Entre para continuar
-            </h1>
-            <p className="text-sm text-muted-foreground text-center max-w-sm">
-              O acesso a este painel requer autenticação. Continue para iniciar o acesso seguro.
-            </p>
-          </div>
-          <Button
-            onClick={() => startLogin()}
-            size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
-          </Button>
-        </div>
-      </div>
+      <PasswordAccess />
     );
   }
 

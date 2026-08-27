@@ -19,7 +19,7 @@ function chain(result: unknown) {
 }
 
 function context(): TrpcContext {
-  return { user: { id: 7, openId: "platform-admin", role: "user", platformRole: "super_admin", name: "Super Admin", email: "admin@example.com", loginMethod: "manus", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
+  return { user: null, supabaseUser: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Super Admin", email: "admin@example.com", platformRole: "super_admin", accessToken: "test-access-token" }, req: {} as TrpcContext["req"], res: {} as TrpcContext["res"] };
 }
 
 describe("platform.tenantAudit — suporte global restrito a metadados", () => {
@@ -38,6 +38,6 @@ describe("platform.tenantAudit — suporte global restrito a metadados", () => {
     expect(output.items[0]).not.toHaveProperty("before");
     expect(output.items[0]).not.toHaveProperty("after");
     expect(output.items[0]).not.toHaveProperty("metadata");
-    expect(mocks.assertSuperAdmin).toHaveBeenCalled();
+    expect(mocks.assertSuperAdmin).not.toHaveBeenCalled();
   });
 });

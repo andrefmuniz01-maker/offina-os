@@ -52,6 +52,21 @@ function createContext(): TrpcContext {
   };
 }
 
+function createSupabaseOnlySuperAdminContext(): TrpcContext {
+  return {
+    user: null,
+    supabaseUser: {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      name: "Super Admin Supabase",
+      email: "admin@example.com",
+      platformRole: "super_admin",
+      accessToken: "test-access-token",
+    },
+    req: {} as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
+
 describe("platform — ciclo administrativo de tenants", () => {
   beforeEach(() => {
     mocks.audit.mockReset();
@@ -71,9 +86,18 @@ describe("platform — ciclo administrativo de tenants", () => {
 
   it("consolida as métricas globais para o painel de Super Admin", async () => {
     mocks.db = buildDb([[{ total: 3 }], [{ total: 2 }], [{ total: 12 }], [{ total: 8 }]]);
-    const caller = platformRouter.createCaller(createContext());
+    const caller = platformRouter.createCaller(createSupabaseOnlySuperAdminContext());
 
     await expect(caller.metrics()).resolves.toEqual({ tenants: 3, activeTenants: 2, users: 12, activeMemberships: 8 });
+  });
+
+  it("permite leitura global para Super Admin somente Supabase sem liberar mutações legadas", async () => {
+    mocks.db = buildDb([[{ total: 3 }], [{ total: 2 }], [{ total: 12 }], [{ total: 8 }]]);
+    const caller = platformRouter.createCaller(createSupabaseOnlySuperAdminContext());
+
+    await expect(caller.metrics()).resolves.toEqual({ tenants: 3, activeTenants: 2, users: 12, activeMemberships: 8 });
+    await expect(caller.createTenant({ name: "Oficina Centro", slug: "oficina-centro" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    expect(mocks.createTenant).not.toHaveBeenCalled();
   });
 
   it("altera a ativação de um tenant e deixa trilha de auditoria global", async () => {
@@ -131,6 +155,16 @@ describe("platform — ciclo administrativo de tenants", () => {
 
     await expect(caller.members.addExistingUser({ tenantId: 41, email: "dono@example.com", role: "admin" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("impede que a gestão interna atribua o papel de dono", async () => {
+    mocks.db = buildDb([]);
+    const caller = tenantRouter.createCaller(createContext());
+
+    await expect((caller.members.addExistingUser as any)({ tenantId: 41, email: "novo-dono@example.com", role: "owner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect((caller.members.updateRole as any)({ tenantId: 41, userId: 20, role: "owner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.db.insert).not.toHaveBeenCalled();
+    expect(mocks.db.update).not.toHaveBeenCalled();
   });
 
   it("bloqueia auditoria quando outra sessão já alterou o papel ou a ativação do membro", async () => {

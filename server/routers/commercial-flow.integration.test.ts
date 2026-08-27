@@ -63,11 +63,20 @@ describe("fluxo comercial — aprovação até agenda e OS", () => {
   });
 
   it("bloqueia um segundo orçamento para a mesma solicitação antes de criar itens ou eventos", async () => {
-    const request = { id: 9, tenantId: 4, serviceId: 5, customerId: 20, vehicleId: 31 };
+    const request = { id: 9, tenantId: 4, serviceId: 5, customerId: 20, vehicleId: 31, status: "in_quoting" };
     const service = { id: 5, tenantId: 4, active: true, name: "Instalação", laborPrice: "200.00", estimatedCost: "90.00" };
     mocks.db = buildDb([[request], [service], [], []], [[{ id: 81, number: 14, status: "ready" }]], []);
 
     await expect(quoteRouter.createCaller(staffContext).createFromSuggestion({ tenantId: 4, quoteRequestId: 9 })).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mocks.db.inserts()).toEqual([]);
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia a geração antecipada de proposta antes da etapa Em orçamento", async () => {
+    const request = { id: 9, tenantId: 4, serviceId: 5, customerId: 20, vehicleId: 31, status: "in_analysis" };
+    mocks.db = buildDb([[request]], [], []);
+
+    await expect(quoteRouter.createCaller(staffContext).createFromSuggestion({ tenantId: 4, quoteRequestId: 9 })).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("Em orçamento") });
     expect(mocks.db.inserts()).toEqual([]);
     expect(mocks.audit).not.toHaveBeenCalled();
   });

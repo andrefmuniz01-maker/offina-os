@@ -45,7 +45,7 @@ function HistoryRows({ orders, showVehicle = false }: { orders: HistoryOrder[]; 
 }
 
 export default function Clients() {
-  const mine = trpc.tenant.mine.useQuery();
+  const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
@@ -60,15 +60,15 @@ export default function Clients() {
   const vehiclesInput = useMemo(() => ({ tenantId, customerId: selectedCustomerId }), [tenantId, selectedCustomerId]);
   const vehicleHistoryInput = useMemo(() => ({ tenantId, vehicleId: vehicleId ?? 0 }), [tenantId, vehicleId]);
   const customerHistoryInput = useMemo(() => ({ tenantId, customerId: selectedCustomerId }), [tenantId, selectedCustomerId]);
-  const customers = trpc.customers.listPaged.useQuery(customersInput, { enabled: Boolean(tenantId) });
-  const vehicles = trpc.vehicles.listByCustomer.useQuery(vehiclesInput, { enabled: Boolean(tenantId && customerId) });
-  const vehicleHistory = trpc.vehicles.workOrderHistory.useQuery(vehicleHistoryInput, { enabled: Boolean(tenantId && vehicleId) });
-  const customerHistory = trpc.customers.workOrderHistory.useQuery(customerHistoryInput, { enabled: Boolean(tenantId && customerId) });
-  const create = trpc.vehicles.create.useMutation({
+  const customers = trpc.workspaceCustomers.listPaged.useQuery(customersInput, { enabled: Boolean(tenantId) });
+  const vehicles = trpc.workspaceVehicles.listByCustomer.useQuery(vehiclesInput, { enabled: Boolean(tenantId && customerId) });
+  const vehicleHistory = trpc.workspaceVehicles.workOrderHistory.useQuery(vehicleHistoryInput, { enabled: Boolean(tenantId && vehicleId) });
+  const customerHistory = trpc.workspaceCustomers.workOrderHistory.useQuery(customerHistoryInput, { enabled: Boolean(tenantId && customerId) });
+  const create = trpc.workspaceVehicles.create.useMutation({
     onSuccess: () => {
       toast.success("Veículo cadastrado no histórico do cliente.");
       setForm({ make: "", model: "", modelYear: "", plate: "" });
-      utils.vehicles.listByCustomer.invalidate();
+      utils.workspaceVehicles.listByCustomer.invalidate();
     },
     onError: error => toast.error(error.message),
   });

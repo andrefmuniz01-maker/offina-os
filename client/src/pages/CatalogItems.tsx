@@ -31,7 +31,7 @@ function PersistedItems({ title, items, loading, error, empty, search, onSearchC
 }
 
 export default function CatalogItems() {
-  const mine = trpc.tenant.mine.useQuery();
+  const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
@@ -43,12 +43,12 @@ export default function CatalogItems() {
   const [service, setService] = useState({ name: "", categoryId: "none", laborPrice: "0", estimatedMinutes: "60" });
   const productInput = useMemo(() => ({ tenantId, page: productPage, pageSize: pageSize + 1, ...(productSearch.trim() ? { search: productSearch.trim() } : {}) }), [tenantId, productPage, productSearch]);
   const serviceInput = useMemo(() => ({ tenantId, page: servicePage, pageSize: pageSize + 1, ...(serviceSearch.trim() ? { search: serviceSearch.trim() } : {}) }), [tenantId, servicePage, serviceSearch]);
-  const productCategories = trpc.catalog.categories.listProducts.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const serviceCategories = trpc.catalog.categories.listServices.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const products = trpc.catalog.products.list.useQuery(productInput, { enabled: Boolean(tenantId) });
-  const services = trpc.catalog.services.list.useQuery(serviceInput, { enabled: Boolean(tenantId) });
-  const createProduct = trpc.catalog.products.create.useMutation({ onSuccess: () => { setProduct({ name: "", categoryId: "none", salePrice: "0" }); setProductPage(1); toast.success("Produto cadastrado na categoria selecionada."); utils.catalog.products.list.invalidate(); }, onError: error => toast.error(error.message) });
-  const createService = trpc.catalog.services.create.useMutation({ onSuccess: () => { setService({ name: "", categoryId: "none", laborPrice: "0", estimatedMinutes: "60" }); setServicePage(1); toast.success("Serviço cadastrado na categoria selecionada."); utils.catalog.services.list.invalidate(); }, onError: error => toast.error(error.message) });
+  const productCategories = trpc.workspaceCatalog.categories.listProducts.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const serviceCategories = trpc.workspaceCatalog.categories.listServices.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
+  const products = trpc.workspaceCatalog.products.list.useQuery(productInput, { enabled: Boolean(tenantId) });
+  const services = trpc.workspaceCatalog.services.list.useQuery(serviceInput, { enabled: Boolean(tenantId) });
+  const createProduct = trpc.workspaceCatalog.products.create.useMutation({ onSuccess: () => { setProduct({ name: "", categoryId: "none", salePrice: "0" }); setProductPage(1); toast.success("Produto cadastrado na categoria selecionada."); utils.workspaceCatalog.products.list.invalidate(); }, onError: error => toast.error(error.message) });
+  const createService = trpc.workspaceCatalog.services.create.useMutation({ onSuccess: () => { setService({ name: "", categoryId: "none", laborPrice: "0", estimatedMinutes: "60" }); setServicePage(1); toast.success("Serviço cadastrado na categoria selecionada."); utils.workspaceCatalog.services.list.invalidate(); }, onError: error => toast.error(error.message) });
 
   if (mine.isLoading) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-6xl"><Skeleton className="h-80" /></main></DashboardLayout>;
   if (!tenant || !tenantId) return <DashboardLayout menuItems={menu} workspaceName="OficinaOS"><main className="mx-auto max-w-3xl"><Card><CardHeader><CardTitle>Associe-se a uma oficina</CardTitle><CardDescription>Produtos, serviços e categorias pertencem a uma oficina ativa. Peça a associação antes de cadastrar itens.</CardDescription></CardHeader></Card></main></DashboardLayout>;

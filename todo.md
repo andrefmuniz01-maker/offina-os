@@ -1,234 +1,167 @@
 # Project TODO
 
-- [x] Definir convenções de domínio, estados e transições para solicitações, orçamentos, agenda, OS e estoque.
-- [x] Modelar tenants, configurações, branding, planos e limites sem dependência de uma oficina específica.
-- [x] Modelar membros por tenant, papéis Super Admin/Admin/Atendente/Mecânico e permissões granulares aplicadas no servidor.
-- [ ] Garantir escopo obrigatório por tenant em todas as consultas e mutações de dados comerciais.
-- [ ] Registrar trilha de auditoria para eventos críticos, incluindo alteração de preço/custo, estoque, orçamento, permissões e financeiro.
-- [x] Implementar painel separado de Super Admin com criação controlada e ativação de oficinas.
-- [x] Implementar configuração de identidade e dados operacionais por oficina.
-- [x] Implementar cadastros de clientes e veículos com histórico vinculado ao tenant.
-- [x] Implementar categorias, fornecedores, produtos e regras de preço/margem por oficina.
-- [x] Implementar serviços, perguntas configuráveis de orçamento e kits com expansão de componentes.
-- [x] Implementar saldos físico, reservado e disponível de estoque por produto.
-- [x] Implementar movimentações de estoque com origem, responsável e histórico imutável.
-- [x] Implementar compras e entrada de estoque a partir de pedido recebido.
-- [x] Implementar reserva no orçamento aprovado e consumo efetivo na ordem de serviço.
-- [x] Implementar alerta de insuficiência e previsão de necessidade a partir de agenda, reservas, OS e kits.
-- [x] Implementar formulário público por oficina para solicitação de orçamento, com dados de cliente, veículo, serviço, descrição e anexos.
-- [x] Implementar painel interno de solicitações, atendimento e sugestão determinística de orçamento baseada no catálogo e disponibilidade.
-- [x] Implementar cálculo de custo, preço sugerido, desconto, margem estimada e restrições de visibilidade financeira.
-- [x] Implementar página pública de orçamento com identidade da oficina, token seguro, validade e registro de aprovação ou recusa.
-- [x] Preservar orçamento aprovado e converter seus dados em reserva, agendamento e ordem de serviço sem redigitação.
-- [x] Preparar mensagens de WhatsApp por template, sem integração não oficial ou envio automático.
-- [x] Implementar agenda operacional, profissionais, baias, status e visão de pátio em kanban.
-- [x] Implementar ordem de serviço com checklist, fotos, apontamentos, consumo, status, custo real e margem real.
-- [x] Atualizar histórico do veículo, estoque e financeiro ao concluir a execução da OS conforme regras de negócio.
-- [x] Implementar receitas, despesas, previsão separada de receita realizada e painel gerencial baseado em dados reais.
-- [x] Implementar busca, filtros, paginação e estados vazios em módulos operacionais.
-- [ ] Implementar notificações internas por evento e preferências por usuário; preparar a entrega por e-mail mediante configuração.
-- [ ] Implementar rotinas periódicas idempotentes para recalcular necessidade de estoque e identificar orçamentos sem resposta, sem enviar lembretes automaticamente.
-- [ ] Preparar estrutura para planos, assinaturas, limites, WhatsApp oficial e sugestões futuras limitadas aos dados e permissões do tenant.
-- [ ] Construir experiência desktop-first responsiva e fluxos mobile operacionais para atendente, mecânico e dono.
-- [x] Criar testes Vitest para isolamento multi-tenant, RBAC, orçamento, reservas, consumo, alertas, auditoria e financeiro.
-- [ ] Verificar interface em desktop e mobile, erros de execução, acessibilidade básica e estados de carregamento/erro.
-- [ ] Validar em todas as mutações que IDs relacionados pertencem ao tenant antes de criar ou associar registros.
-- [ ] Cobrir explicitamente em auditoria as alterações de preço/custo e os demais eventos críticos ainda não registrados.
-- [ ] Criar e ativar após publicação o job periódico, persistindo seu identificador e evitando lembretes automáticos.
-- [ ] Executar uma revisão verificável de estados de carregamento, erro e acessibilidade de teclado/foco sem erros pendentes no runtime.
-- [x] Implementar suporte auditável do Super Admin a tenants, com visualização de métricas globais, planos e limites.
-- [x] Implementar origem, responsável, tempo em fila e histórico de alteração para solicitações de orçamento.
-- [x] Implementar transições explícitas de solicitação e orçamento, impedindo mudanças de estado inválidas.
-- [x] Implementar regras de preço configuráveis por tenant para margem, markup, desconto e preço sugerido.
-- [x] Implementar agendamento a partir de orçamento aprovado com atribuição de profissional, baia e duração.
-- [x] Implementar observações, fotos de execução e apontamentos por técnico na ordem de serviço.
-- [x] Implementar conclusão, entrega e pós-venda vinculados ao histórico de veículo e cliente.
-- [x] Implementar relatórios comerciais e operacionais acionáveis sem expor custos a perfis restritos.
-- [x] Completar os dados cadastrais e de contato da tela de configuração da oficina.
-- [x] Garantir upsert automático para configurações e branding na primeira configuração da oficina.
-- [x] Validar salvamento e recarregamento de branding e dados operacionais sem registro prévio.
-- [x] Adicionar a criação de oficina diretamente no painel de Super Admin e validar o ciclo completo de criação, ativação e métricas.
-- [x] Implementar e validar explicitamente a criação de reservas de estoque na aprovação do orçamento, com teste cobrindo o vínculo posterior ao agendamento e à OS.
-- [x] Adicionar teste de servidor para aprovação de orçamento, criação de reserva, agendamento e reutilização de itens sem redigitação.
-- [ ] Executar revisão verificável de teclado, foco visível, labels e semântica nos fluxos principais.
-- [ ] Validar explicitamente os estados de carregamento, vazio e erro das rotas principais em desktop e mobile.
-- [x] Confirmar ausência de erros de runtime atuais após navegar pelos fluxos principais antes de concluir a revisão de interface.
-- [x] Navegar e validar no console as rotas de solicitações, orçamentos, configurações, clientes e páginas públicas antes de concluir a checagem de runtime.
-- [x] Navegar e validar por rota a home, o painel de plataforma e o detalhe de OS após limpar os logs de runtime.
-- [x] Executar uma checagem final de runtime por rota principal com registro verificável de ausência de erros antes de concluir a revisão de interface.
-- [x] Adicionar histórico operacional e de pós-venda também no contexto do cliente, além do veículo.
-- [x] Vincular o lembrete de pós-venda a cliente e veículo de forma explícita na API e na interface, com origem da entrega e ação recomendada.
-- [x] Exibir no histórico do cliente e do veículo os eventos de pós-venda sugerido vinculados à entrega da OS.
-- [x] Ampliar as APIs de histórico de cliente e veículo com data da entrega, alerta sugerido, ação recomendada e link relacionado.
-- [x] Implementar e exibir tempo em fila das solicitações desde a última mudança de status.
-- [x] Adicionar interface de atribuição de responsável da solicitação com trilha de mudanças visível.
-- [x] Criar matriz explícita e testável de transições de orçamento, reutilizada nas mutações públicas e internas.
-- [x] Cobrir o bloqueio de transições inválidas de solicitações e orçamentos com testes.
-- [x] Exibir responsável por solicitação, permitir atribuição apenas a membros ativos do tenant e registrar sua trilha operacional.
-- [x] Verificar e testar o isolamento de fornecedor em pedidos de compra por tenant.
-- [x] Calcular `queueMinutes` a partir do último evento de mudança de status, sem reinício em atribuição ou observação.
-- [x] Auditar a criação de produtos e serviços com custo, preço e margem, preservando os valores comerciais críticos no evento.
-- [x] Auditar alterações de componentes de serviços e criação de kits, com testes de bloqueio para componentes de outro tenant.
-- [x] Cobrir explicitamente o bloqueio de `serviceId` de outro tenant na criação de kits.
-- [x] Auditar alterações de checklist de OS e reforçar o escopo de tenant nos joins de agenda e pátio.
-- [x] Expor taxa-hora e margem padrão de peças na configuração e testar o upsert de settings e branding sem registro prévio.
-- [x] Reforçar o escopo de tenant nos joins de dashboard e notificações internas.
-- [x] Bloquear baixa de despesa inexistente no tenant e registrar auditoria somente após a atualização confirmada.
-- [x] Paginar receitas e despesas por tenant, com filtros de status e estados de interface seguros.
-- [x] Exibir erros explícitos de dashboard, receitas e despesas no financeiro, sem confundir falha, permissão e estado vazio.
-- [x] Auditar saldos e custos antes/depois em ajustes e recebimentos de estoque, reforçando os updates por tenant.
-- [x] Paginar a fila de solicitações por tenant, com filtro de status e estados explícitos de carregamento, vazio e erro.
-- [x] Criar relatório mensal por tenant com indicadores comerciais, operacionais e financeiros restritos por permissão.
-- [x] Separar blocos financeiros do dashboard e ocultar despesas e resultado quando o perfil não tiver `financial.view`.
-- [x] Adaptar o relatório mensal e testar a ausência de dados financeiros para perfis com `reports.view` sem acesso financeiro.
-- [x] Permitir definir o horizonte da previsão de estoque e exibir reservas e agendamentos afetados sem expor custos a perfis restritos.
-- [x] Integrar preferências internas por usuário à central de notificações, sem habilitar e-mail ou envio automático externo.
-- [x] Impedir operações financeiras quando não houver tenant ativo e exibir uma orientação explícita em vez de um formulário acionável.
-- [x] Adicionar markup padrão por tenant, aplicá-lo ao preço sugerido e validar seu salvamento, recarregamento e efeito no catálogo.
-- [x] Impedir salvamento de configurações sem tenant ativo e orientar a associação à oficina antes de exibir o formulário administrativo.
-- [x] Validar e auditar a conclusão e entrega de OS, com receita prevista, pós-venda e liberação de reservas estritamente no tenant.
-- [x] Conectar filtro temporal à agenda operacional, mantendo o pátio e os agendamentos estritamente no tenant ativo.
-- [x] Impedir agendamento e pátio acionáveis sem tenant ativo, exibindo orientação explícita para associação à oficina.
-- [x] Incluir itens de OS ativas sem agendamento na previsão de estoque, sinalizando as ordens afetadas sem dupla contagem com a agenda.
-- [x] Impedir controles de estoque e previsão sem tenant ativo, exibindo orientação explícita antes de consultar a oficina.
-- [x] Repetir o predicate de tenant nas atualizações financeiras de produtos e serviços, além da validação prévia da entidade.
-- [x] Repetir o predicate de tenant nas escritas de consumo, checklist, agenda, solicitações, orçamento e reservas, incluindo fluxos públicos por token.
-- [x] Reforçar os joins de cliente e veículo no histórico e na fila comercial, bloqueando solicitação externa antes de transação ou auditoria.
-- [x] Bloquear decisão pública de orçamento por token quando a oficina não estiver ativa, preservando o fluxo aprovado em tenant ativo.
-- [x] Registrar estado anterior e posterior na auditoria de alterações de papel e ativação de membros do tenant.
-- [x] Bloquear alteração de membro ausente no tenant antes de escrita ou auditoria de permissões.
-- [x] Registrar estado anterior e posterior nas baixas financeiras de receitas previstas e despesas planejadas.
-- [x] Registrar estado operacional anterior e posterior na auditoria de transições de ordem de serviço.
-- [x] Paginar e filtrar pedidos de compra por tenant, com estado vazio/erro na interface e custos ocultos sem permissão financeira.
-- [x] Cobrir a visibilidade de custo unitário de compra para perfis financeiros e sua ocultação para perfis restritos.
-- [x] Associar labels e foco visível aos controles de clientes e veículos, com estados de erro e orientação sem tenant ativo.
-- [x] Registrar saldos físicos, reservas e seus estados anterior e posterior na auditoria de consumo de produto da OS.
-- [x] Registrar status anterior e posterior do pedido ao receber compra, mantendo saldos e custo médio auditáveis.
-- [x] Registrar estados anterior e posterior no envio e nas decisões públicas de orçamento, com contagem agregada de reservas.
-- [x] Paginar e filtrar a fila de orçamentos por tenant, com estados vazios/erro e custos restritos por permissão financeira.
-- [x] Auditar visualização e expiração públicas de orçamento com estados anterior e posterior, sem retornar custos no fluxo público.
-- [x] Registrar os valores anteriores e posteriores de branding e políticas comerciais nas atualizações de configuração por tenant.
-- [x] Paginar a trilha de auditoria por tenant e exibir estados seguros de acesso, carregamento, erro e vazio.
-- [x] Permitir busca acessível por nome ou WhatsApp ao selecionar o cliente para cadastro e histórico de veículos.
-- [x] Paginar a seleção operacional de clientes sem alterar os consumidores legados de cadastro, preservando busca e tenant.
-- [x] Impedir preferências e notificações acionáveis sem tenant ativo, exibindo orientação explícita de associação à oficina.
-- [x] Impedir convites, papéis e ativações de equipe acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
-- [x] Impedir cadastros e alterações de catálogo acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
-- [x] Impedir checklist, consumo, anexos e apontamentos de OS acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
-- [x] Impedir atribuição, transições e geração de orçamento a partir de solicitações sem tenant ativo, exibindo orientação de associação à oficina.
-- [x] Impedir filtros e consultas de relatórios acionáveis sem tenant ativo, exibindo orientação de associação à oficina.
-- [x] Cobrir o bloqueio de solicitação pública quando o slug não estiver vinculado a uma oficina ativa, antes de qualquer transação.
-- [x] Cobrir a ausência de identidade e catálogo públicos quando o slug não estiver vinculado a uma oficina ativa.
-- [x] Expor criação e consulta de categorias de produtos e serviços em rota protegida por tenant, com acesso pelo catálogo, auditoria e cobertura de criação.
-- [x] Cobrir o bloqueio de categorias de outra oficina antes de criar produtos ou serviços, sem escrita ou auditoria indevida.
-- [x] Registrar o papel e a ativação anteriores e posteriores ao incluir ou reativar um membro em uma oficina.
-- [x] Registrar estados anterior e posterior das preferências internas de notificação por usuário e tenant.
-- [x] Registrar na auditoria os dados operacionais do agendamento e da OS criados a partir de orçamento aprovado.
-- [x] Registrar fornecedor, quantidade e produtos de pedidos de compra na auditoria sem expor custos unitários.
-- [x] Permitir renomear categorias por tenant e impedir exclusão quando ainda houver produtos ou serviços vinculados.
-- [x] Permitir selecionar categorias por tenant ao cadastrar produtos e serviços no fluxo operacional.
-- [x] Exibir carregamento, erro e vazio das categorias na rota de cadastro por categoria, sem confundir falha com ausência de opções.
-- [x] Cobrir associação bem-sucedida de categoria também ao cadastrar serviço por tenant.
-- [x] Validar em uma oficina ativa a criação de produto e serviço com categoria pela rota de cadastro operacional.
-- [x] Criar a oficina real Ruidão Performance com identificador público autorizado e confirmar o vínculo administrativo.
-- [x] Habilitar o navegador pessoal autorizado para concluir a criação e validação real da oficina.
-- [x] Cadastrar itens explicitamente identificados como demonstração para validar o vínculo de categorias na primeira oficina.
-- [x] Exibir e confirmar na interface a categoria persistida em produtos e serviços cadastrados pelo fluxo operacional.
-- [x] Registrar e cobrir na auditoria a criação de fornecedores por tenant.
-- [x] Validar explicitamente o produto no tenant antes de consultar seu histórico de movimentações de estoque.
-- [x] Validar explicitamente o cliente no tenant antes de listar seus veículos associados.
-- [x] Tornar a seleção de cliente para veículos explicitamente focável e não acionável durante carregamento ou falha.
-- [x] Cobrir auditoria de edição e bloqueio de exclusão referenciada também para categorias de serviço.
-- [x] Registrar composição anterior e posterior ao alterar os produtos vinculados a um serviço por tenant.
-- [x] Registrar corretamente a remoção de responsável no estado posterior auditado de uma solicitação.
-- [x] Validar explicitamente a solicitação no tenant antes de consultar seu histórico de eventos.
-- [x] Registrar descontos anterior e posterior por item na auditoria de orçamentos, sem incluir custos internos.
-- [x] Tornar o filtro de status de orçamentos explicitamente focável e não acionável durante carregamento ou falha.
-- [x] Tornar a seleção de produto e o filtro de pedidos de compra explicitamente focáveis e seguros durante carregamento ou falha.
-- [x] Impedir a geração de orçamento duplicado para a mesma solicitação dentro da oficina.
-- [x] Garantir no banco a unicidade de orçamento por solicitação dentro do tenant, inclusive sob concorrência.
-- [x] Impedir agendamento duplicado para o mesmo orçamento dentro da oficina.
-- [x] Garantir no banco a unicidade de ordem de serviço por orçamento dentro do tenant.
-- [x] Garantir no banco a unicidade de receita prevista por ordem de serviço dentro do tenant.
-- [x] Garantir no banco a unicidade de notificação interna de pós-venda por ordem de serviço dentro do tenant.
-- [x] Tornar atômica a baixa de estoque por OS para impedir consumo concorrente acima do saldo ou da reserva ativa.
-- [x] Tornar atômico o recebimento de compra para impedir entrada concorrente acima da quantidade pedida.
-- [x] Tornar atômico o ajuste negativo de estoque para impedir saldo físico concorrente abaixo de zero.
-- [x] Corrigir a rota interna da agenda e pátio que retorna página 404 em vez do fluxo operacional.
-- [x] Tornar o pátio horizontalmente rolável no mobile explícito e acessível por foco de teclado.
-- [x] Impedir reservas de estoque duplicadas sob concorrência na aprovação pública de orçamento.
-- [x] Impedir liberação duplicada de reservas sob concorrência na entrega ou cancelamento de OS.
-- [x] Corrigir a sobreposição dos cabeçalhos de saldo no inventário exibido em mobile.
-- [x] Impedir envio comercial duplicado de orçamento sob concorrência.
-- [x] Impedir registro duplicado de visualização pública de orçamento sob concorrência.
-- [x] Impedir registro duplicado de expiração pública de orçamento sob concorrência.
-- [x] Impedir eventos e auditorias duplicados em mudanças concorrentes de status de solicitações.
-- [x] Impedir auditorias e efeitos duplicados em mudanças concorrentes de status de ordem de serviço.
-- [x] Impedir atribuições concorrentes e auditorias contraditórias de responsável em solicitações.
-- [x] Impedir alterações concorrentes e auditorias contraditórias de papel ou ativação de membros do tenant.
-- [x] Impedir auditoria contraditória em alterações concorrentes de ativação, plano ou status de tenant pelo Super Admin.
-- [x] Reforçar o vínculo de status entre orçamento e solicitação durante envios e decisões comerciais.
-- [x] Tornar atômica a reserva de estoque em aprovação pública para impedir sobre-reserva concorrente.
-- [x] Validar todos os produtos de um pedido de compra no tenant antes de criar seus itens.
-- [x] Ampliar busca, filtros, paginação e estados de interface nas filas operacionais priorizadas.
-- [x] Adicionar busca por cliente, WhatsApp, placa ou veículo à fila paginada de solicitações.
-- [x] Adicionar busca por cliente, placa ou veículo à fila paginada de orçamentos.
-- [x] Adicionar busca por número ou fornecedor à fila paginada de pedidos de compra.
-- [x] Adicionar busca por cliente, placa ou veículo à agenda e ao pátio operacional.
-- [x] Adicionar busca por descrição às filas paginadas de receitas e despesas, sem ampliar acesso financeiro.
-- [x] Adicionar busca por ação ou entidade à trilha de auditoria paginada por tenant.
-- [x] Cobrir em regressão a auditoria de alteração de custo, preço e margem no catálogo.
-- [x] Mapear os módulos operacionais restantes sem busca, filtros, paginação ou estados explícitos antes de encerrar a cobertura geral.
-- [x] Adicionar busca e paginação às confirmações de produtos e serviços por categoria.
-- [x] Adicionar paginação à lista pesquisável de estoque, preservando saldos e alertas por tenant.
-- [x] Adicionar paginação à fila de notificações internas, preservando preferências e escopo do usuário.
-- [x] Evoluir o Painel de Super Admin com suporte auditável a tenants, planos, limites e métricas globais.
-- [x] Implementar listagem e manutenção auditável de planos no Painel de Super Admin.
-- [x] Exibir consumo de membros e clientes por tenant frente aos limites do plano no Painel de Super Admin.
-- [x] Permitir ao Super Admin consultar eventos auditáveis de um tenant sem acessar seus dados operacionais.
-- [x] Implementar gestão global auditável de usuários e vínculos por tenant no Painel de Super Admin.
-- [x] Permitir ao Super Admin associar um usuário existente a um tenant com papel inicial auditável.
-- [x] Aplicar efetivamente limites de plano para membros ativos e clientes por tenant.
-- [x] Implementar relatórios consolidados de uso e desempenho por tenant no Painel de Super Admin.
-- [x] Reforçar controles de segurança e auditoria multi-tenant em operações críticas.
-- [x] Tornar condicionais as alterações financeiras de produtos e serviços antes de registrar auditoria.
-- [x] Bloquear centralmente acessos internos a tenants suspensos, incluindo Super Admin em operações do tenant.
-- [x] Impedir rebaixamento ou desativação do proprietário primário nas mutações internas de equipe.
-- [x] Bloquear leitura pública e expiração de orçamento quando o tenant estiver suspenso ou inativo.
-- [x] Gerar chaves de armazenamento não enumeráveis para novos anexos de solicitações e ordens de serviço.
-- [x] Tornar condicionais as atualizações de descontos e totais de orçamento antes da auditoria.
-- [x] Restringir anexos de solicitações e OS a tipos MIME de imagem e vídeo explicitamente permitidos.
-- [x] Evoluir interfaces operacionais prioritárias com foco em clareza, responsividade, acessibilidade e estados reais.
-- [x] Reestruturar a fila de solicitações para priorizar próxima ação, status e operação em desktop e mobile.
-- [x] Reestruturar a fila de orçamentos para orientar decisão comercial, acompanhamento e próximos passos.
-- [x] Reestruturar agenda e pátio para destacar planejamento, capacidade e próxima ação operacional.
-- [x] Reestruturar estoque para destacar disponibilidade, reservas, criticidade e decisão de reposição.
-- [x] Reestruturar clientes e veículos para acelerar atendimento, histórico e continuidade comercial.
-- [x] Reestruturar financeiro para destacar realização, previsão e prioridades sem ampliar permissões.
-- [x] Reestruturar compras para destacar reposição, recebimento e prioridades de pedido.
-- [x] Evoluir a jornada pública de solicitação e decisão de orçamento com foco em clareza e confiança do cliente.
-- [x] Reestruturar o formulário público de solicitação com etapas, progresso e validação orientada ao cliente.
-- [x] Reestruturar a visualização pública do orçamento para clareza de itens, validade e decisão segura.
-- [x] Reestruturar catálogo e cadastros para acelerar descoberta, composição e decisão operacional.
-- [x] Reestruturar equipe e permissões para clareza de papéis, acessos e próximas ações administrativas.
-- [x] Executar revisão transversal de acessibilidade, teclado, foco e estados prioritários após as evoluções de interface.
-- [x] Reestruturar Configurações da Oficina em uma interface objetiva, sóbria e orientada a tarefas.
-- [x] Remover emojis e ornamentos que reforçam uma aparência genérica das interfaces prioritárias.
-- [x] Simplificar relatórios, notificações e auditoria para consulta rápida no dia a dia.
-- [x] Simplificar painéis operacionais e administrativos restantes com foco em próxima ação e redução de ruído.
-- [x] Simplificar Ordem de Serviço e registros de execução para uso diário da equipe técnica.
-- [x] Simplificar a administração global restante sem ampliar escopo de acesso.
-- [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
-- [x] Simplificar os apontamentos técnicos de OS para registro e consulta rápida da equipe.
-- [x] Auditar a confirmação de leitura de notificações sem expor conteúdo operacional na trilha global.
-- [x] Uniformizar painéis de prioridade em linguagem neutra e reduzir elementos decorativos nas telas diárias.
-- [x] Traduzir a tela de autenticação do painel para português do Brasil.
-- [x] Executar uma matriz verificável por roteador e mutação comercial para confirmar `tenantId` e IDs relacionados.
-- [x] Inventariar eventos críticos por domínio e comprovar a cobertura de auditoria antes/depois.
-- [ ] Validar por papel um fluxo principal de atendente, mecânico e dono em desktop e mobile.
-- [ ] Registrar evidências explícitas de carregamento, vazio e erro nas rotas principais.
-- [ ] Executar revisão documentada de foco visível, labels, landmarks e navegação por teclado nos fluxos principais.
-- [x] Exibir erro explícito ao carregar dados ou identidade na tela de configurações da oficina.
-- [x] Substituir a página 404 genérica em inglês por um estado público objetivo em português do Brasil.
-- [x] Criar e sincronizar um repositório privado no GitHub para o código-fonte do OficinaOS.
-- [x] Traduzir e tornar seguro o estado global de erro sem expor detalhes técnicos ao operador.
+- [x] Migrar a base funcional do ZIP do OficinaOS para o projeto web gerenciado, preservando React, Express, tRPC, Drizzle e o domínio multi-tenant.
+- [x] Criar um shell administrativo refinado com navegação para painel, solicitações, orçamentos, agenda, estoque e ordem de serviço.
+- [x] Implementar um modo de demonstração navegável explicitamente identificado, sem criar ou persistir dados fictícios de clientes, avaliações ou operações.
+- [x] Exibir separação visual por oficina ativa e papel de usuário, com opções de dono, atendente e técnico.
+- [x] Implementar estados demonstráveis de carregamento, ausência de dados, erro e bloqueio de acesso para os módulos prioritários.
+- [x] Conectar a prévia às estruturas reais de tenants, permissões e fluxos comerciais e operacionais do código migrado.
+- [x] Preservar e testar a cadeia solicitação, orçamento, aprovação, reserva, agenda, ordem de serviço, consumo e financeiro.
+- [x] Preparar checklist de validação em staging por papel, desktop e mobile, sem popular dados de produção.
+- [x] Implementar o endpoint idempotente de varredura operacional em /api/scheduled/ para alertas internos de estoque crítico e follow-up sugerido.
+- [ ] Preparar a configuração do job periódico após publicação, sem habilitar comunicações externas automáticas.
+- [x] Adicionar ou atualizar testes Vitest para a experiência de demonstração, controle de acesso e rotina operacional.
+- [x] Verificar tipos, testes, build, console e visualização responsiva antes da entrega.
+- [x] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
+- [x] Investigar e documentar a causa histórica do problema de acesso à prévia/publicação: tratou-se de quota de leitura de logs da infraestrutura, sem defeito de aplicação confirmado.
+- [x] Verificar que o domínio publicado atual carrega normalmente a tela de acesso por e-mail e senha.
+- [x] Diagnosticar e corrigir o redirecionamento indevido que ocorre cerca de cinco segundos após o login no painel global.
+- [ ] Validar em sessão humana publicada que uma falha local de módulo não troca o painel global pela tela de acesso e que o logout explícito continua funcionando.
+- [x] Produzir um mapa verificável de módulos, regras de negócio, integrações e lacunas, priorizado para o uso diário com poucas interfaces objetivas.
+- [ ] Revisar os fluxos existentes de ponta a ponta e consolidar melhorias de maior impacto antes de criar novas abas ou recursos.
+- [ ] Integrar continuamente a branch principal compartilhada sem sobrescrever commits, preservando a oficina demo exclusivamente no contexto de Super Admin.
+- [ ] Evoluir os fluxos administrativos da oficina a partir do mapa de regras e responsabilidades, priorizando poucos caminhos completos de uso diário.
+- [x] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
+- [x] Reorganizar a Home operacional como central do dia, preservando dados do workspace e ocultando leituras financeiras de papéis sem permissão.
+- [x] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
+- [ ] Permitir que o Super Admin abra, de forma controlada, os links públicos de solicitação e orçamento de cada oficina.
+- [x] Expor somente o link público de solicitação de cada oficina ativa; manter orçamentos dependentes do token seguro de cada cliente.
+- [ ] Validar visualmente os ambientes do dono e do Super Admin em desktop e mobile, incluindo seus estados de acesso.
+- [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
+- [x] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
+- [ ] Manter futuras alterações estritamente limitadas ao código e às solicitações explícitas do repositório-fonte.
+- [x] Comparar cada tabela de drizzle/schema.ts com information_schema.columns, registrando colunas ausentes, extras, tipos e defaults divergentes.
+- [ ] Identificar os e-mails existentes no banco e conceder o papel de Super Admin ao usuário autenticado, preservando os demais registros.
+- [x] Auditar os quatro registros marcados como Super Admin e confirmar os dois acessos autorizados antes de qualquer rebaixamento.
+- [ ] Manter somente andrefmuniz01@gmail.com e felipefmuniz@gmail.com como Super Admins, rebaixando registros duplicados sem excluir usuários.
+- [x] Auditar por que andrefmuniz01@gmail.com não foi sincronizado pelo OAuth antes de configurar seu Super Admin.
+- [x] Consolidar registros OAuth duplicados sem excluir usuários e restaurar a unicidade de OpenID.
+- [x] Garantir que somente Super Admin concede acesso inicial aos donos e que donos gerenciam apenas funcionários do próprio tenant.
+- [x] Comparar a versão publicada com o ZIP original e auditar a oficina já existente sem alterar dados.
+- [x] Verificar se o repositório contém dump, seed ou configuração de banco para reproduzir a oficina existente.
+- [x] Concluir a validação da integridade de OpenID e da hierarquia Super Admin → donos → funcionários sem criar novas interfaces.
+- [x] Validar por tabela os índices únicos e constraints críticas em information_schema, não apenas por contagem agregada.
+- [x] Executar e registrar uma verificação automatizada completa do schema antes de marcar a auditoria como concluída.
+- [x] Arquivado pela decisão de e-mail/senha: validar login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.
+- [x] Auditar a arquitetura atual contra Supabase Auth, PostgreSQL, RLS e Storage sem criar novas telas ou funcionalidades.
+- [x] Inventariar autenticação, banco, migrations, isolamento multi-tenant, permissões, rotas, secrets e serviços externos.
+- [ ] Documentar riscos, incompatibilidades e um plano seguro de migração para Supabase antes de qualquer nova mudança de infraestrutura.
+- [x] Registrar marco de aprovação pré-migração que bloqueia novas alterações estruturais de Supabase até decisão explícita.
+- [ ] Congelar e inventariar dados, identidade, arquivos e contagens da base MySQL antes da migração.
+- [ ] Criar um branch de staging Supabase e aplicar o schema PostgreSQL com RLS, policies e Storage privados.
+- [ ] Migrar e reconciliar dados, usuários e arquivos no staging sem excluir a origem MySQL.
+- [ ] Adaptar o backend e o cliente de Manus OAuth/MySQL para Supabase Auth/PostgreSQL.
+- [ ] Executar testes Tenant A × Tenant B, IDOR, papéis, estoque, reservas e rollback antes do corte.
+- [ ] Preparar plano de corte e rollback para aprovação antes de promover staging a produção.
+- [x] Executar a migração exclusivamente dentro do plano gratuito, sem criar branches ou recursos pagos no Supabase.
+- [x] Documentar o mapeamento MySQL → PostgreSQL/Supabase sem criar identidades fictícias nem remover dados da origem.
+- [x] Criar e aplicar a foundation versionada no projeto Supabase gratuito, com 39 tabelas públicas protegidas por RLS e bucket privado.
+- [ ] Concluir a troca integral de Manus OAuth/MySQL após o primeiro login real de um Super Admin no Supabase e validação de corte sem fonte paralela.
+- [x] Arquivado pela decisão de e-mail/senha: configurar Magic Link do Supabase Auth como único fluxo de login e sessão da aplicação.
+- [ ] Remover o uso de Manus OAuth, cookies JWT próprios e credenciais de sessão paralelas do cliente e backend.
+- [ ] Associar identidades Supabase Auth reais de Felipe e André por e-mail, sem UUIDs ou perfis fictícios.
+- [ ] Validar a cadeia Supabase Auth → profile → tenant_members → tenant → role → permissões → RLS para administradores.
+- [ ] Testar login, logout, rotas protegidas, impedimento de autoelevação, RLS e isolamento Tenant A × Tenant B antes de avançar.
+- [x] Arquivado pela decisão de e-mail/senha: substituir o fluxo planejado de Magic Link por Google OAuth via Supabase Auth como único login da aplicação.
+- [x] Arquivado pela decisão de e-mail/senha: auditar e corrigir Site URL, Redirect URLs e callback reais antes de ativar o provider Google.
+- [x] Arquivado pela decisão de e-mail/senha: configurar o provider Google no Supabase somente com Client ID e Client Secret mantidos em secrets de servidor.
+- [ ] Validar redirecionamento pós-login por papel e tenant no fluxo de e-mail/senha, sem permitir autoalteração de role, tenant ou permissões.
+- [x] Entregar passo a passo operacional para configurar Google OAuth no Supabase e explicar o limite do conector disponível.
+- [x] Arquivado pela decisão de e-mail/senha: comprovar a elegibilidade gratuita do Google OAuth antes de criar recursos, sem ativar teste, créditos ou faturamento.
+- [x] Arquivado pela decisão de e-mail/senha: bloquear explicitamente qualquer ação que crie cobrança, projeto pago ou ativação de billing durante a configuração de OAuth.
+- [x] Registrar a evidência oficial de criação de projeto sem billing automático e o bloqueio atual por MFA antes do OAuth.
+- [x] Arquivado pela decisão de e-mail/senha: corrigir o cadastro do cliente Google OAuth usando somente campos de origem e callback aceitos por domínios gratuitos, sem comprar domínio.
+- [x] Arquivado pela decisão de e-mail/senha: abandonar a ativação do Google OAuth após falha externa do Google Cloud, sem criar contas, billing ou domínios adicionais.
+- [x] Arquivado pela decisão de e-mail/senha: implementar exclusivamente o Magic Link nativo do Supabase Auth como login e sessão oficiais do OficinaOS.
+- [x] Validar o provider nativo de e-mail e configurar Site URL e callbacks de produção e prévia para o Magic Link.
+- [ ] Provisionar as identidades Supabase Auth reais de Felipe e André por fluxo administrativo controlado; concluir o primeiro acesso exclusivamente por recuperação de senha.
+- [ ] Migrar a autenticação do Heartbeat agendado para uma credencial de serviço compatível com a arquitetura Supabase antes de reativar tarefas recorrentes.
+- [x] Documentar a separação entre domínio de branding, origem JavaScript, callback Google/Supabase e redirect da aplicação.
+- [x] Fazer o logout do cliente encerrar explicitamente a sessão Supabase e invalidar o estado tRPC sem usar cookies de sessão próprios.
+- [x] Validar o convite real de Felipe, seu profile automático e a promoção administrativa inicial sem provisionar André antes de uma identidade verificável.
+- [x] Desativar autoinscrição pública no Supabase Auth, mantendo o e-mail/Magic Link habilitado para identidades provisionadas por convite.
+- [x] Confirmar e registrar o estado persistido do Supabase Auth: autoinscrição pública desativada e provider de e-mail/Magic Link habilitado.
+- [x] Diagnosticar a não entrega do Magic Link de Felipe no Supabase, verificando logs, template, limites e configuração de e-mail antes de novo reenvio.
+- [x] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.
+- [x] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
+- [x] Arquivado pela decisão de e-mail/senha: corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
+- [x] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
+- [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
+- [x] Arquivado pela decisão de e-mail/senha: repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
+- [x] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
+- [x] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
+- [ ] Reexecutar um callback real de redefinição de senha para andrefmuniz01@gmail.com no domínio publicado e confirmar que ele segue diretamente após salvar a senha, sem Magic Link recorrente.
+- [ ] Registrar evidência no domínio publicado de que o callback pós-definição de senha materializa o profile de André sem tela de indisponibilidade.
+- [ ] Registrar evidência direta no domínio publicado de `auth.me` materializado para andrefmuniz01@gmail.com sem expor token, antes de concluir o cenário de Super Admin sem usuário MySQL legado.
+- [x] Verificar em modo somente leitura que andrefmuniz01@gmail.com não possui registro na tabela MySQL legada antes de considerar validado o cenário sem ponte transitória.
+- [x] Investigar a falha persistente de `auth.me` no domínio publicado após o login real de André, distinguindo token, backend e RLS antes de nova correção.
+- [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
+- [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
+- [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
+- [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para usuário sem vínculo ativo no tenant.
+- [x] Adicionar teste tRPC protegido que retorne FORBIDDEN para técnico tentando ação financeira.
+- [x] Auditar os arquivos versionáveis e confirmar que segredos, dados privados e artefatos temporários não serão publicados no GitHub.
+- [x] Publicar no repositório o código, migrations Supabase, documentação de arquitetura e testes atualmente validados.
+- [x] Adicionar um contrato de portabilidade com variáveis de ambiente, migrations, APIs e passos de execução, sem versionar credenciais ou dados reais.
+- [x] Verificar que todo arquivo necessário para reconstruir a arquitetura está versionado ou documentado no repositório privado.
+- [x] Criar inventário exaustivo de código, migrations, APIs, ambiente, Supabase/Auth, scheduler, Storage e URLs, vinculando cada item a arquivo ou configuração documentada.
+- [x] Validar automaticamente o inventário de portabilidade contra os caminhos e documentos versionados antes da publicação final.
+- [x] Commitar e publicar no GitHub os novos arquivos de portabilidade e ajustes correlatos.
+- [x] Fazer a checagem de portabilidade confirmar que cada artefato obrigatório está rastreado pelo Git, não apenas presente no diretório local.
+- [x] Consolidar o contrato do painel global de Super Admin, incluindo contexto global, fontes de dados reais, estados vazios e limites de segurança.
+- [x] Auditar as rotas, componentes, routers e modelos existentes de plataforma antes de criar novas telas ou ações administrativas.
+- [x] Testar diretamente a guarda de Super Admin para comprovar que usuário comum e admin de tenant não acessam procedures globais.
+- [x] Adicionar barreira visual de Super Admin em `/plataforma`, mantendo as procedures do backend como fonte autoritativa de autorização.
+- [x] Criar navegação exclusiva do ambiente Platform em modo leitura, com Dashboard, Oficinas, Usuários, Planos, Uso, Indicadores, Auditoria, Segurança e Suporte.
+- [x] Evoluir o painel de Super Admin com um resumo global de governança baseado somente em dados reais e estados explícitos, sem mutações ou suporte invasivo.
+- [x] Remover da superfície Platform os controles de criação, edição, associação, ativação e impersonação durante a etapa de consulta global.
+- [x] Diferenciar visualmente carregamento, estado vazio e indisponibilidade em métricas, oficinas, planos e uso.
+- [x] Cobrir com testes o contrato de seções read-only e a proteção dos estados principais da Platform.
+- [x] Adicionar testes renderizados da Platform para navegação read-only e os estados loading, erro e vazio de métricas, oficinas, planos e uso.
+- [x] Registrar a auditoria Supabase dos avisos externos de funções públicas e proteção contra senhas vazadas.
+- [x] Endurecer as funções públicas do Supabase preservando apenas o catálogo comercial e a solicitação anônima estritamente necessários.
+- [x] Configurar ou documentar a pendência de proteção contra senhas vazadas no Supabase Auth antes da liberação comercial.
+- [ ] Habilitar a proteção contra senhas vazadas no Supabase Auth antes de liberar o login por senha comercialmente.
+- [ ] Priorizar e executar melhorias autônomas de UX SaaS para reduzir passos no fluxo diário da oficina e do cliente, sem dados fictícios ou recursos pagos.
+- [ ] Reforçar mensagens de segurança e limites de automação nos fluxos públicos e operacionais de maior risco.
+- [x] Remover o access token Supabase do payload de `auth.me`, preservando-o exclusivamente no contexto interno do servidor.
+- [x] Remover a exportação incompatível do painel de acesso extraindo helpers de mensagens, sem mudar o fluxo Supabase de e-mail/senha.
+- [x] Remover a exportação incompatível da Home extraindo a regra de visibilidade financeira, sem alterar o RBAC financeiro.
+- [x] Validar após a extração da Home a ausência de novo aviso Fast Refresh para `canViewWorkspaceFinancials` e executar regressão integral.
+- [x] Migrar o intake público para a RPC Supabase antes de mover anexos, evitando dois caminhos de gravação.
+- [x] Criar capacidade efêmera de upload e policies mínimas para anexos públicos em bucket Supabase privado, com limites de MIME, tamanho, escopo e expiração.
+- [x] Implementar rate limiting persistido por tenant, contato e impressão de IP no intake Supabase, com testes de concorrência e expiração.
+- [x] Documentar o desenho de segurança de anexos privados e rate limiting antes de criar bucket, policy ou migration.
+- [x] Validar localmente quantidade, tipo e tamanho de anexos antes de ler arquivos no formulário público de solicitação.
+- [x] Retornar ao cliente apenas o protocolo da solicitação pública, sem expor o identificador interno do registro.
+- [x] Validar no backend o formato base64 de anexos públicos antes de gravar arquivo ou metadado de solicitação.
+- [x] Impedir que o Super Admin crie tenants pela Home operacional; direcionar a identidade global ao ambiente Platform em modo leitura.
+- [x] Remover o identificador interno da oficina do catálogo público nos caminhos transitório e Supabase, mantendo o slug como chave externa.
+- [x] Exibir ao Super Admin exclusivamente a navegação Platform, mesmo quando houver vínculo operacional transitório, para evitar mistura de contextos.
+- [x] Remover métricas financeiras da resposta de dashboard para atendentes e técnicos, garantindo a proteção no banco e não apenas na interface.
+- [x] Simplificar a orientação de primeiro acesso e recuperação de senha, sem expor se um e-mail está provisionado.
+- [x] Substituir a mensagem de erro `otp_disabled` por uma resposta neutra que não revele se o e-mail está autorizado ou provisionado.
+- [x] Cobrir todo o fluxo de primeiro acesso para garantir que a interface não confirme cadastro, autorização ou inexistência de e-mail.
+- [x] Limitar reenvios públicos consecutivos pelo mesmo contato e oficina, sem bloquear o envio legítimo de uma nova solicitação após intervalo seguro.
+- [x] Normalizar o WhatsApp da solicitação pública antes de deduplicar cliente, limitar reenvio e salvar o contato.
+- [x] Usar o nome canônico do serviço cadastrado quando a solicitação pública referencia um serviço do catálogo.
+- [x] Criar um utilitário somente leitura e versionado para comparar Drizzle com INFORMATION_SCHEMA sem registrar dados operacionais ou credenciais.
+- [x] Comparar os tipos SQL exatos, incluindo precisão e escala, entre Drizzle e o MySQL legado.
+- [x] Comparar os defaults e a geração/on-update de cada coluna sem reduzir a verificação à mera presença de default.
+- [x] Revisar e priorizar as 42 divergências encontradas de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
+- [ ] Coletar metadados de volume e planos EXPLAIN dos 13 índices P0 antes de propor qualquer DDL na fonte MySQL.
+- [x] Registrar a decisão vigente de Supabase Auth por e-mail e senha e reconciliar o backlog de OAuth/Magic Link sem remover o histórico.
+- [x] Verificar, convidar e promover apenas a identidade Supabase verificável de andrefmuniz01@gmail.com a Super Admin global, preservando acessos existentes.
+- [x] Validar a credencial Service Role exclusivamente no servidor por leitura administrativa mínima antes de enviar o convite de André.
+- [x] Tratar o callback Supabase de convite como fluxo seguro de definição de senha antes de redirecionar o Super Admin ao painel.
+- [x] Adicionar cobertura direta do AuthCallback para o estado de convite até a tela de definição de senha, além do helper isolado.
+- [x] Redigir cabeçalhos e valores sensíveis no coletor local de depuração para impedir que tokens de sessão apareçam nos logs de diagnóstico.
+- [x] Permitir leitura global da Platform para Super Admin autenticado somente no Supabase, sem reativar mutações legadas nem criar uma sessão paralela.
+- [x] Impedir que tenants marcados como demonstração apareçam nos fluxos públicos ou operacionais, mantendo sua visibilidade apenas para Super Admin.
+- [x] Restringir a navegação diária por papel para reduzir abas e não oferecer atalhos financeiros, administrativos ou estratégicos a atendentes e técnicos.
+- [x] Ocultar ações de agendamento e dados de escala para técnicos na Agenda e Pátio, preservando a execução somente das OS atribuídas.
+- [x] Conectar o orçamento aprovado à Agenda e Pátio com pré-seleção segura, reduzindo uma etapa manual sem recriar cliente, veículo ou itens.
+- [x] Exigir que a solicitação esteja em orçamento antes de gerar proposta, preservando a transição comercial e evitando criação antecipada de orçamento.
+- [x] Diferenciar indisponibilidade de estoque e bloqueio de permissão para orientar acessos diretos sem expor controles de inventário a papéis não autorizados.
+- [x] Ocultar controles financeiros em acessos diretos sem permissão e diferenciar bloqueio de autorização de indisponibilidade operacional.
+- [x] Preparar um prompt de continuidade com as próximas alterações recomendadas, sem iniciar novas mudanças funcionais neste ciclo.

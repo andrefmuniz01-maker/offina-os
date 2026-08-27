@@ -1,0 +1,5 @@
+{
+  "project_id": "jpvvhowgpuinuuputoot",
+  "name": "oficinaos_profile_rls_initplan",
+  "query": "-- Cache row-invariant Auth and security-definer lookups once per statement.\n-- See: https://supabase.com/docs/guides/database/postgres/row-level-security\ndrop policy if exists profiles_self_select on public.profiles;\ndrop policy if exists profiles_self_update on public.profiles;\ndrop policy if exists profiles_super_insert on public.profiles;\n\ncreate policy profiles_self_select on public.profiles\n  for select to authenticated\n  using (id = (select auth.uid()) or (select private.is_super_admin()));\n\ncreate policy profiles_self_update on public.profiles\n  for update to authenticated\n  using (id = (select auth.uid()) or (select private.is_super_admin()))\n  with check (\n    (select private.is_super_admin())\n    or (\n      id = (select auth.uid())\n      and platform_role = (select platform_role from public.profiles where id = (select auth.uid()))\n    )\n  );\n\ncreate policy profiles_super_insert on public.profiles\n  for insert to authenticated\n  with check ((select private.is_super_admin()));\n"
+}

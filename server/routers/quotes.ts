@@ -54,6 +54,24 @@ export function calculateRequestQueueMinutes(createdAt: Date, lastStatusChangedA
   return Math.max(0, Math.floor((now.getTime() - (lastStatusChangedAt ?? createdAt).getTime()) / 60_000));
 }
 
+export const PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS = 10 * 60_000;
+
+export function isPublicRequestResubmissionBlocked(lastCreatedAt: Date | undefined, now = new Date()) {
+  return Boolean(lastCreatedAt && now.getTime() - lastCreatedAt.getTime() < PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS);
+}
+
+export function normalizePublicWhatsapp(value: string) {
+  const normalized = value.replace(/\D/g, "");
+  if (normalized.length < 8 || normalized.length > 15) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um WhatsApp válido com DDD." });
+  }
+  return normalized;
+}
+
+export function resolvePublicServiceLabel(submittedLabel: string, catalogServiceName?: string) {
+  return catalogServiceName ?? submittedLabel;
+}
+
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
 const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
   draft: ["ready", "cancelled"],
@@ -91,6 +109,25 @@ function assertRequestTransition(current: z.infer<typeof requestStatus>, next: z
   if (current === next) return;
   if (!isRequestTransitionAllowed(current, next)) throw new TRPCError({ code: "BAD_REQUEST", message: `Não é permitido mudar a solicitação de ${current} para ${next}.` });
 }
+
+export function decodePublicAttachment(base64: string, expectedMimeType: string) {
+  const normalizedMimeType = expectedMimeType.trim().toLowerCase();
+  const dataUrl = /^data:([a-z0-9.+/-]+);base64,([a-z0-9+/]+={0,2})$/i.exec(base64);
+  const encoded = dataUrl?.[2] ?? base64;
+  const declaredMimeType = dataUrl?.[1]?.toLowerCase();
+
+  if (declaredMimeType && declaredMimeType !== normalizedMimeType) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O tipo declarado do arquivo não corresponde ao anexo enviado." });
+  }
+  if (!/^[a-z0-9+/]+={0,2}$/i.test(encoded) || encoded.length % 4 !== 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo não possui uma codificação válida." });
+  }
+
+  const buffer = Buffer.from(encoded, "base64");
+  if (!buffer.length) throw new TRPCError({ code: "BAD_REQUEST", message: "O anexo enviado está vazio." });
+  return buffer;
+}
+
 const publicRequestInput = z.object({
   tenantSlug: z.string().trim().toLowerCase().min(2).max(96),
   name: z.string().trim().min(2).max(180),
@@ -148,6 +185,14 @@ function publicQuoteItems(items: typeof quoteItems.$inferSelect[]) {
 
 const defaultQuoteMessageTemplate = "Olá, {{cliente}}! Seu orçamento para {{veiculo}} está pronto. Total: {{total}}. Consulte os detalhes e responda aqui: {{link}}";
 
+export function toPublicQuoteRequestReceipt(result: { requestId: number; number: number }) {
+  return { number: result.number };
+}
+
+export function toPublicWorkshopCatalog<TBranding>(workshop: { name: string; branding: TBranding }) {
+  return { name: workshop.name, branding: workshop.branding };
+}
+
 export function renderQuoteMessage(template: string | null | undefined, values: { client: string; vehicle: string; total: string; link: string; workshop: string }) {
   const placeholders: Record<string, string> = { "{{cliente}}": values.client, "{{veiculo}}": values.vehicle, "{{total}}": values.total, "{{link}}": values.link, "{{oficina}}": values.workshop };
   return Object.entries(placeholders).reduce((message, [token, value]) => message.replaceAll(token, value), template?.trim() || defaultQuoteMessageTemplate);
@@ -161,31 +206,49 @@ export const quoteRequestRouter = router({
     if (!tenant) return null;
     const branding = (await db.select().from(tenantBranding).where(eq(tenantBranding.tenantId, tenant.id)).limit(1))[0] ?? null;
     const catalog = await db.select({ id: services.id, name: services.name, description: services.description, quoteQuestions: services.quoteQuestions }).from(services).where(and(eq(services.tenantId, tenant.id), eq(services.active, true))).orderBy(asc(services.name));
-    return { workshop: { ...tenant, branding }, services: catalog };
+    return { workshop: toPublicWorkshopCatalog({ name: tenant.name, branding }), services: catalog };
   }),
   submitPublic: publicProcedure.input(publicRequestInput).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const whatsapp = normalizePublicWhatsapp(input.whatsapp);
     const tenant = (await db.select().from(tenants).where(and(eq(tenants.slug, input.tenantSlug), eq(tenants.active, true), eq(tenants.status, "active"))).limit(1))[0];
     if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "A oficina solicitada não está disponível." });
+    const latestMatchingPublicRequest = (await db
+      .select({ createdAt: quoteRequests.createdAt })
+      .from(quoteRequests)
+      .where(and(
+        eq(quoteRequests.tenantId, tenant.id),
+        eq(quoteRequests.requesterWhatsapp, whatsapp),
+        eq(quoteRequests.source, "public_link"),
+        gte(quoteRequests.createdAt, new Date(Date.now() - PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS)),
+      ))
+      .orderBy(desc(quoteRequests.createdAt))
+      .limit(1))[0];
+    if (isPublicRequestResubmissionBlocked(latestMatchingPublicRequest?.createdAt)) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Recebemos uma solicitação recente deste contato. Aguarde alguns minutos antes de enviar novamente." });
+    }
+    const validService = input.serviceId
+      ? (await db.select({ id: services.id, name: services.name }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0]
+      : undefined;
     if (input.serviceId) {
-      const validService = (await db.select({ id: services.id }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0];
       if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });
     }
+    const serviceLabel = resolvePublicServiceLabel(input.serviceLabel, validService?.name);
     const result = await db.transaction(async (tx) => {
-      const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, input.whatsapp))).limit(1))[0];
+      const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, whatsapp))).limit(1))[0];
       const customerId = existingCustomer?.id ?? await (async () => {
         await assertTenantPlanCapacity(tx, tenant.id, "customers");
-        return Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp: input.whatsapp, email: input.email ?? null }))[0].insertId);
+        return Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp, email: input.email ?? null }))[0].insertId);
       })();
       const existingVehicle = input.plate ? (await tx.select().from(vehicles).where(and(eq(vehicles.tenantId, tenant.id), eq(vehicles.customerId, customerId), eq(vehicles.plate, input.plate))).limit(1))[0] : undefined;
       const vehicleId = existingVehicle?.id ?? Number((await tx.insert(vehicles).values({ tenantId: tenant.id, customerId, make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null }))[0].insertId);
       const next = (await tx.select({ value: sql<number>`coalesce(max(${quoteRequests.number}), 0) + 1` }).from(quoteRequests).where(eq(quoteRequests.tenantId, tenant.id)))[0]?.value ?? 1;
       const request = await tx.insert(quoteRequests).values({
         tenantId: tenant.id, number: Number(next), customerId, vehicleId, serviceId: input.serviceId ?? null,
-        requesterName: input.name, requesterWhatsapp: input.whatsapp, requesterEmail: input.email ?? null,
+        requesterName: input.name, requesterWhatsapp: whatsapp, requesterEmail: input.email ?? null,
         vehicleSnapshot: { make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null },
-        serviceLabel: input.serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
+        serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
       });
       const requestId = Number(request[0].insertId);
       await tx.insert(quoteRequestEvents).values({ tenantId: tenant.id, quoteRequestId: requestId, type: "created", metadata: { source: "public_link" } });
@@ -194,20 +257,20 @@ export const quoteRequestRouter = router({
     const members = await db.select({ userId: tenantMembers.userId }).from(tenantMembers).where(and(eq(tenantMembers.tenantId, tenant.id), eq(tenantMembers.active, true)));
     if (members.length) {
       const { notifications } = await import("../../drizzle/schema");
-      await db.insert(notifications).values(members.map(member => ({ tenantId: tenant.id, userId: member.userId, type: "quote_request.created", title: "Nova solicitação de orçamento", body: `${input.name} solicitou ${input.serviceLabel}.`, link: `/solicitacoes/${result.requestId}` })));
+      await db.insert(notifications).values(members.map(member => ({ tenantId: tenant.id, userId: member.userId, type: "quote_request.created", title: "Nova solicitação de orçamento", body: `${input.name} solicitou ${serviceLabel}.`, link: `/solicitacoes/${result.requestId}` })));
     }
     if (input.attachments?.length) {
       for (const file of input.attachments) {
         const mimeType = file.mimeType.trim().toLowerCase();
         if (!isAllowedAttachmentMimeType(mimeType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Envie apenas fotos JPEG, PNG, WEBP, GIF ou vídeos MP4, WEBM e MOV." });
-        const buffer = Buffer.from(file.base64.replace(/^data:[^;]+;base64,/, ""), "base64");
+        const buffer = decodePublicAttachment(file.base64, mimeType);
         if (buffer.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Cada anexo deve ter no máximo 5 MB." });
         const storedFile = buildPrivateAttachmentKey({ tenantId: tenant.id, scope: "quote-requests", recordId: result.requestId, filename: file.filename });
         const uploaded = await storagePut(storedFile.key, buffer, mimeType);
         await db.insert(attachments).values({ tenantId: tenant.id, quoteRequestId: result.requestId, storageKey: uploaded.key, url: uploaded.url, filename: storedFile.filename, mimeType, sizeBytes: buffer.length });
       }
     }
-    return { requestId: result.requestId, number: result.number };
+    return toPublicQuoteRequestReceipt(result);
   }),
 
   list: protectedProcedure.input(tenantIdInput.extend({ status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]).optional(), search: z.string().trim().min(1).max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
@@ -298,6 +361,7 @@ export const quoteRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const request = (await db.select().from(quoteRequests).where(and(eq(quoteRequests.id, input.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId))).limit(1))[0];
     if (!request?.serviceId || !request.customerId || !request.vehicleId) throw new TRPCError({ code: "BAD_REQUEST", message: "Solicitação incompleta para gerar orçamento." });
+    if (request.status !== "in_quoting") throw new TRPCError({ code: "BAD_REQUEST", message: "Conduza a solicitação para a etapa Em orçamento antes de gerar a proposta." });
     const serviceId = request.serviceId;
     const customerId = request.customerId;
     const vehicleId = request.vehicleId;

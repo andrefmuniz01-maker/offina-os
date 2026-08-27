@@ -1,22 +1,35 @@
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { platformRouter, tenantRouter } from "./routers/platform";
 import { catalogRouter, customerRouter, vehicleRouter } from "./routers/catalog";
+import { supabaseCatalogRouter } from "./routers/supabaseCatalog";
 import { inventoryRouter } from "./routers/inventory";
+import { supabaseInventoryRouter } from "./routers/supabaseInventory";
 import { quoteRequestRouter, quoteRouter } from "./routers/quotes";
 import { appointmentRouter, workOrderRouter } from "./routers/operations";
 import { dashboardRouter, financialRouter, notificationRouter } from "./routers/management";
+import { supabaseWorkspaceRouter } from "./routers/supabaseWorkspace";
+import { supabaseCustomerRouter, supabaseVehicleRouter } from "./routers/supabaseCustomers";
+import { supabaseDemoRouter } from "./routers/supabaseDemo";
+import { supabasePublicIntakeRouter } from "./routers/supabasePublicIntake";
+import { supabaseQuoteRequestRouter } from "./routers/supabaseQuoteRequests";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+    me: publicProcedure.query(opts => {
+      if (opts.ctx.supabaseUser) {
+        const { id, name, email, platformRole } = opts.ctx.supabaseUser;
+        return { id, name, email, platformRole };
+      }
+
+      if (!opts.ctx.user) return null;
+
+      const { id, name, email, platformRole } = opts.ctx.user;
+      return { id, name, email, platformRole: platformRole ?? "platform_user" };
+    }),
+    logout: publicProcedure.mutation(() => {
       return {
         success: true,
       } as const;
@@ -24,10 +37,18 @@ export const appRouter = router({
   }),
   platform: platformRouter,
   tenant: tenantRouter,
+  workspace: supabaseWorkspaceRouter,
+  workspaceCustomers: supabaseCustomerRouter,
+  workspaceVehicles: supabaseVehicleRouter,
   customers: customerRouter,
   vehicles: vehicleRouter,
   catalog: catalogRouter,
+  workspaceCatalog: supabaseCatalogRouter,
   inventory: inventoryRouter,
+  workspaceInventory: supabaseInventoryRouter,
+  platformDemo: supabaseDemoRouter,
+  publicIntake: supabasePublicIntakeRouter,
+  workspaceQuoteRequests: supabaseQuoteRequestRouter,
   quoteRequests: quoteRequestRouter,
   quotes: quoteRouter,
   appointments: appointmentRouter,
