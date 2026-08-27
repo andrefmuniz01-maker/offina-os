@@ -83,8 +83,8 @@
 - [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
 - [x] Arquivado pela decisão de e-mail/senha: repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
 - [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
-- [ ] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
-- [ ] Quando o limite do Supabase liberar, enviar um único convite seguro para andrefmuniz01@gmail.com e permitir que ele defina a senha exclusivamente no fluxo de recuperação.
+- [x] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
+- [ ] Validar ponta a ponta o convite único já enviado para andrefmuniz01@gmail.com no domínio publicado, incluindo definição de senha e sessão sem Magic Link recorrente.
 - [ ] Cobrir com testes que um token Supabase sem profile, tenant ou papel autorizado não materializa contexto nem ganha acesso pelo backend temporário.
 - [x] Testar createContext com token autenticado mockado sem profile e com profile divergente, comprovando que ctx.user permanece nulo.
 - [ ] Testar a negação de procedimento protegido para usuário sem papel exigido ou sem vínculo válido de tenant no backend temporário.
@@ -139,3 +139,7 @@
 - [x] Revisar e priorizar as 42 divergências encontradas de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
 - [ ] Coletar metadados de volume e planos EXPLAIN dos 13 índices P0 antes de propor qualquer DDL na fonte MySQL.
 - [x] Registrar a decisão vigente de Supabase Auth por e-mail e senha e reconciliar o backlog de OAuth/Magic Link sem remover o histórico.
+- [x] Verificar, convidar e promover apenas a identidade Supabase verificável de andrefmuniz01@gmail.com a Super Admin global, preservando acessos existentes.
+- [x] Validar a credencial Service Role exclusivamente no servidor por leitura administrativa mínima antes de enviar o convite de André.
+- [x] Tratar o callback Supabase de convite como fluxo seguro de definição de senha antes de redirecionar o Super Admin ao painel.
+- [x] Adicionar cobertura direta do AuthCallback para o estado de convite até a tela de definição de senha, além do helper isolado.
