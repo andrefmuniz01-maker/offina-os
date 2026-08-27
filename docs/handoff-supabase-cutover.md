@@ -67,4 +67,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **109 arquivos de teste aprovados, 1 ignorado e 331 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.
+Resultado integrado mais recente: **110 arquivos de teste aprovados, 1 ignorado e 335 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.

@@ -181,3 +181,4 @@
 - [x] Cobrir a negação de acesso Supabase para tenants inativos ou suspensos antes da checagem de papel.
 - [x] Exigir tenant comercialmente ativo em guardas internos Supabase, além das rotas públicas.
 - [x] Preparar orçamento a partir de solicitação Supabase do mesmo tenant, sem criar proposta, reserva ou efeito financeiro.
+- [x] Cobrir no roteador Supabase a negação e a validação de vínculo da preparação comercial por tenant.
