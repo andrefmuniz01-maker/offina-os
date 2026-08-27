@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { supabase } from "@/lib/supabase";
-import { getApiErrorDisposition } from "@/lib/authErrorDisposition";
+import { createApiErrorReporter } from "@/lib/apiErrorReporter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { createRoot } from "react-dom/client";
@@ -16,14 +16,7 @@ installAnalytics({
 
 const queryClient = new QueryClient();
 
-const reportApiError = (scope: "query" | "mutation", error: unknown) => {
-  if (getApiErrorDisposition(error) === "auth-state") {
-    console.warn("[Auth State Error] A sessão será reavaliada pela consulta de identidade.");
-    return;
-  }
-
-  console.error(`[API ${scope === "query" ? "Query" : "Mutation"} Error]`, error);
-};
+const reportApiError = createApiErrorReporter();
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {

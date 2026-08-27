@@ -208,3 +208,6 @@
 - [x] Migrar a leitura de equipe e permissões para Supabase em todos os tenants, mantendo o módulo somente leitura até autorização explícita para vínculos ou alterações de papel.
 - [x] Inventariar e comparar o conteúdo enviado da Oficina Demo com o projeto atual, sem copiar código, dados ou migrations até revisão incremental explícita.
 - [x] Integrar apenas componentes compatíveis da Oficina Demo e publicar em produção somente após validação, sem aplicar seeds ou identidades fictícias.
+- [ ] Diagnosticar e corrigir a visibilidade da Oficina Demo no ambiente publicado para Super Admin, sem criar ou modificar os dados de demonstração.
+- [ ] Conectar a interface publicada da Oficina Demo aos dados Supabase existentes de catálogo, estoque, solicitações, orçamentos, agenda, OS e financeiro, preservando RLS/RBAC e sem recriar a base Demo.
+- [ ] Corrigir pop-ups repetidos e exibir o nome do cliente nas linhas autorizadas da Agenda Demo, preservando paginação e sem expor contatos ou dados financeiros.
