@@ -15,10 +15,13 @@ export const requestStatusLabels: Record<RequestQueueStatus, string> = {
 
 export function getRequestStatusTone(status: RequestQueueStatus) {
   if (status === "new") return "border-orange-200 bg-orange-50 text-orange-800";
-  if (["in_analysis", "in_quoting"].includes(status)) return "border-blue-200 bg-blue-50 text-blue-800";
+  if (["in_analysis", "in_quoting"].includes(status)) return "border-sky-200 bg-sky-50 text-sky-800";
   if (status === "awaiting_information") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (["ready", "sent"].includes(status)) return "border-violet-200 bg-violet-50 text-violet-800";
+  if (status === "ready") return "border-orange-200 bg-orange-50 text-orange-800";
+  if (status === "sent") return "border-sky-200 bg-sky-50 text-sky-800";
   if (status === "approved") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "rejected") return "border-red-200 bg-red-50 text-red-800";
+  if (status === "expired") return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 

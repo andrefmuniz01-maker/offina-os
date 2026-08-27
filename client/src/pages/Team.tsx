@@ -15,7 +15,7 @@ import { toast } from "sonner";
 const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: UsersRound, label: "Equipe", path: "/equipe" }];
 const roles = {
   owner: { label: "Dono", description: "Controle integral da oficina e do proprietário primário.", className: "border-amber-200 bg-amber-50 text-amber-800" },
-  admin: { label: "Administrador", description: "Gerencia a operação e as configurações autorizadas.", className: "border-violet-200 bg-violet-50 text-violet-800" },
+  admin: { label: "Administrador", description: "Gerencia a operação e as configurações autorizadas.", className: "border-orange-200 bg-orange-50 text-orange-800" },
   attendant: { label: "Atendente", description: "Atende clientes, orçamentos e agenda operacional.", className: "border-sky-200 bg-sky-50 text-sky-800" },
   technician: { label: "Técnico", description: "Executa OS, checklist e consumo atribuído.", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
 } as const;

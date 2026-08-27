@@ -13,6 +13,8 @@ describe("quoteQueue", () => {
     expect(getQuoteValidityState("2026-08-26T18:00:00.000Z", now)).toMatchObject({ label: "Vence hoje", urgency: "attention" });
     expect(getQuoteValidityState("2026-08-29T12:00:00.000Z", now).urgency).toBe("attention");
     expect(getQuoteValidityState("2026-08-25T12:00:00.000Z", now).urgency).toBe("critical");
+    expect(getQuoteStatusTone("sent")).toContain("sky");
     expect(getQuoteStatusTone("approved")).toContain("emerald");
+    expect(getQuoteStatusTone("rejected")).toContain("red");
   });
 });

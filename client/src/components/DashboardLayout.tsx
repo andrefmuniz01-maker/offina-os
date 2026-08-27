@@ -263,9 +263,12 @@ function DashboardLayoutContent({
               >
                 <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
+              <div className="workshop-brand-mark grid h-9 w-9 shrink-0 place-items-center rounded-xl" aria-hidden="true">
+                <Wrench className="h-4 w-4" />
+              </div>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate font-semibold tracking-tight">
                     {workspaceName}
                   </span>
                 </div>
@@ -284,7 +287,7 @@ function DashboardLayoutContent({
                       onClick={() => !item.disabled && setLocation(item.path)}
                       tooltip={item.label}
                       disabled={item.disabled}
-                      className={`h-10 transition-all font-normal ${item.disabled ? "opacity-45" : ""}`}
+                      className={`h-10 rounded-lg font-normal transition-all duration-150 active:scale-[0.99] data-[active=true]:font-semibold ${item.disabled ? "opacity-45" : ""}`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}

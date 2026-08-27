@@ -13,8 +13,10 @@ export const quoteStatusLabels: Record<QuoteQueueStatus, string> = {
 
 export function getQuoteStatusTone(status: QuoteQueueStatus) {
   if (["draft", "ready"].includes(status)) return "border-amber-200 bg-amber-50 text-amber-800";
-  if (["sent", "viewed"].includes(status)) return "border-violet-200 bg-violet-50 text-violet-800";
+  if (["sent", "viewed"].includes(status)) return "border-sky-200 bg-sky-50 text-sky-800";
   if (status === "approved") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "rejected") return "border-red-200 bg-red-50 text-red-800";
+  if (status === "expired") return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 

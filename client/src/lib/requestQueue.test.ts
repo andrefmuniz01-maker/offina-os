@@ -13,5 +13,8 @@ describe("requestQueue", () => {
     expect(getQueueUrgency(240)).toBe("atenção");
     expect(getQueueUrgency(1440)).toBe("critica");
     expect(getRequestStatusTone("new")).toContain("orange");
+    expect(getRequestStatusTone("in_analysis")).toContain("sky");
+    expect(getRequestStatusTone("approved")).toContain("emerald");
+    expect(getRequestStatusTone("rejected")).toContain("red");
   });
 });

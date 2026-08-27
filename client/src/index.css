@@ -45,6 +45,11 @@
 :root {
   --primary: oklch(0.62 0.18 46);
   --primary-foreground: oklch(0.99 0.008 80);
+  --brand-orange-deep: oklch(0.5 0.15 45);
+  --brand-graphite: oklch(0.23 0.015 52);
+  --brand-steel: oklch(0.52 0.016 52);
+  --workshop-surface: oklch(0.985 0.004 80);
+  --workshop-border: oklch(0.9 0.01 70);
   --sidebar-primary: oklch(0.62 0.18 46);
   --sidebar-primary-foreground: oklch(0.99 0.008 80);
   --chart-1: oklch(0.76 0.14 70);
@@ -144,6 +149,23 @@
 }
 
 @layer components {
+  .workshop-surface {
+    background:
+      radial-gradient(circle at 92% -8%, oklch(0.84 0.1 65 / 0.18), transparent 28%),
+      var(--workshop-surface);
+  }
+
+  .workshop-brand-mark {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 10px 22px -16px oklch(0.35 0.12 45 / 0.8);
+  }
+
+  .workshop-eyebrow {
+    color: var(--brand-orange-deep);
+    letter-spacing: 0.14em;
+  }
+
   :is(
     section[aria-label="Resumo da fila comercial"],
     section[aria-label="Resumo da operação"],
@@ -222,6 +244,13 @@
   .flex {
     min-height: 0;
     min-width: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    [data-slot="button"]:not(:disabled),
+    [data-slot="sidebar-menu-button"]:not(:disabled) {
+      transition-duration: 160ms;
+    }
   }
 
   @media (min-width: 640px) {
