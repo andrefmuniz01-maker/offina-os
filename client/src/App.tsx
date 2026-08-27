@@ -11,7 +11,7 @@ import { operationsRoutePaths } from "./lib/operationsRoutes";
 const PublicQuote = lazy(() => import("./pages/PublicQuote"));
 const PublicQuoteRequest = lazy(() => import("./pages/PublicQuoteRequest"));
 const Requests = lazy(() => import("./pages/Requests"));
-const Quotes = lazy(() => import("./pages/Quotes"));
+const Quotes = lazy(() => import("./pages/SupabaseQuotes"));
 const Operations = lazy(() => import("./pages/Operations"));
 const Inventory = lazy(() => import("./pages/Inventory"));
 const Settings = lazy(() => import("./pages/Settings"));
