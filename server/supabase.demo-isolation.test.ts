@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 const [isolationMigration, provisioningMigration] = await Promise.all([
-  readFile(new URL("../supabase/migrations/20260827_0018_demo_super_admin_isolation.sql", import.meta.url), "utf8"),
-  readFile(new URL("../supabase/migrations/20260827_0019_internal_demo_provisioning.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260827_0019_demo_super_admin_isolation.sql", import.meta.url), "utf8"),
+  readFile(new URL("../supabase/migrations/20260827_0020_internal_demo_provisioning.sql", import.meta.url), "utf8"),
 ]);
 
 describe("Supabase internal demo isolation", () => {
