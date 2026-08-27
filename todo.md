@@ -128,9 +128,9 @@
 - [x] Remover a exportação incompatível do painel de acesso extraindo helpers de mensagens, sem mudar o fluxo Supabase de e-mail/senha.
 - [x] Remover a exportação incompatível da Home extraindo a regra de visibilidade financeira, sem alterar o RBAC financeiro.
 - [x] Validar após a extração da Home a ausência de novo aviso Fast Refresh para `canViewWorkspaceFinancials` e executar regressão integral.
-- [ ] Migrar o intake público para a RPC Supabase antes de mover anexos, evitando dois caminhos de gravação.
-- [ ] Criar capacidade efêmera de upload e policies mínimas para anexos públicos em bucket Supabase privado, com limites de MIME, tamanho, escopo e expiração.
-- [ ] Implementar rate limiting persistido por tenant, contato e impressão de IP no intake Supabase, com testes de concorrência e expiração.
+- [x] Migrar o intake público para a RPC Supabase antes de mover anexos, evitando dois caminhos de gravação.
+- [x] Criar capacidade efêmera de upload e policies mínimas para anexos públicos em bucket Supabase privado, com limites de MIME, tamanho, escopo e expiração.
+- [x] Implementar rate limiting persistido por tenant, contato e impressão de IP no intake Supabase, com testes de concorrência e expiração.
 - [x] Documentar o desenho de segurança de anexos privados e rate limiting antes de criar bucket, policy ou migration.
 - [x] Validar localmente quantidade, tipo e tamanho de anexos antes de ler arquivos no formulário público de solicitação.
 - [x] Retornar ao cliente apenas o protocolo da solicitação pública, sem expor o identificador interno do registro.
