@@ -172,3 +172,4 @@
 - [x] Evitar a exposição de mensagens técnicas inesperadas no formulário público de solicitação.
 - [x] Tipar os contratos da fila Supabase de solicitações para evitar dados imprecisos entre backend e interface.
 - [x] Simplificar o formulário público de solicitação, preservando etapas, anexos privados e confirmações comerciais.
+- [x] Evitar a exposição de mensagens técnicas inesperadas na decisão pública de orçamento.

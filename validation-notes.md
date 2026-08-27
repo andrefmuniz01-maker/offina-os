@@ -181,3 +181,7 @@ O retorno JSON das RPCs de listagem e histórico de solicitações passou a ser 
 ## 27/08/2026 — Estados públicos de solicitação
 
 O carregamento, a indisponibilidade e a confirmação do intake público receberam uma leitura mais direta, com anúncio acessível de estado, linguagem sem detalhes técnicos e sem superfícies decorativas excessivas. A rota de Ruidão Performance apresentou o estado de indisponibilidade esperado, pois o tenant ainda não foi migrado ao Supabase; nenhum formulário, catálogo ou dado de demonstração foi exposto indevidamente. Tipos e a suíte completa mantiveram 108 arquivos de teste, 320 testes e uma suíte ignorada aprovados.
+
+## 27/08/2026 — Falha segura na decisão pública
+
+Falhas inesperadas ao aprovar ou recusar um orçamento por link público agora mostram uma orientação genérica, recuperável e sem detalhes de banco, token ou serviços internos. A decisão continua exigindo confirmação explícita e não dispara contato externo automaticamente. A checagem de tipos e a suíte completa mantiveram 108 arquivos de teste, 320 testes e uma suíte ignorada aprovados.
