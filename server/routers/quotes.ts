@@ -361,6 +361,7 @@ export const quoteRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
     const request = (await db.select().from(quoteRequests).where(and(eq(quoteRequests.id, input.quoteRequestId), eq(quoteRequests.tenantId, input.tenantId))).limit(1))[0];
     if (!request?.serviceId || !request.customerId || !request.vehicleId) throw new TRPCError({ code: "BAD_REQUEST", message: "Solicitação incompleta para gerar orçamento." });
+    if (request.status !== "in_quoting") throw new TRPCError({ code: "BAD_REQUEST", message: "Conduza a solicitação para a etapa Em orçamento antes de gerar a proposta." });
     const serviceId = request.serviceId;
     const customerId = request.customerId;
     const vehicleId = request.vehicleId;
