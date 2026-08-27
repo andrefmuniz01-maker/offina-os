@@ -87,4 +87,24 @@ describe("permissões de tenant no Supabase", () => {
     expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", "f3b9d977-1a0c-407a-b56b-7ca7337d9e88");
     expect(membershipQuery.eq).toHaveBeenCalledWith("active", true);
   });
+
+  it.each([
+    { active: false, status: "active" as const, label: "inativo" },
+    { active: true, status: "suspended" as const, label: "suspenso" },
+  ])("nega tenant $label antes de consultar vínculo ou permissões", async ({ active, status }) => {
+    tenantQuery.maybeSingle.mockResolvedValueOnce({
+      data: { id: 12, name: "Oficina indisponível", slug: "oficina-indisponivel", status, active, is_demo: false, primary_owner_user_id: null },
+      error: null,
+    });
+
+    await expect(getSupabaseTenantAccess({
+      id: "f3b9d977-1a0c-407a-b56b-7ca7337d9e88",
+      name: "Atendente",
+      email: "atendente@empresa.test",
+      platformRole: "platform_user",
+      accessToken: "teste",
+    }, 12)).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    expect(from).not.toHaveBeenCalledWith("tenant_members");
+  });
 });

@@ -178,3 +178,4 @@
 - [x] Cobrir a negação de token Supabase sem identidade ou profile válido antes do fallback legado.
 - [x] Cobrir a negação de procedimentos Supabase sem identidade materializada ou papel global autorizado.
 - [x] Cobrir a negação de acesso Supabase quando a identidade não possui vínculo ativo com a oficina.
+- [x] Cobrir a negação de acesso Supabase para tenants inativos ou suspensos antes da checagem de papel.

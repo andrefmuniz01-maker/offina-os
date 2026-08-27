@@ -201,3 +201,7 @@ Procedimentos Supabase protegidos passaram a ter cobertura direta para três fro
 ## 27/08/2026 — Vínculo Supabase obrigatório
 
 A resolução de acesso por tenant foi validada para uma identidade Supabase válida, mas sem vínculo ativo com a oficina solicitada. O fluxo consulta o tenant, restringe a busca de membership ao UUID autenticado e exige `active=true`; na ausência do vínculo, responde `FORBIDDEN`. A suíte integral aprovou 109 arquivos de teste, 327 testes e uma suíte ignorada.
+
+## 27/08/2026 — Status do tenant obrigatório
+
+O acesso Supabase foi coberto para tenants inativos e suspensos. Nos dois casos, a resolução retorna `NOT_FOUND` antes de consultar membership, evitando a revelação de vínculos ou permissões de uma oficina fora de operação. A suíte integral aprovou 109 arquivos de teste, 329 testes e uma suíte ignorada.
