@@ -27,6 +27,7 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | `5ee0f55` | Link da Home abre a solicitação pública real do tenant. | Tipos e testes de navegação aprovados. |
 | `a9466e3` | RPCs de workspace convertidas para `SECURITY INVOKER`. | Advisor não aponta mais execução autenticada de função elevada. |
 | `638d6d4` | Super Admin passa a iniciar pela Home Supabase durante a migração. | Evita o Painel de Plataforma ainda dependente de MySQL. |
+| `24f3959` | Clientes e veículos migram para Supabase, com histórico e auditoria atômica. | Policies RLS e 72 arquivos/222 testes aprovados. |
 
 ## Sequência de implementação obrigatória
 
@@ -35,8 +36,8 @@ A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbri
 | 1 | Migrar o contrato de usuário interno de `users.id` numérico para `profiles.id` UUID e substituir o fallback MySQL no `createContext`. | Sessão Supabase gera contexto autenticado sem consulta a `users` legada. |
 | 2 | Migrar os endpoints remanescentes do Painel de Super Admin em `platform.ts`. | Planos, usuários, auditoria, relatórios e gestão global usam Supabase sob RLS. |
 | 3 | Migrar os endpoints de tenant remanescentes em `tenantAccess.ts` e `platform.ts`. | Branding, configurações, equipe e auditoria interna usam Supabase e IDs UUID. |
-| 4 | Migrar catálogo, clientes e veículos. | A aplicação lê e grava estes módulos em Supabase, com testes Tenant A × Tenant B. |
-| 5 | Migrar solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | Solicitação pública, sugestão, aprovação e reserva funcionam no PostgreSQL. |
+| 4 | Migrar catálogo, fornecedores, produtos, serviços e kits. | A aplicação lê e grava o catálogo em Supabase, com testes Tenant A × Tenant B. |
+| 5 | Migrar solicitações, orçamentos e reserva de estoque em transações/RPCs adequadas. | Solicitação pública, sugestão, aprovação e reserva funcionam no PostgreSQL. Clientes e veículos já estão no Supabase. |
 | 6 | Migrar agenda, OS, consumo, compras e financeiro. | Fluxo operacional completo não depende de MySQL. |
 | 7 | Implementar seed/reset da Performance Garage. | Dados demonstrativos, reset auditado e isolamento podem ser testados no Supabase. |
 | 8 | Remover adaptador MySQL, dependências Drizzle/MySQL e credenciais legadas somente após cobertura E2E e rollback validado. | Não restam queries de domínio contra MySQL. |
