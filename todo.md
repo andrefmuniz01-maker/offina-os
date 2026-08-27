@@ -179,3 +179,5 @@
 - [x] Cobrir a negação de procedimentos Supabase sem identidade materializada ou papel global autorizado.
 - [x] Cobrir a negação de acesso Supabase quando a identidade não possui vínculo ativo com a oficina.
 - [x] Cobrir a negação de acesso Supabase para tenants inativos ou suspensos antes da checagem de papel.
+- [x] Exigir tenant comercialmente ativo em guardas internos Supabase, além das rotas públicas.
+- [x] Preparar orçamento a partir de solicitação Supabase do mesmo tenant, sem criar proposta, reserva ou efeito financeiro.

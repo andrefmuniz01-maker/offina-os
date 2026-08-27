@@ -43,6 +43,55 @@ export const workspaceQuoteRequestHistorySchema = z.array(z.object({
   createdAt: z.string(),
 }));
 
+const quotePreparationItemSchema = z.object({
+  itemType: z.enum(["service", "product"]),
+  productId: z.number().int().positive().nullable(),
+  serviceId: z.number().int().positive().nullable(),
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unitPrice: z.number().nonnegative(),
+  availability: z.enum(["available", "insufficient", "unavailable", "not_applicable"]),
+}).strict();
+
+export const workspaceQuotePreparationSchema = z.object({
+  request: z.object({
+    id: z.number().int().positive(),
+    tenantId: z.number().int().positive(),
+    number: z.number().int().positive(),
+    status: z.literal("in_quoting"),
+    serviceLabel: z.string().min(1),
+    description: z.string().nullable(),
+    createdAt: z.string(),
+  }).strict(),
+  customer: z.object({
+    id: z.number().int().positive(),
+    name: z.string().min(1),
+    whatsapp: z.string().min(1),
+    email: z.string().email().nullable(),
+  }).strict(),
+  vehicle: z.object({
+    id: z.number().int().positive(),
+    make: z.string().min(1),
+    model: z.string().min(1),
+    modelYear: z.number().int().nullable(),
+    manufactureYear: z.number().int().nullable(),
+    plate: z.string().nullable(),
+    mileage: z.number().int().nonnegative().nullable(),
+    engine: z.string().nullable(),
+    notes: z.string().nullable(),
+  }).strict(),
+  service: z.object({
+    id: z.number().int().positive(),
+    name: z.string().min(1),
+    description: z.string().nullable(),
+    estimatedMinutes: z.number().int().positive(),
+    laborPrice: z.number().nonnegative(),
+  }).strict(),
+  suggestedItems: z.array(quotePreparationItemSchema).min(1),
+  subtotal: z.number().nonnegative(),
+  total: z.number().nonnegative(),
+}).strict();
+
 export type WorkspaceQuoteRequestList = z.infer<typeof workspaceQuoteRequestListSchema>;
 
 export function parseWorkspaceQuoteRequestList(value: unknown) {
@@ -51,4 +100,8 @@ export function parseWorkspaceQuoteRequestList(value: unknown) {
 
 export function parseWorkspaceQuoteRequestHistory(value: unknown) {
   return workspaceQuoteRequestHistorySchema.safeParse(value);
+}
+
+export function parseWorkspaceQuotePreparation(value: unknown) {
+  return workspaceQuotePreparationSchema.safeParse(value);
 }

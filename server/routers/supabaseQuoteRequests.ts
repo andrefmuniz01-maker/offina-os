@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
-import { parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
+import { parseWorkspaceQuotePreparation, parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
 
 const status = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -43,6 +43,18 @@ export const supabaseQuoteRequestRouter = router({
     if (error) throw databaseError(error);
     const result = parseWorkspaceQuoteRequestHistory(data ?? []);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O histórico da solicitação recebeu dados em formato inválido." });
+    return result.data;
+  }),
+
+  prepare: supabaseProtectedProcedure.input(tenantInput.extend({ quoteRequestId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_prepare_quote_from_request", { target_tenant_id: input.tenantId, target_request_id: input.quoteRequestId });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceQuotePreparation(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A preparação do orçamento recebeu dados em formato inválido." });
+    if (result.data.request.tenantId !== input.tenantId || result.data.request.id !== input.quoteRequestId) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A preparação do orçamento retornou uma solicitação incompatível." });
+    }
     return result.data;
   }),
 
