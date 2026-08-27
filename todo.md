@@ -35,7 +35,7 @@
 - [x] Concluir a validação da integridade de OpenID e da hierarquia Super Admin → donos → funcionários sem criar novas interfaces.
 - [x] Validar por tabela os índices únicos e constraints críticas em information_schema, não apenas por contagem agregada.
 - [x] Executar e registrar uma verificação automatizada completa do schema antes de marcar a auditoria como concluída.
-- [ ] Validar um login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.
+- [x] Arquivado pela decisão de e-mail/senha: validar login OAuth ponta a ponta após a migração para comprovar a criação e atualização de usuários sem erro estrutural.
 - [x] Auditar a arquitetura atual contra Supabase Auth, PostgreSQL, RLS e Storage sem criar novas telas ou funcionalidades.
 - [x] Inventariar autenticação, banco, migrations, isolamento multi-tenant, permissões, rotas, secrets e serviços externos.
 - [ ] Documentar riscos, incompatibilidades e um plano seguro de migração para Supabase antes de qualquer nova mudança de infraestrutura.
@@ -50,24 +50,24 @@
 - [x] Documentar o mapeamento MySQL → PostgreSQL/Supabase sem criar identidades fictícias nem remover dados da origem.
 - [x] Criar e aplicar a foundation versionada no projeto Supabase gratuito, com 39 tabelas públicas protegidas por RLS e bucket privado.
 - [ ] Concluir a troca integral de Manus OAuth/MySQL após o primeiro login real de um Super Admin no Supabase e validação de corte sem fonte paralela.
-- [ ] Configurar Magic Link do Supabase Auth como único fluxo de login e sessão da aplicação.
+- [x] Arquivado pela decisão de e-mail/senha: configurar Magic Link do Supabase Auth como único fluxo de login e sessão da aplicação.
 - [ ] Remover o uso de Manus OAuth, cookies JWT próprios e credenciais de sessão paralelas do cliente e backend.
 - [ ] Associar identidades Supabase Auth reais de Felipe e André por e-mail, sem UUIDs ou perfis fictícios.
 - [ ] Validar a cadeia Supabase Auth → profile → tenant_members → tenant → role → permissões → RLS para administradores.
 - [ ] Testar login, logout, rotas protegidas, impedimento de autoelevação, RLS e isolamento Tenant A × Tenant B antes de avançar.
-- [ ] Substituir o fluxo planejado de Magic Link por Google OAuth via Supabase Auth como único login da aplicação.
-- [ ] Auditar e corrigir Site URL, Redirect URLs e callback reais antes de ativar o provider Google.
-- [ ] Configurar o provider Google no Supabase somente com Client ID e Client Secret mantidos em secrets de servidor.
-- [ ] Validar redirecionamento pós-login por papel e tenant, sem permitir autoalteração de role, tenant ou permissões.
+- [x] Arquivado pela decisão de e-mail/senha: substituir o fluxo planejado de Magic Link por Google OAuth via Supabase Auth como único login da aplicação.
+- [x] Arquivado pela decisão de e-mail/senha: auditar e corrigir Site URL, Redirect URLs e callback reais antes de ativar o provider Google.
+- [x] Arquivado pela decisão de e-mail/senha: configurar o provider Google no Supabase somente com Client ID e Client Secret mantidos em secrets de servidor.
+- [ ] Validar redirecionamento pós-login por papel e tenant no fluxo de e-mail/senha, sem permitir autoalteração de role, tenant ou permissões.
 - [x] Entregar passo a passo operacional para configurar Google OAuth no Supabase e explicar o limite do conector disponível.
-- [ ] Comprovar a elegibilidade gratuita do Google OAuth antes de criar recursos, sem ativar teste, créditos ou faturamento.
-- [ ] Bloquear explicitamente qualquer ação que crie cobrança, projeto pago ou ativação de billing durante a configuração de OAuth.
+- [x] Arquivado pela decisão de e-mail/senha: comprovar a elegibilidade gratuita do Google OAuth antes de criar recursos, sem ativar teste, créditos ou faturamento.
+- [x] Arquivado pela decisão de e-mail/senha: bloquear explicitamente qualquer ação que crie cobrança, projeto pago ou ativação de billing durante a configuração de OAuth.
 - [x] Registrar a evidência oficial de criação de projeto sem billing automático e o bloqueio atual por MFA antes do OAuth.
-- [ ] Corrigir o cadastro do cliente Google OAuth usando somente campos de origem e callback aceitos por domínios gratuitos, sem comprar domínio.
-- [ ] Abandonar a ativação do Google OAuth após falha externa do Google Cloud, sem criar contas, billing ou domínios adicionais.
-- [ ] Implementar exclusivamente o Magic Link nativo do Supabase Auth como login e sessão oficiais do OficinaOS.
+- [x] Arquivado pela decisão de e-mail/senha: corrigir o cadastro do cliente Google OAuth usando somente campos de origem e callback aceitos por domínios gratuitos, sem comprar domínio.
+- [x] Arquivado pela decisão de e-mail/senha: abandonar a ativação do Google OAuth após falha externa do Google Cloud, sem criar contas, billing ou domínios adicionais.
+- [x] Arquivado pela decisão de e-mail/senha: implementar exclusivamente o Magic Link nativo do Supabase Auth como login e sessão oficiais do OficinaOS.
 - [x] Validar o provider nativo de e-mail e configurar Site URL e callbacks de produção e prévia para o Magic Link.
-- [ ] Provisionar as identidades Supabase Auth reais de Felipe e André por fluxo administrativo controlado antes de enviar Magic Links de teste.
+- [ ] Provisionar as identidades Supabase Auth reais de Felipe e André por fluxo administrativo controlado; concluir o primeiro acesso exclusivamente por recuperação de senha.
 - [ ] Migrar a autenticação do Heartbeat agendado para uma credencial de serviço compatível com a arquitetura Supabase antes de reativar tarefas recorrentes.
 - [x] Documentar a separação entre domínio de branding, origem JavaScript, callback Google/Supabase e redirect da aplicação.
 - [x] Fazer o logout do cliente encerrar explicitamente a sessão Supabase e invalidar o estado tRPC sem usar cookies de sessão próprios.
@@ -77,10 +77,10 @@
 - [x] Diagnosticar a não entrega do Magic Link de Felipe no Supabase, verificando logs, template, limites e configuração de e-mail antes de novo reenvio.
 - [x] Publicar somente após validação a versão que contém o fluxo Supabase Magic Link, pois a produção atual ainda apresenta a tela de login legada.
 - [x] Confirmar no domínio publicado que o formulário Magic Link está ativo e registrar a evidência de solicitação de OTP associada à produção.
-- [ ] Corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
+- [x] Arquivado pela decisão de e-mail/senha: corrigir o redirecionamento pós-Magic Link para que o Super Admin autenticado receba o painel compatível com sua sessão e papel, sem delegar papel ao frontend.
 - [x] Exibir a causa segura retornada pelo Supabase quando a solicitação de Magic Link for rejeitada, incluindo limite de envio, sem expor detalhes sensíveis.
 - [x] Fazer o contexto temporário exigir o profile Supabase vinculado ao token e priorizar seu papel sobre o registro legado durante a transição.
-- [ ] Repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
+- [x] Arquivado pela decisão de e-mail/senha: repetir o Magic Link no domínio publicado e confirmar o painel Super Admin, pois a sessão validada às 23:00 foi criada na origem de prévia e não é compartilhada com produção.
 - [ ] Substituir o Magic Link pelo login recorrente de e-mail e senha no Supabase Auth, mantendo autoinscrição bloqueada e convite administrativo apenas para o primeiro acesso.
 - [ ] Provisionar a identidade Supabase real de andrefmuniz01@gmail.com e promover somente seu profile verificado a Super Admin global, sem criar UUID fictício.
 - [ ] Quando o limite do Supabase liberar, enviar um único convite seguro para andrefmuniz01@gmail.com e permitir que ele defina a senha exclusivamente no fluxo de recuperação.
@@ -129,3 +129,4 @@
 - [x] Comparar os tipos SQL exatos, incluindo precisão e escala, entre Drizzle e o MySQL legado.
 - [x] Comparar os defaults e a geração/on-update de cada coluna sem reduzir a verificação à mera presença de default.
 - [ ] Revisar e priorizar as 43 divergências de índices de consulta declarados no Drizzle e ausentes no MySQL, sem aplicá-las automaticamente à origem legada.
+- [x] Registrar a decisão vigente de Supabase Auth por e-mail e senha e reconciliar o backlog de OAuth/Magic Link sem remover o histórico.
