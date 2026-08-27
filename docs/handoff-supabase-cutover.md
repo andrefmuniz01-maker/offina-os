@@ -12,6 +12,8 @@ A verificação de schema confirmou que `is_demo` é uma coluna `boolean`, obrig
 
 A base Supabase é a arquitetura-alvo, mas o runtime operacional ainda é híbrido. `server/_core/supabase.ts`, o cliente de autenticação e as migrations utilizam Supabase Auth/PostgreSQL/RLS. Os commits `eed2c34` e `b1fbcd7` expõem a identidade Supabase no contexto tRPC e fazem `auth.me` priorizá-la. O commit `2404bc6` adiciona uma camada de autorização Supabase com bloqueio explícito de elevação financeira para atendentes e técnicos. O commit `fd9226f` moveu a Home para as RPCs Supabase de listagem de workspace, criação de tenant, dashboard e notificações. O commit `1788d90` adicionou os namespaces `workspaceCatalog` e `workspaceInventory`: as telas de catálogo, categorias, itens por categoria, estoque e compras já usam o PostgreSQL. Os routers legados `catalog` e `inventory` continuam montados temporariamente para que comercial, orçamentos, operações e outros consumidores ainda não migrados não misturem IDs MySQL com registros Supabase.
 
+> Diagnóstico de sessão em 27 de agosto: a identidade administrativa autenticada possui profile Supabase correspondente e papel global válido. A falha de materialização era compatível com uma indisponibilidade da ponte MySQL ainda executada pelo contexto após a validação Supabase. O contexto agora preserva `supabaseUser` já validado quando essa compatibilidade falha; `auth.me` continua sem token e o fallback legado permanece apenas para routers não migrados.
+
 > Não inserir a Performance Garage no Supabase até que pelo menos os caminhos de tenancy e os routers que a interface usa estejam migrados. Caso contrário, a aplicação atual não exibirá os dados criados no novo banco.
 
 ## Incrementos publicados nesta tarefa
@@ -67,4 +69,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **110 arquivos de teste aprovados, 1 ignorado e 335 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.
+Resultado integrado mais recente: **111 arquivos de teste aprovados, 1 ignorado e 339 testes aprovados**. A divisão de rotas não críticas continua ativa; o build atual preserva o aviso não bloqueante de chunk inicial acima de 500 kB. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado.

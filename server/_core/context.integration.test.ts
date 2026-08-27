@@ -99,6 +99,24 @@ describe("createContext com Supabase", () => {
     expect(getSupabaseProfile).toHaveBeenCalledWith("supabase-token", "c577d57b-6375-431d-8549-971a4b20c0ed");
   });
 
+  it("preserva a identidade Supabase quando a ponte MySQL falha durante a transição", async () => {
+    vi.mocked(getSupabaseProfile).mockResolvedValue({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+    vi.mocked(db.getUserByEmail).mockRejectedValue(new Error("MySQL indisponível"));
+
+    const context = await createContext(options());
+
+    expect(context.user).toBeNull();
+    expect(context.supabaseUser).toMatchObject({
+      id: "c577d57b-6375-431d-8549-971a4b20c0ed",
+      email: "felipefmuniz@gmail.com",
+      platformRole: "super_admin",
+    });
+  });
+
   it("materializa o usuário legado somente após vínculo completo e aplica o papel do profile", async () => {
     vi.mocked(getSupabaseProfile).mockResolvedValue({
       id: "c577d57b-6375-431d-8549-971a4b20c0ed",

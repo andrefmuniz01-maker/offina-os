@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
 import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
+import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
@@ -56,14 +57,19 @@ function PasswordAccess() {
     event.preventDefault();
     setStatus("signing-in");
     setErrorMessage(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setErrorMessage(getPasswordAuthErrorMessage(error));
-      setStatus("error");
-      return;
-    }
+    try {
+      const { error } = await withAuthTimeout(() => supabase.auth.signInWithPassword({ email, password }));
+      if (error) {
+        setErrorMessage(getPasswordAuthErrorMessage(error));
+        setStatus("error");
+        return;
+      }
 
-    window.location.assign("/auth/callback");
+      window.location.assign("/auth/callback");
+    } catch {
+      setErrorMessage(getAuthConnectionTimeoutMessage());
+      setStatus("error");
+    }
   };
 
   const requestPasswordSetup = async () => {
@@ -76,13 +82,19 @@ function PasswordAccess() {
     setStatus("resetting");
     setErrorMessage(null);
     const redirectTo = new URL("/auth/callback", window.location.origin).toString();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) {
-      setErrorMessage(getPasswordAuthErrorMessage(error));
+    try {
+      const { error } = await withAuthTimeout(() => supabase.auth.resetPasswordForEmail(email, { redirectTo }));
+      if (error) {
+        setErrorMessage(getPasswordAuthErrorMessage(error));
+        setStatus("error");
+        return;
+      }
+
+      setStatus("reset-sent");
+    } catch {
+      setErrorMessage(getAuthConnectionTimeoutMessage());
       setStatus("error");
-      return;
     }
-    setStatus("reset-sent");
   };
 
   return (

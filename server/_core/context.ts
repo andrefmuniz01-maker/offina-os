@@ -85,8 +85,14 @@ export async function createContext(
 
           // Compatibilidade de transição: routers ainda legados exigem um User MySQL.
           // Routers novos devem usar `ctx.supabaseUser` e nunca depender deste fallback.
-          const legacyUser = email ? (await db.getUserByEmail(email)) ?? null : null;
-          user = applySupabaseProfileRole(legacyUser, profile);
+          // Uma indisponibilidade do legado não pode invalidar uma identidade Supabase
+          // já autenticada e conferida pelo profile canônico.
+          try {
+            const legacyUser = email ? (await db.getUserByEmail(email)) ?? null : null;
+            user = applySupabaseProfileRole(legacyUser, profile);
+          } catch {
+            user = null;
+          }
         }
       }
     } catch {

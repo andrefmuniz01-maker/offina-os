@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
 import { requiresPasswordSetup } from "@/lib/authCallbackFlow";
+import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
 import { AuthPasswordSetupForm } from "@/components/AuthPasswordSetupForm";
 import { LoaderCircle } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -36,23 +37,28 @@ export default function AuthCallback() {
     let active = true;
 
     void (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!active) return;
+      try {
+        const { data, error } = await withAuthTimeout(() => supabase.auth.getSession());
+        if (!active) return;
 
-      if (error || !data.session) {
-        setMessage("O link de acesso é inválido ou expirou. Solicite outro link.");
+        if (error || !data.session) {
+          setMessage("O link de acesso é inválido ou expirou. Solicite outro link.");
+          setSessionState("invalid");
+          return;
+        }
+
+        if (passwordSetupMode) {
+          setRecoveryReady(true);
+          setMessage("Defina sua senha de acesso.");
+          return;
+        }
+
+        setSessionState("ready");
+      } catch {
+        if (!active) return;
+        setMessage(getAuthConnectionTimeoutMessage());
         setSessionState("invalid");
-        window.setTimeout(() => setLocation("/"), 2500);
-        return;
       }
-
-      if (passwordSetupMode) {
-        setRecoveryReady(true);
-        setMessage("Defina sua senha de acesso.");
-        return;
-      }
-
-      setSessionState("ready");
     })();
 
     return () => {
@@ -73,16 +79,21 @@ export default function AuthCallback() {
     }
 
     setIsSavingPassword(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setIsSavingPassword(false);
-    if (error) {
-      setPasswordError("Não foi possível salvar a senha. Solicite uma nova redefinição e tente novamente.");
-      return;
-    }
+    try {
+      const { error } = await withAuthTimeout(() => supabase.auth.updateUser({ password: newPassword }));
+      if (error) {
+        setPasswordError("Não foi possível salvar a senha. Solicite uma nova redefinição e tente novamente.");
+        return;
+      }
 
-    window.history.replaceState(null, "", "/auth/callback");
-    setRecoveryReady(false);
-    setSessionState("ready");
+      window.history.replaceState(null, "", "/auth/callback");
+      setRecoveryReady(false);
+      setSessionState("ready");
+    } catch {
+      setPasswordError(getAuthConnectionTimeoutMessage());
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   useEffect(() => {
@@ -107,6 +118,17 @@ export default function AuthCallback() {
         onNewPasswordChange={setNewPassword}
         onConfirmPasswordChange={setConfirmPassword}
       />
+    );
+  }
+
+  if (sessionState === "invalid") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <p className="text-sm text-muted-foreground" role="alert">{message}</p>
+          <button type="button" onClick={() => setLocation("/")} className="text-sm font-medium text-primary underline-offset-4 hover:underline">Voltar ao acesso</button>
+        </div>
+      </main>
     );
   }
 

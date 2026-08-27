@@ -182,3 +182,7 @@
 - [x] Exigir tenant comercialmente ativo em guardas internos Supabase, além das rotas públicas.
 - [x] Preparar orçamento a partir de solicitação Supabase do mesmo tenant, sem criar proposta, reserva ou efeito financeiro.
 - [x] Cobrir no roteador Supabase a negação e a validação de vínculo da preparação comercial por tenant.
+- [ ] Diagnosticar e corrigir o login publicado que permanece carregando após o envio de e-mail e senha.
+- [x] Impedir que chamadas pendentes de autenticação Supabase mantenham o formulário de acesso em carregamento indefinido.
+- [x] Diagnosticar o profile operacional ausente após autenticação Supabase e corrigir somente o vínculo confirmado.
+- [x] Preservar a identidade Supabase já validada quando a ponte MySQL temporária estiver indisponível.
