@@ -60,6 +60,14 @@ export function isPublicRequestResubmissionBlocked(lastCreatedAt: Date | undefin
   return Boolean(lastCreatedAt && now.getTime() - lastCreatedAt.getTime() < PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS);
 }
 
+export function normalizePublicWhatsapp(value: string) {
+  const normalized = value.replace(/\D/g, "");
+  if (normalized.length < 8 || normalized.length > 15) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Informe um WhatsApp válido com DDD." });
+  }
+  return normalized;
+}
+
 const quoteStatus = z.enum(["draft", "ready", "sent", "viewed", "approved", "rejected", "expired", "cancelled"]);
 const allowedQuoteTransitions: Record<z.infer<typeof quoteStatus>, z.infer<typeof quoteStatus>[]> = {
   draft: ["ready", "cancelled"],
@@ -199,6 +207,7 @@ export const quoteRequestRouter = router({
   submitPublic: publicProcedure.input(publicRequestInput).mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
+    const whatsapp = normalizePublicWhatsapp(input.whatsapp);
     const tenant = (await db.select().from(tenants).where(and(eq(tenants.slug, input.tenantSlug), eq(tenants.active, true), eq(tenants.status, "active"))).limit(1))[0];
     if (!tenant) throw new TRPCError({ code: "NOT_FOUND", message: "A oficina solicitada não está disponível." });
     const latestMatchingPublicRequest = (await db
@@ -206,7 +215,7 @@ export const quoteRequestRouter = router({
       .from(quoteRequests)
       .where(and(
         eq(quoteRequests.tenantId, tenant.id),
-        eq(quoteRequests.requesterWhatsapp, input.whatsapp),
+        eq(quoteRequests.requesterWhatsapp, whatsapp),
         eq(quoteRequests.source, "public_link"),
         gte(quoteRequests.createdAt, new Date(Date.now() - PUBLIC_REQUEST_RESUBMISSION_COOLDOWN_MS)),
       ))
@@ -220,17 +229,17 @@ export const quoteRequestRouter = router({
       if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });
     }
     const result = await db.transaction(async (tx) => {
-      const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, input.whatsapp))).limit(1))[0];
+      const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, whatsapp))).limit(1))[0];
       const customerId = existingCustomer?.id ?? await (async () => {
         await assertTenantPlanCapacity(tx, tenant.id, "customers");
-        return Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp: input.whatsapp, email: input.email ?? null }))[0].insertId);
+        return Number((await tx.insert(customers).values({ tenantId: tenant.id, name: input.name, whatsapp, email: input.email ?? null }))[0].insertId);
       })();
       const existingVehicle = input.plate ? (await tx.select().from(vehicles).where(and(eq(vehicles.tenantId, tenant.id), eq(vehicles.customerId, customerId), eq(vehicles.plate, input.plate))).limit(1))[0] : undefined;
       const vehicleId = existingVehicle?.id ?? Number((await tx.insert(vehicles).values({ tenantId: tenant.id, customerId, make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null }))[0].insertId);
       const next = (await tx.select({ value: sql<number>`coalesce(max(${quoteRequests.number}), 0) + 1` }).from(quoteRequests).where(eq(quoteRequests.tenantId, tenant.id)))[0]?.value ?? 1;
       const request = await tx.insert(quoteRequests).values({
         tenantId: tenant.id, number: Number(next), customerId, vehicleId, serviceId: input.serviceId ?? null,
-        requesterName: input.name, requesterWhatsapp: input.whatsapp, requesterEmail: input.email ?? null,
+        requesterName: input.name, requesterWhatsapp: whatsapp, requesterEmail: input.email ?? null,
         vehicleSnapshot: { make: input.make, model: input.model, modelYear: input.modelYear ?? null, plate: input.plate ?? null, mileage: input.mileage ?? null },
         serviceLabel: input.serviceLabel, description: input.description ?? null, answers: input.answers ?? null, source: "public_link",
       });
