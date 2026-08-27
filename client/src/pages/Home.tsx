@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 // Regras reutilizáveis ficam fora do componente para manter a atualização rápida estável.
 import { getHomeNavigationContext, getWorkspaceMetrics, getWorkspaceNoTenantState, type WorkspaceRole } from "@/lib/homeWorkspace";
-import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, ClipboardList, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, UsersRound, Wrench } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, ClipboardList, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -57,7 +57,7 @@ function WorkspaceDashboard({ tenantId, tenantName, tenantSlug, role }: { tenant
 }
 
 function PlatformReadOnlyStart() {
-  return <Card className="mx-auto mt-16 max-w-xl border-slate-200 shadow-[0_30px_80px_-40px_rgba(15,23,42,.45)]"><CardHeader><Badge className="w-fit bg-slate-100 text-slate-700 hover:bg-slate-100">Contexto global</Badge><CardTitle className="mt-3 text-2xl text-slate-950">Abra a central da plataforma</CardTitle><CardDescription className="max-w-xl text-base leading-6">Seu acesso é global. A Home operacional não cria oficinas nem altera vínculos; use a central Platform para consultar a estrutura SaaS com segurança.</CardDescription></CardHeader><CardContent className="border-t border-slate-100 pt-5"><Button asChild><a href="/plataforma">Abrir central Platform <ArrowRight className="ml-2 h-4 w-4" /></a></Button></CardContent></Card>;
+  return <Card className="mx-auto mt-16 max-w-2xl border-slate-200 shadow-[0_30px_80px_-40px_rgba(15,23,42,.45)]"><CardHeader><Badge className="w-fit bg-slate-100 text-slate-700 hover:bg-slate-100">Contexto global</Badge><CardTitle className="mt-3 text-2xl text-slate-950">Central administrativa</CardTitle><CardDescription className="max-w-xl text-base leading-6">Seu acesso é global. A operação de tenants permanece separada; acesse a central da plataforma ou a Oficina Demo interna, sempre sob a guarda de Super Admin.</CardDescription></CardHeader><CardContent className="flex flex-wrap gap-3 border-t border-slate-100 pt-5"><Button asChild><a href="/plataforma">Abrir central Platform <ArrowRight className="ml-2 h-4 w-4" /></a></Button><Button asChild variant="outline"><a href="/demo-interna"><Store className="mr-2 h-4 w-4" />Abrir Oficina Demo</a></Button></CardContent></Card>;
 }
 
 export default function Home() {
