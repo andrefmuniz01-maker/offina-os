@@ -106,7 +106,7 @@ export const publicQuoteViewSchema = z.object({
   }).strict(),
   quote: z.object({
     number: z.number().int().positive(),
-    status: z.literal("viewed"),
+    status: z.enum(["viewed", "approved", "rejected"]),
     validUntil: z.string(),
     total: z.number().nonnegative(),
     notes: z.string().nullable(),
@@ -143,4 +143,13 @@ export function parseWorkspaceQuoteManualShare(value: unknown) {
 
 export function parsePublicQuoteView(value: unknown) {
   return publicQuoteViewSchema.safeParse(value);
+}
+
+export const publicQuoteDecisionSchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  idempotent: z.boolean(),
+}).strict();
+
+export function parsePublicQuoteDecision(value: unknown) {
+  return publicQuoteDecisionSchema.safeParse(value);
 }

@@ -198,3 +198,4 @@
 - [x] Cobrir a cadeia de contexto Supabase até auth.me em teste integrado, sem token ou identidade real.
 - [x] Adicionar uma prova de navegação autenticada que dependa do auth.me materializado antes de concluir a evidência publicada.
 - [x] Permitir preparar manualmente o compartilhamento de proposta pronta com token rotacionado, auditoria e cópia explícita, sem WhatsApp automático, aprovação, reserva, agenda, OS ou financeiro.
+- [x] Permitir decisão pública de proposta Supabase com confirmação explícita, reserva transacional de estoque na aprovação, auditoria e sem criar agenda, OS ou financeiro.

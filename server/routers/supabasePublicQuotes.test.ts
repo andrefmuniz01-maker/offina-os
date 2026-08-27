@@ -13,6 +13,7 @@ const publicQuote = {
   quote: { number: 18, status: "viewed", validUntil: "2026-09-03T12:00:00.000Z", total: 839.9, notes: null, terms: null },
   items: [{ description: "Instalação", quantity: 1, unitPrice: 839.9, discount: 0, total: 839.9 }],
 } as const;
+const approved = { status: "approved", idempotent: false } as const;
 
 describe("publicQuotes.view", () => {
   beforeEach(() => {
@@ -47,5 +48,32 @@ describe("publicQuotes.view", () => {
     mocks.rpc.mockResolvedValue({ data: { ...publicQuote, quote: { ...publicQuote.quote, status: "sent", tenantId: 4 } }, error: null });
     const caller = supabasePublicQuoteRouter.createCaller({} as never);
     await expect(caller.view({ token })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("registra decisão sem expor ID interno, saldo ou token adicional", async () => {
+    mocks.rpc.mockResolvedValue({ data: approved, error: null });
+    const caller = supabasePublicQuoteRouter.createCaller({} as never);
+    await expect(caller.decide({ token, decision: "approved" })).resolves.toEqual(approved);
+    expect(mocks.rpc).toHaveBeenCalledWith("public_decide_quote", { token_input: token, decision_input: "approved" });
+    expect(JSON.stringify(approved)).not.toContain("reservation");
+    expect(JSON.stringify(approved)).not.toContain("token");
+  });
+
+  it("aceita somente o retorno idempotente mínimo de uma decisão já tomada", async () => {
+    mocks.rpc.mockResolvedValue({ data: { status: "rejected", idempotent: true }, error: null });
+    const caller = supabasePublicQuoteRouter.createCaller({} as never);
+    await expect(caller.decide({ token, decision: "rejected" })).resolves.toEqual({ status: "rejected", idempotent: true });
+  });
+
+  it("rejeita uma resposta de decisão que tente expor reserva ou identificação interna", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...approved, quoteId: 53, reservedProductCount: 1 }, error: null });
+    const caller = supabasePublicQuoteRouter.createCaller({} as never);
+    await expect(caller.decide({ token, decision: "approved" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("traduz a corrida de estoque para mensagem comercial segura", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001" } });
+    const caller = supabasePublicQuoteRouter.createCaller({} as never);
+    await expect(caller.decide({ token, decision: "approved" })).rejects.toMatchObject({ code: "CONFLICT", message: "A disponibilidade foi alterada. Fale com a oficina para revisar a proposta." });
   });
 });
