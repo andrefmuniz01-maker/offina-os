@@ -6,6 +6,7 @@ import { inventoryRouter } from "./routers/inventory";
 import { quoteRequestRouter, quoteRouter } from "./routers/quotes";
 import { appointmentRouter, workOrderRouter } from "./routers/operations";
 import { dashboardRouter, financialRouter, notificationRouter } from "./routers/management";
+import { supabaseWorkspaceRouter } from "./routers/supabaseWorkspace";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -20,6 +21,7 @@ export const appRouter = router({
   }),
   platform: platformRouter,
   tenant: tenantRouter,
+  workspace: supabaseWorkspaceRouter,
   customers: customerRouter,
   vehicles: vehicleRouter,
   catalog: catalogRouter,

@@ -37,7 +37,7 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
 function CreateTenant({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const createTenant = trpc.platform.createTenant.useMutation({
+  const createTenant = trpc.workspace.createTenant.useMutation({
     onSuccess: () => { toast.success("Oficina criada com segurança."); onCreated(); },
     onError: error => toast.error(error.message),
   });
@@ -51,8 +51,8 @@ function CreateTenant({ onCreated }: { onCreated: () => void }) {
 }
 
 function WorkspaceDashboard({ tenantId, tenantName }: { tenantId: number; tenantName: string }) {
-  const overview = trpc.dashboard.overview.useQuery({ tenantId });
-  const notifications = trpc.notifications.listMine.useQuery({ tenantId, page: 1, pageSize: 5 });
+  const overview = trpc.workspace.dashboardOverview.useQuery({ tenantId });
+  const notifications = trpc.workspace.notifications.useQuery({ tenantId, maxItems: 5 });
   const stats = overview.data;
   const metrics = useMemo(() => stats ? [
     { label: "Faturamento recebido", value: money.format(stats.sales.billing), detail: `${stats.sales.completedOrders} OS concluída(s) no período`, icon: CircleDollarSign, tone: "green" as const },
@@ -69,7 +69,7 @@ function WorkspaceDashboard({ tenantId, tenantName }: { tenantId: number; tenant
 
 export default function Home() {
   const { user, isAuthenticated } = useAuth();
-  const tenantList = trpc.tenant.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const tenantList = trpc.workspace.mine.useQuery(undefined, { enabled: isAuthenticated });
   const [activeTenantId, setActiveTenantId] = useState<number | null>(null);
   const activeTenant = tenantList.data?.find(entry => entry.tenant.id === activeTenantId) ?? tenantList.data?.[0];
   const title = activeTenant?.tenant.name ?? "OficinaOS";
