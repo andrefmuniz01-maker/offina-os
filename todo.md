@@ -177,3 +177,4 @@
 - [x] Restringir permissões customizadas de atendentes e técnicos ao conjunto autorizado pelo papel.
 - [x] Cobrir a negação de token Supabase sem identidade ou profile válido antes do fallback legado.
 - [x] Cobrir a negação de procedimentos Supabase sem identidade materializada ou papel global autorizado.
+- [x] Cobrir a negação de acesso Supabase quando a identidade não possui vínculo ativo com a oficina.

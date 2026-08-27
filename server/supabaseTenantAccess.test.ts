@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { assertSupabasePlatformSuperAdmin, hasSupabasePermission, resolveSupabasePermissions, type SupabaseTenantAccess } from "./supabaseTenantAccess";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("./_core/supabase", () => ({
+  createSupabaseClient: vi.fn(),
+}));
+
+import { createSupabaseClient } from "./_core/supabase";
+import { assertSupabasePlatformSuperAdmin, getSupabaseTenantAccess, hasSupabasePermission, resolveSupabasePermissions, type SupabaseTenantAccess } from "./supabaseTenantAccess";
 
 const access = (permissions: SupabaseTenantAccess["permissions"], isPlatformSuperAdmin = false): SupabaseTenantAccess => ({
   tenantId: 1,
@@ -18,6 +24,22 @@ const access = (permissions: SupabaseTenantAccess["permissions"], isPlatformSupe
 });
 
 describe("permissões de tenant no Supabase", () => {
+  const from = vi.fn();
+  const tenantQuery = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+  const membershipQuery = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    tenantQuery.select.mockReturnValue(tenantQuery);
+    tenantQuery.eq.mockReturnValue(tenantQuery);
+    membershipQuery.select.mockReturnValue(membershipQuery);
+    membershipQuery.eq.mockReturnValue(membershipQuery);
+    tenantQuery.maybeSingle.mockResolvedValue({ data: { id: 12, name: "Oficina ativa", slug: "oficina-ativa", status: "active", active: true, is_demo: false, primary_owner_user_id: null }, error: null });
+    membershipQuery.maybeSingle.mockResolvedValue({ data: null, error: null });
+    from.mockImplementation((table: string) => table === "tenants" ? tenantQuery : membershipQuery);
+    vi.mocked(createSupabaseClient).mockReturnValue({ from } as never);
+  });
+
   it("mantém custo e financeiro restritos para atendente e técnico", () => {
     const attendant = resolveSupabasePermissions("attendant", ["financial.view", "financial.manage", "invalid.permission"]);
     const technician = resolveSupabasePermissions("technician", ["financial.view", "invalid.permission"]);
@@ -49,5 +71,20 @@ describe("permissões de tenant no Supabase", () => {
       platformRole: "platform_user",
       accessToken: "teste",
     })).toThrow("Apenas o Super Admin");
+  });
+
+  it("nega acesso quando a identidade não possui vínculo ativo com a oficina", async () => {
+    await expect(getSupabaseTenantAccess({
+      id: "f3b9d977-1a0c-407a-b56b-7ca7337d9e88",
+      name: "Atendente",
+      email: "atendente@empresa.test",
+      platformRole: "platform_user",
+      accessToken: "teste",
+    }, 12)).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    expect(from).toHaveBeenCalledWith("tenant_members");
+    expect(membershipQuery.eq).toHaveBeenCalledWith("tenant_id", 12);
+    expect(membershipQuery.eq).toHaveBeenCalledWith("user_id", "f3b9d977-1a0c-407a-b56b-7ca7337d9e88");
+    expect(membershipQuery.eq).toHaveBeenCalledWith("active", true);
   });
 });
