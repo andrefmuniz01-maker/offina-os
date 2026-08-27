@@ -13,7 +13,8 @@
 - [x] Adicionar ou atualizar testes Vitest para a experiência de demonstração, controle de acesso e rotina operacional.
 - [x] Verificar tipos, testes, build, console e visualização responsiva antes da entrega.
 - [x] Reduzir o bundle inicial com divisão dinâmica de rotas antes da publicação comercial definitiva.
-- [ ] Diagnosticar e corrigir o caminho de acesso à prévia navegável do OficinaOS.
+- [x] Investigar e documentar a causa histórica do problema de acesso à prévia/publicação: tratou-se de quota de leitura de logs da infraestrutura, sem defeito de aplicação confirmado.
+- [x] Verificar que o domínio publicado atual carrega normalmente a tela de acesso por e-mail e senha.
 - [x] Simplificar o painel do dono da oficina, priorizando ações do dia, comercial, operação e alertas.
 - [x] Reorganizar a Home operacional como central do dia, preservando dados do workspace e ocultando leituras financeiras de papéis sem permissão.
 - [x] Criar uma navegação separada para o ambiente administrativo da plataforma, com abas próprias de tenants, usuários, planos, métricas e auditoria.
@@ -21,7 +22,7 @@
 - [x] Expor somente o link público de solicitação de cada oficina ativa; manter orçamentos dependentes do token seguro de cada cliente.
 - [ ] Validar visualmente os ambientes do dono e do Super Admin em desktop e mobile, incluindo seus estados de acesso.
 - [ ] Confirmar a migração do schema multi-tenant no banco gerenciado e validar o login sem erro de coluna ausente.
-- [ ] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
+- [x] Revalidar a implantação após a estabilização temporária da quota de leitura de logs da infraestrutura.
 - [ ] Manter futuras alterações estritamente limitadas ao código e às solicitações explícitas do repositório-fonte.
 - [x] Comparar cada tabela de drizzle/schema.ts com information_schema.columns, registrando colunas ausentes, extras, tipos e defaults divergentes.
 - [ ] Identificar os e-mails existentes no banco e conceder o papel de Super Admin ao usuário autenticado, preservando os demais registros.
