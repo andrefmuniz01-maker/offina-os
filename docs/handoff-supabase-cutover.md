@@ -65,4 +65,4 @@ pnpm test
 pnpm build
 ```
 
-Resultado integrado mais recente: **97 arquivos de teste aprovados, 1 ignorado e 289 testes aprovados**. A divisão de rotas não críticas reduziu o JavaScript inicial de **1.146.750 bytes para 740.140 bytes** (aproximadamente 35%); cada página não crítica passou a ser carregada sob demanda. O build ainda mostra avisos preexistentes de placeholders de analytics e de um chunk inicial acima de 500 kB.
+Resultado integrado mais recente: **98 arquivos de teste aprovados, 1 ignorado e 291 testes aprovados**. A divisão de rotas não críticas reduziu o JavaScript inicial de **1.146.750 bytes para 740.140 bytes** (aproximadamente 35%); cada página não crítica passou a ser carregada sob demanda. Os placeholders de analytics foram removidos do HTML estático: o script somente é carregado após configuração pública HTTP(S) válida, eliminando os avisos de build e requisições inválidas quando analytics não está configurado. Permanece apenas o aviso de chunk inicial acima de 500 kB.
