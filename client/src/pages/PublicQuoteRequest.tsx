@@ -24,11 +24,27 @@ function userFacingError() {
   return "Não foi possível concluir sua solicitação agora. Tente novamente em alguns minutos.";
 }
 
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      resolve(value.includes(",") ? value.slice(value.indexOf(",") + 1) : value);
+    };
+    reader.onerror = () => reject(new Error("Não foi possível ler o anexo."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PublicQuoteRequest() {
   const [, params] = useRoute("/solicitar/:slug");
   const slug = params?.slug ?? "";
-  const catalog = trpc.publicIntake.catalog.useQuery({ tenantSlug: slug }, { enabled: Boolean(slug) });
-  const createRequest = trpc.publicIntake.create.useMutation();
+  const isDemoPublic = slug === "performance-garage";
+  const legacyCatalog = trpc.quoteRequests.publicServices.useQuery({ tenantSlug: slug }, { enabled: Boolean(slug) && !isDemoPublic });
+  const demoCatalog = trpc.publicIntake.catalog.useQuery({ tenantSlug: slug }, { enabled: Boolean(slug) && isDemoPublic });
+  const catalog = isDemoPublic ? demoCatalog : legacyCatalog;
+  const legacyCreateRequest = trpc.quoteRequests.submitPublic.useMutation();
+  const demoCreateRequest = trpc.publicIntake.create.useMutation();
   const finalizeAttachments = trpc.publicIntake.finalizeAttachments.useMutation();
   const [step, setStep] = useState<PublicQuoteStep>(1);
   const [stepIssue, setStepIssue] = useState<string | null>(null);
@@ -69,12 +85,24 @@ export default function PublicQuoteRequest() {
     setSubmitting(true);
     setStepIssue(null);
     try {
-      const result = await createRequest.mutateAsync({
+      const commonInput = {
         tenantSlug: slug, name: form.name, whatsapp: form.whatsapp, email: form.email || undefined,
         make: form.make, model: form.model, modelYear: form.modelYear ? Number(form.modelYear) : undefined,
         plate: form.plate || undefined, mileage: form.mileage ? Number(form.mileage) : undefined,
         serviceId, serviceLabel: selectedService?.name ?? "Serviço personalizado", description: form.description || undefined,
-        answers, attachments: attachedFiles.map((file, index) => ({ slot: index + 1, filename: file.name, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "video/mp4" | "video/webm" | "video/quicktime", sizeBytes: file.size })),
+        answers,
+      };
+      if (!isDemoPublic) {
+        const result = await legacyCreateRequest.mutateAsync({
+          ...commonInput,
+          attachments: await Promise.all(attachedFiles.map(async file => ({ filename: file.name, mimeType: file.type, base64: await fileToBase64(file) }))),
+        });
+        setRequestNumber(result.number);
+        return;
+      }
+      const result = await demoCreateRequest.mutateAsync({
+        ...commonInput,
+        attachments: attachedFiles.map((file, index) => ({ slot: index + 1, filename: file.name, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" | "image/gif" | "video/mp4" | "video/webm" | "video/quicktime", sizeBytes: file.size })),
       });
       if (attachedFiles.length && !result.uploadCapability) throw new Error("Não foi possível preparar o recebimento seguro dos anexos.");
       if (result.uploadCapability) {
