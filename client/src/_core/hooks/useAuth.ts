@@ -24,7 +24,12 @@ export function useAuth(options?: UseAuthOptions) {
   const [logoutError, setLogoutError] = useState<Error | null>(null);
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
+    // Uma corrida entre a inicialização do cliente Supabase e o primeiro fetch
+    // (ex.: HMR, reload a frio) pode enviar a requisição sem o Authorization
+    // ainda pronto, causando 401 falso-negativo. Um retry curto evita derrubar
+    // a sessão inteira do usuário por causa de uma falha transitória.
+    retry: 2,
+    retryDelay: attempt => 500 * (attempt + 1),
     refetchOnWindowFocus: false,
   });
 

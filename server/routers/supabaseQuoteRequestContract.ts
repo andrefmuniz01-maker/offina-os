@@ -25,7 +25,7 @@ const item = z.object({
   request,
   customer: z.object({ id: z.number().int().positive(), name: z.string(), whatsapp: z.string() }).nullable(),
   vehicle: z.object({ id: z.number().int().positive(), make: z.string(), model: z.string(), plate: z.string().nullable() }).nullable(),
-  assignedUser: z.object({ id: z.string().uuid(), name: z.string() }).nullable(),
+  assignedUser: z.object({ id: z.string().uuid(), name: z.string().nullable() }).nullable(),
   queueMinutes: z.number().int().nonnegative(),
 });
 
