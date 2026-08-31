@@ -35,8 +35,8 @@ export function getWorkspaceMetrics(stats: DashboardStats, role: WorkspaceRole) 
 
 export function getWorkspaceMenuKeys(role: WorkspaceRole): WorkspaceDailyMenuKey[] {
   if (role === "technician") return ["today", "operations"];
-  if (role === "attendant") return ["today", "requests", "quotes", "operations", "customers"];
-  return ["today", "requests", "quotes", "operations", "inventory", "customers", "team", "finance", "settings"];
+  if (role === "attendant") return ["today", "quotes", "operations", "customers"];
+  return ["today", "quotes", "operations", "inventory", "customers", "team", "finance", "settings"];
 }
 
 export function getWorkspacePriorityKeys(role: WorkspaceRole): WorkspaceDailyPriorityKey[] {

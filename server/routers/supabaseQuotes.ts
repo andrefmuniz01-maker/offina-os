@@ -22,11 +22,12 @@ function databaseError(error: { code?: string | null; message?: string | null } 
 }
 
 export const supabaseQuoteRouter = router({
-  list: supabaseProtectedProcedure.input(tenantInput.extend({ status: quoteStatus.optional(), search: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
+  list: supabaseProtectedProcedure.input(tenantInput.extend({ status: quoteStatus.optional(), statuses: z.array(quoteStatus).min(1).optional(), search: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
+    const targetStatuses = input.statuses ?? (input.status ? [input.status] : null);
     const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_quotes", {
       target_tenant_id: input.tenantId,
-      target_status: input.status ?? null,
+      target_statuses: targetStatuses,
       search_input: input.search ?? null,
       page_input: input.page,
       page_size_input: input.pageSize,

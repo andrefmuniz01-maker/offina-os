@@ -43,9 +43,17 @@ describe("contrato da fila de solicitações Supabase", () => {
     expect(parseWorkspaceQuotePreparation(validPreparation).success).toBe(true);
   });
 
-  it("rejeita composição fora da etapa de orçamento e qualquer campo financeiro interno inesperado", () => {
+  it("aceita a composição para qualquer etapa ainda não enviada ao cliente, não só em_orçamento", () => {
+    for (const status of ["new", "in_analysis", "awaiting_information", "in_quoting", "ready"]) {
+      const preparation = structuredClone(validPreparation);
+      preparation.request.status = status;
+      expect(parseWorkspaceQuotePreparation(preparation).success).toBe(true);
+    }
+  });
+
+  it("rejeita composição de solicitação já enviada ao cliente e qualquer campo financeiro interno inesperado", () => {
     const wrongStatus = structuredClone(validPreparation);
-    wrongStatus.request.status = "ready";
+    wrongStatus.request.status = "sent";
     expect(parseWorkspaceQuotePreparation(wrongStatus).success).toBe(false);
 
     const leakedCost = structuredClone(validPreparation) as typeof validPreparation & { estimatedCostTotal?: number };

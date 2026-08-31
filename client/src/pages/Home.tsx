@@ -10,14 +10,13 @@ import { trpc } from "@/lib/trpc";
 // Regras reutilizáveis ficam fora do componente para manter a atualização rápida estável.
 import { getHomeNavigationContext, getWorkspaceMenuKeys, getWorkspaceMetrics, getWorkspaceNoTenantState, getWorkspacePriorityKeys, type WorkspaceDailyMenuKey, type WorkspaceRole } from "@/lib/homeWorkspace";
 import { isDemoWorkspace, selectWorkspace, withDemoContext } from "@/lib/demoWorkspace";
-import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, ClipboardList, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const workspaceMenuDefinitions: Array<DashboardMenuItem & { key: WorkspaceDailyMenuKey }> = [
   { key: "today", icon: ChartNoAxesCombined, label: "Hoje", path: "/" },
-  { key: "requests", icon: ClipboardList, label: "Solicitações", path: "/solicitacoes" },
-  { key: "quotes", icon: ReceiptText, label: "Orçamentos", path: "/orcamentos" },
+  { key: "quotes", icon: ReceiptText, label: "Orçamentos", path: "/solicitacoes" },
   { key: "operations", icon: CalendarClock, label: "Agenda & pátio", path: "/operacao" },
   { key: "inventory", icon: PackageSearch, label: "Estoque", path: "/estoque" },
   { key: "customers", icon: UsersRound, label: "Clientes", path: "/clientes" },

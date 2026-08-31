@@ -88,6 +88,14 @@ export const workspaceQuoteManualShareSchema = z.object({
   total: z.number().nonnegative(),
 }).strict();
 
+export const workspaceGenerateAndSendQuoteSchema = workspaceQuoteManualShareSchema.extend({
+  customerWhatsapp: z.string().min(1),
+});
+
+export function parseWorkspaceGenerateAndSendQuote(value: unknown) {
+  return workspaceGenerateAndSendQuoteSchema.safeParse(value);
+}
+
 export const publicQuoteViewSchema = z.object({
   workshop: z.object({
     name: z.string().min(1),

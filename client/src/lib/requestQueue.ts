@@ -35,6 +35,22 @@ export function getRequestNextAction(status: RequestQueueStatus, hasLinkedServic
   return { title: "Fluxo encerrado", description: "Esta solicitação não requer nova ação comercial agora." };
 }
 
+export type CommercialGroup = "novas" | "aprovados" | "recusados" | "aguardando_retorno";
+
+export const commercialGroupStatuses: Record<CommercialGroup, RequestQueueStatus[]> = {
+  novas: ["new", "in_analysis", "awaiting_information", "in_quoting", "ready"],
+  aguardando_retorno: ["sent"],
+  aprovados: ["approved"],
+  recusados: ["rejected", "expired", "cancelled"],
+};
+
+export function getCommercialGroup(status: RequestQueueStatus): CommercialGroup {
+  for (const [group, statuses] of Object.entries(commercialGroupStatuses) as [CommercialGroup, RequestQueueStatus[]][]) {
+    if (statuses.includes(status)) return group;
+  }
+  return "novas";
+}
+
 export function getQueueUrgency(queueMinutes: number) {
   if (queueMinutes >= 24 * 60) return "critica";
   if (queueMinutes >= 4 * 60) return "atenção";

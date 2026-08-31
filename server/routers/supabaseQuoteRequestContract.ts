@@ -58,7 +58,7 @@ export const workspaceQuotePreparationSchema = z.object({
     id: z.number().int().positive(),
     tenantId: z.number().int().positive(),
     number: z.number().int().positive(),
-    status: z.literal("in_quoting"),
+    status: z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready"]),
     serviceLabel: z.string().min(1),
     description: z.string().nullable(),
     createdAt: z.string(),

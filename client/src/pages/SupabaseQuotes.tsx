@@ -15,18 +15,30 @@ import { toast } from "sonner";
 
 const menu: DashboardMenuItem[] = [
   { icon: ArrowLeft, label: "Visão geral", path: "/" },
+  { icon: FileText, label: "Novas solicitações", path: "/solicitacoes" },
   { icon: FileText, label: "Orçamentos", path: "/orcamentos" },
 ];
 const statusLabels = { draft: "Rascunho", ready: "Pronto", sent: "Enviado", viewed: "Visualizado", approved: "Aprovado", rejected: "Recusado", expired: "Expirado", cancelled: "Cancelado" } as const;
 const statusTones = { draft: "bg-slate-100 text-slate-700", ready: "bg-blue-50 text-blue-800", sent: "bg-amber-50 text-amber-900", viewed: "bg-violet-50 text-violet-800", approved: "bg-emerald-50 text-emerald-800", rejected: "bg-red-50 text-red-800", expired: "bg-slate-100 text-slate-600", cancelled: "bg-slate-100 text-slate-600" } as const;
-const statuses = Object.keys(statusLabels) as Array<keyof typeof statusLabels>;
+type QuoteStatus = keyof typeof statusLabels;
+type QuoteGroup = "aguardando_retorno" | "aprovados" | "recusados";
+const groupStatuses: Record<QuoteGroup, QuoteStatus[]> = {
+  aguardando_retorno: ["sent", "viewed"],
+  aprovados: ["approved"],
+  recusados: ["rejected", "expired", "cancelled"],
+};
+const groupLabels: Record<QuoteGroup, string> = {
+  aguardando_retorno: "Aguardando retorno",
+  aprovados: "Aprovados",
+  recusados: "Recusados",
+};
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function SupabaseQuotes() {
   const mine = trpc.workspace.mine.useQuery();
   const tenant = mine.data?.[0]?.tenant;
   const tenantId = tenant?.id ?? 0;
-  const [status, setStatus] = useState<(typeof statuses)[number] | "all">("all");
+  const [group, setGroup] = useState<QuoteGroup>("aguardando_retorno");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedQuoteId, setSelectedQuoteId] = useState<number | null>(null);
@@ -39,7 +51,7 @@ export default function SupabaseQuotes() {
   const [scheduleDuration, setScheduleDuration] = useState("60");
   const [scheduleBay, setScheduleBay] = useState("");
   const [scheduleNotes, setScheduleNotes] = useState("");
-  const listInput = useMemo(() => ({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 12 }), [tenantId, status, search, page]);
+  const listInput = useMemo(() => ({ tenantId, statuses: groupStatuses[group], search: search.trim() || undefined, page, pageSize: 12 }), [tenantId, group, search, page]);
   const detailInput = useMemo(() => ({ tenantId, quoteId: selectedQuoteId ?? 0 }), [tenantId, selectedQuoteId]);
   const quotes = trpc.workspaceQuotes.list.useQuery(listInput, { enabled: Boolean(tenantId) });
   const detail = trpc.workspaceQuotes.detail.useQuery(detailInput, { enabled: Boolean(tenantId && selectedQuoteId) });
@@ -87,7 +99,7 @@ export default function SupabaseQuotes() {
     },
     onError: error => toast.error(error.message),
   });
-  const hasFilters = status !== "all" || Boolean(search.trim());
+  const hasFilters = Boolean(search.trim());
 
   useEffect(() => {
     if (detail.data) {
@@ -133,7 +145,7 @@ export default function SupabaseQuotes() {
   return <DashboardLayout menuItems={menu} workspaceName={tenant.name}>
     <main className="mx-auto max-w-6xl space-y-7">
       <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end"><div><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Orçamentos</h1><p className="mt-1 max-w-2xl text-sm text-slate-500">Rascunhos internos criados a partir da fila comercial. Envio, aprovação, reserva, agenda e financeiro continuam em etapas separadas.</p></div><Badge className="w-fit bg-orange-100 text-orange-800 hover:bg-orange-100">Leitura comercial</Badge></header>
-      <Card className="border-slate-200 shadow-none"><CardHeader className="gap-4 xl:flex-row xl:items-end xl:justify-between"><div><CardTitle>Fila de orçamentos</CardTitle><CardDescription>Pesquise por número, cliente, placa ou veículo. Custos e margens não são exibidos nesta visão comercial.</CardDescription></div><div className="grid gap-3 sm:grid-cols-2"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><Input className="h-10 min-w-52 pl-8" value={search} onChange={event => { setSearch(event.target.value); resetPage(); }} placeholder="Número, cliente ou placa" aria-label="Buscar orçamentos" /></div><select className="h-10 rounded-md border border-slate-200 bg-white px-2 text-sm" value={status} onChange={event => { setStatus(event.target.value as typeof status); resetPage(); }} aria-label="Filtrar por status"><option value="all">Todos os status</option>{statuses.map(value => <option key={value} value={value}>{statusLabels[value]}</option>)}</select></div></CardHeader><CardContent className="border-t border-slate-100 pt-4"><div className="mb-4 flex flex-wrap gap-2">{(["draft", "ready", "sent"] as const).map(value => <Button key={value} size="sm" variant={status === value ? "default" : "outline"} className={status === value ? "bg-slate-950 hover:bg-slate-800" : "bg-white"} onClick={() => { setStatus(value); resetPage(); }}>{statusLabels[value]}</Button>)}{hasFilters ? <Button size="sm" variant="ghost" onClick={() => { setStatus("all"); setSearch(""); resetPage(); }}><FilterX className="mr-1.5 h-3.5 w-3.5" />Limpar filtros</Button> : null}</div>
+      <Card className="border-slate-200 shadow-none"><CardHeader className="gap-4 xl:flex-row xl:items-end xl:justify-between"><div><CardTitle>Orçamentos</CardTitle><CardDescription>Propostas já enviadas ao cliente. Pesquise por número, cliente, placa ou veículo. Custos e margens não são exibidos nesta visão comercial.</CardDescription></div><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><Input className="h-10 min-w-52 pl-8" value={search} onChange={event => { setSearch(event.target.value); resetPage(); }} placeholder="Número, cliente ou placa" aria-label="Buscar orçamentos" /></div></CardHeader><CardContent className="border-t border-slate-100 pt-4"><div className="mb-4 flex flex-wrap gap-2">{(Object.keys(groupLabels) as QuoteGroup[]).map(value => <Button key={value} size="sm" variant={group === value ? "default" : "outline"} className={group === value ? "bg-slate-950 hover:bg-slate-800" : "bg-white"} onClick={() => { setGroup(value); resetPage(); }}>{groupLabels[value]}</Button>)}{hasFilters ? <Button size="sm" variant="ghost" onClick={() => { setSearch(""); resetPage(); }}><FilterX className="mr-1.5 h-3.5 w-3.5" />Limpar busca</Button> : null}</div>
         {quotes.isLoading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, index) => <Skeleton className="h-28" key={index} />)}</div> : null}
         {quotes.isError ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-900" role="alert">Não foi possível carregar os orçamentos agora. Tente novamente.</p> : null}
         {!quotes.isLoading && !quotes.isError && (quotes.data?.items.length ?? 0) === 0 ? <div className="rounded-xl border border-dashed border-slate-300 py-14 text-center"><p className="font-medium text-slate-900">{hasFilters ? "Nenhum orçamento neste filtro" : "Nenhum rascunho registrado"}</p><p className="mt-1 text-sm text-slate-500">Crie um rascunho a partir de uma solicitação em orçamento para iniciar a revisão comercial.</p></div> : null}

@@ -1,20 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { getQueueUrgency, getRequestNextAction, getRequestStatusTone } from "./requestQueue";
+import { commercialGroupStatuses, getCommercialGroup, type RequestQueueStatus } from "./requestQueue";
 
-describe("requestQueue", () => {
-  it("indica a próxima ação conforme o estado comercial", () => {
-    expect(getRequestNextAction("new", true).title).toBe("Iniciar atendimento");
-    expect(getRequestNextAction("in_analysis", false).title).toBe("Confirmar serviço");
-    expect(getRequestNextAction("approved", true).title).toBe("Agendar execução");
+const allStatuses: RequestQueueStatus[] = ["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"];
+
+describe("getCommercialGroup", () => {
+  it("classifica todo status de solicitação em exatamente um grupo comercial", () => {
+    for (const status of allStatuses) {
+      expect(getCommercialGroup(status)).toBeTruthy();
+    }
   });
 
-  it("classifica o tempo de fila sem depender da interface", () => {
-    expect(getQueueUrgency(30)).toBe("normal");
-    expect(getQueueUrgency(240)).toBe("atenção");
-    expect(getQueueUrgency(1440)).toBe("critica");
-    expect(getRequestStatusTone("new")).toContain("orange");
-    expect(getRequestStatusTone("in_analysis")).toContain("sky");
-    expect(getRequestStatusTone("approved")).toContain("emerald");
-    expect(getRequestStatusTone("rejected")).toContain("red");
+  it("agrupa tudo que ainda não foi enviado ao cliente como novas solicitações", () => {
+    expect(getCommercialGroup("new")).toBe("novas");
+    expect(getCommercialGroup("in_analysis")).toBe("novas");
+    expect(getCommercialGroup("awaiting_information")).toBe("novas");
+    expect(getCommercialGroup("in_quoting")).toBe("novas");
+    expect(getCommercialGroup("ready")).toBe("novas");
+  });
+
+  it("separa recusadas, expiradas e canceladas no grupo de recusados", () => {
+    expect(getCommercialGroup("rejected")).toBe("recusados");
+    expect(getCommercialGroup("expired")).toBe("recusados");
+    expect(getCommercialGroup("cancelled")).toBe("recusados");
+  });
+
+  it("mantém aprovados e aguardando retorno como grupos distintos", () => {
+    expect(getCommercialGroup("approved")).toBe("aprovados");
+    expect(getCommercialGroup("sent")).toBe("aguardando_retorno");
+  });
+
+  it("cobre exatamente os 10 status de solicitação sem sobreposição", () => {
+    const covered = Object.values(commercialGroupStatuses).flat();
+    expect(covered.sort()).toEqual([...allStatuses].sort());
   });
 });

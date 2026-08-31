@@ -4,6 +4,7 @@ import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
 import { parseWorkspaceQuoteDraft, parseWorkspaceQuotePreparation, parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
+import { parseWorkspaceGenerateAndSendQuote } from "./supabaseQuoteContract";
 
 const status = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -22,9 +23,10 @@ function databaseError(error: { code?: string | null; message?: string | null } 
 }
 
 export const supabaseQuoteRequestRouter = router({
-  list: supabaseProtectedProcedure.input(tenantInput.extend({ status: status.optional(), search: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
+  list: supabaseProtectedProcedure.input(tenantInput.extend({ status: status.optional(), statuses: z.array(status).min(1).optional(), search: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) })).query(async ({ ctx, input }) => {
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
-    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_quote_requests", { target_tenant_id: input.tenantId, target_status: input.status ?? null, search_input: input.search ?? null, page_input: input.page, page_size_input: input.pageSize });
+    const targetStatuses = input.statuses ?? (input.status ? [input.status] : null);
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_list_quote_requests", { target_tenant_id: input.tenantId, target_statuses: targetStatuses, search_input: input.search ?? null, page_input: input.page, page_size_input: input.pageSize });
     if (error || !data) throw databaseError(error);
     const result = parseWorkspaceQuoteRequestList(data);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A fila comercial recebeu dados em formato inválido." });
@@ -86,5 +88,19 @@ export const supabaseQuoteRequestRouter = router({
     const { error } = await clientFor(ctx.supabaseUser).rpc("workspace_update_quote_request", { target_tenant_id: input.tenantId, target_request_id: input.quoteRequestId, target_status: input.status, assigned_user: input.assignedToUserId ?? null });
     if (error) throw databaseError(error);
     return { ok: true };
+  }),
+
+  generateAndSend: supabaseProtectedProcedure.input(tenantInput.extend({ quoteRequestId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_generate_and_send_quote", {
+      target_tenant_id: input.tenantId,
+      target_request_id: input.quoteRequestId,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceGenerateAndSendQuote(data);
+    if (!result.success || result.data.tenantId !== input.tenantId || result.data.requestId !== input.quoteRequestId) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A geração da proposta retornou dados incompatíveis." });
+    }
+    return result.data;
   }),
 });

@@ -43,7 +43,7 @@ describe("workspaceQuotes", () => {
     mocks.rpc.mockResolvedValue({ data: { items: [row], page: 1, pageSize: 25, hasMore: false }, error: null });
     const caller = supabaseQuoteRouter.createCaller(context());
     await expect(caller.list({ tenantId: 4 })).resolves.toEqual({ items: [row], page: 1, pageSize: 25, hasMore: false });
-    expect(mocks.rpc).toHaveBeenCalledWith("workspace_list_quotes", { target_tenant_id: 4, target_status: null, search_input: null, page_input: 1, page_size_input: 25 });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_list_quotes", { target_tenant_id: 4, target_statuses: null, search_input: null, page_input: 1, page_size_input: 25 });
   });
 
   it("rejeita uma listagem que tente expor token de compartilhamento interno", async () => {
