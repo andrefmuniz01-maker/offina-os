@@ -138,7 +138,7 @@ const publicRequestInput = z.object({
   modelYear: z.number().int().min(1900).max(2100).optional(),
   plate: z.string().trim().max(16).optional(),
   mileage: z.number().int().nonnegative().optional(),
-  serviceId: z.number().int().positive().optional(),
+  serviceId: z.number().int().positive(),
   serviceLabel: z.string().trim().min(2).max(180),
   description: z.string().trim().max(5000).optional(),
   answers: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
@@ -228,13 +228,9 @@ export const quoteRequestRouter = router({
     if (isPublicRequestResubmissionBlocked(latestMatchingPublicRequest?.createdAt)) {
       throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Recebemos uma solicitação recente deste contato. Aguarde alguns minutos antes de enviar novamente." });
     }
-    const validService = input.serviceId
-      ? (await db.select({ id: services.id, name: services.name }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0]
-      : undefined;
-    if (input.serviceId) {
-      if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });
-    }
-    const serviceLabel = resolvePublicServiceLabel(input.serviceLabel, validService?.name);
+    const validService = (await db.select({ id: services.id, name: services.name }).from(services).where(and(eq(services.id, input.serviceId), eq(services.tenantId, tenant.id), eq(services.active, true))).limit(1))[0];
+    if (!validService) throw new TRPCError({ code: "BAD_REQUEST", message: "O serviço selecionado não pertence a esta oficina." });
+    const serviceLabel = resolvePublicServiceLabel(input.serviceLabel, validService.name);
     const result = await db.transaction(async (tx) => {
       const existingCustomer = (await tx.select().from(customers).where(and(eq(customers.tenantId, tenant.id), eq(customers.whatsapp, whatsapp))).limit(1))[0];
       const customerId = existingCustomer?.id ?? await (async () => {

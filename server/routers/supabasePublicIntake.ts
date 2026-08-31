@@ -23,7 +23,7 @@ const requestInput = z.object({
   modelYear: z.number().int().min(1900).max(2100).optional(),
   plate: z.string().trim().max(16).optional(),
   mileage: z.number().int().nonnegative().optional(),
-  serviceId: z.number().int().positive().optional(),
+  serviceId: z.number().int().positive(),
   serviceLabel: z.string().trim().min(2).max(180),
   description: z.string().trim().max(5000).optional(),
   answers: z.record(z.string().max(80), z.union([z.string().max(500), z.number(), z.boolean()])).optional(),

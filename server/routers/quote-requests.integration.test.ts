@@ -159,7 +159,7 @@ describe("quoteRequests.submitPublic — disponibilidade da oficina", () => {
     mocks.db = buildDb([[]]);
     const caller = quoteRequestRouter.createCaller(createContext());
 
-    await expect(caller.submitPublic({ tenantSlug: "oficina-inativa", name: "Marina", whatsapp: "11999999999", make: "BMW", model: "320i", serviceLabel: "Downpipe" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(caller.submitPublic({ tenantSlug: "oficina-inativa", name: "Marina", whatsapp: "11999999999", make: "BMW", model: "320i", serviceId: 1, serviceLabel: "Downpipe" })).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mocks.db.transaction).not.toHaveBeenCalled();
     expect(mocks.db.inserts()).toHaveLength(0);
   });
