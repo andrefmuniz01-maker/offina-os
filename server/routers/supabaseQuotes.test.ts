@@ -1,8 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ createSupabaseClient: vi.fn(), requireSupabaseTenantPermission: vi.fn(), rpc: vi.fn() }));
-vi.mock("../_core/supabase", () => ({ createSupabaseClient: mocks.createSupabaseClient }));
+const mocks = vi.hoisted(() => ({
+  createSupabaseClient: vi.fn(),
+  createSupabaseServiceRoleClient: vi.fn(),
+  requireSupabaseTenantPermission: vi.fn(),
+  rpc: vi.fn(),
+  storageUpload: vi.fn(),
+}));
+vi.mock("../_core/supabase", () => ({ createSupabaseClient: mocks.createSupabaseClient, createSupabaseServiceRoleClient: mocks.createSupabaseServiceRoleClient }));
 vi.mock("../supabaseTenantAccess", () => ({ requireSupabaseTenantPermission: mocks.requireSupabaseTenantPermission }));
 
 import { supabaseQuoteRouter } from "./supabaseQuotes";
@@ -14,6 +20,7 @@ const detail = { quote: { ...quote, notes: null, terms: null }, customer: row.cu
 const discountUpdate = { id: 53, tenantId: 4, status: "draft", subtotal: 839.9, discountTotal: 40, total: 799.9, updatedAt: "2026-08-27T12:05:00.000Z" } as const;
 const finalized = { id: 53, tenantId: 4, requestId: 14, status: "ready", updatedAt: "2026-08-27T12:06:00.000Z" } as const;
 const preparedShare = { id: 53, tenantId: 4, requestId: 14, status: "sent", updatedAt: "2026-08-27T12:07:00.000Z", publicToken: "a".repeat(64), messageTemplate: "Olá {{cliente}}, {{link}}", customerName: "Cliente", customerWhatsapp: "11999999999", vehicleName: "BMW 320i", workshopName: "Oficina", total: 799.9 } as const;
+const pdfDetail = { quote: { ...quote, status: "sent", notes: null, terms: null }, customer: row.customer, vehicle: row.vehicle, items: [{ id: 71, itemType: "service", description: "Instalação", quantity: 1, unitPrice: 750, discount: 0, sortOrder: 0 }] } as const;
 
 function context(supabaseUser = user) {
   return { req: {} as never, res: {} as never, user: null, supabaseUser } as never;
@@ -22,7 +29,9 @@ function context(supabaseUser = user) {
 describe("workspaceQuotes", () => {
   beforeEach(() => {
     mocks.rpc.mockReset();
+    mocks.storageUpload.mockReset().mockResolvedValue({ data: { path: "quotes/4/53.pdf" }, error: null });
     mocks.createSupabaseClient.mockReset().mockReturnValue({ rpc: mocks.rpc });
+    mocks.createSupabaseServiceRoleClient.mockReset().mockReturnValue({ storage: { from: () => ({ upload: mocks.storageUpload }) } });
     mocks.requireSupabaseTenantPermission.mockReset().mockResolvedValue({ tenantId: 4 });
   });
 
@@ -94,8 +103,13 @@ describe("workspaceQuotes", () => {
     await expect(caller.finalizeDraft({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:05:00.000Z" })).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
   });
 
-  it("prepara o link rotacionado somente após autorização e controle de concorrência", async () => {
-    mocks.rpc.mockResolvedValue({ data: preparedShare, error: null });
+  it("prepara o link rotacionado somente após autorização e controle de concorrência, e gera o PDF da proposta", async () => {
+    mocks.rpc.mockImplementation((fn: string) => {
+      if (fn === "workspace_prepare_quote_manual_share") return Promise.resolve({ data: preparedShare, error: null });
+      if (fn === "workspace_quote_detail") return Promise.resolve({ data: pdfDetail, error: null });
+      if (fn === "workspace_attach_quote_pdf") return Promise.resolve({ data: null, error: null });
+      throw new Error(`RPC inesperada nos testes: ${fn}`);
+    });
     const caller = supabaseQuoteRouter.createCaller(context());
     await expect(caller.prepareManualShare({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:06:00.000Z" })).resolves.toEqual(preparedShare);
     expect(mocks.rpc).toHaveBeenCalledWith("workspace_prepare_quote_manual_share", {
@@ -103,6 +117,22 @@ describe("workspaceQuotes", () => {
       target_quote_id: 53,
       expected_updated_at_input: "2026-08-27T12:06:00.000Z",
     });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_quote_detail", { target_tenant_id: 4, target_quote_id: 53 });
+    expect(mocks.storageUpload).toHaveBeenCalledWith("quotes/4/53.pdf", expect.any(Buffer), { contentType: "application/pdf", upsert: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_attach_quote_pdf", { target_tenant_id: 4, target_quote_id: 53, storage_key_input: "quotes/4/53.pdf" });
+  });
+
+  it("não falha o envio quando a geração do PDF dá erro", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.rpc.mockImplementation((fn: string) => {
+      if (fn === "workspace_prepare_quote_manual_share") return Promise.resolve({ data: preparedShare, error: null });
+      if (fn === "workspace_quote_detail") return Promise.resolve({ data: null, error: { message: "falha simulada" } });
+      throw new Error(`RPC inesperada nos testes: ${fn}`);
+    });
+    const caller = supabaseQuoteRouter.createCaller(context());
+    await expect(caller.prepareManualShare({ tenantId: 4, quoteId: 53, expectedUpdatedAt: "2026-08-27T12:06:00.000Z" })).resolves.toEqual(preparedShare);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("rejeita preparo de compartilhamento que não pertença ao tenant consultado", async () => {

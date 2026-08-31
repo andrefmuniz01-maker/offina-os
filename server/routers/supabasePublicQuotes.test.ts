@@ -10,9 +10,10 @@ const publicQuote = {
   workshop: { name: "Oficina", branding: { primaryColor: "#E84D1C", secondaryColor: "#171717", accentColor: "#F5B33A", publicTitle: null } },
   customer: { name: "Cliente" },
   vehicle: { make: "BMW", model: "320i", modelYear: 2023 },
-  quote: { number: 18, status: "viewed", validUntil: "2026-09-03T12:00:00.000Z", total: 839.9, notes: null, terms: null },
+  quote: { number: 18, status: "viewed", validUntil: "2026-09-03T12:00:00.000Z", total: 839.9, notes: null, terms: null, pdfStorageKey: null },
   items: [{ description: "Instalação", quantity: 1, unitPrice: 839.9, discount: 0, total: 839.9 }],
 } as const;
+const expectedPublicQuote = { ...publicQuote, quote: { number: 18, status: "viewed", validUntil: "2026-09-03T12:00:00.000Z", total: 839.9, notes: null, terms: null, pdfUrl: null } };
 const approved = { status: "approved", idempotent: false } as const;
 
 describe("publicQuotes.view", () => {
@@ -24,11 +25,21 @@ describe("publicQuotes.view", () => {
   it("consulta a RPC mínima por token sem passar IDs internos ao cliente", async () => {
     mocks.rpc.mockResolvedValue({ data: publicQuote, error: null });
     const caller = supabasePublicQuoteRouter.createCaller({} as never);
-    await expect(caller.view({ token })).resolves.toEqual(publicQuote);
+    await expect(caller.view({ token })).resolves.toEqual(expectedPublicQuote);
     expect(mocks.rpc).toHaveBeenCalledWith("public_quote_view", { token_input: token });
     expect(JSON.stringify(publicQuote)).not.toContain("tenantId");
     expect(JSON.stringify(publicQuote)).not.toContain("estimatedCost");
     expect(JSON.stringify(publicQuote)).not.toContain("whatsapp");
+  });
+
+  it("gera uma URL assinada de curta duração quando a proposta possui PDF gerado", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...publicQuote, quote: { ...publicQuote.quote, pdfStorageKey: "quotes/4/53.pdf" } }, error: null });
+    const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: "https://example.supabase.co/signed/quotes/4/53.pdf" }, error: null });
+    mocks.createSupabaseServiceRoleClient.mockReturnValue({ rpc: mocks.rpc, storage: { from: () => ({ createSignedUrl }) } });
+    const caller = supabasePublicQuoteRouter.createCaller({} as never);
+    const result = await caller.view({ token });
+    expect(result.quote.pdfUrl).toBe("https://example.supabase.co/signed/quotes/4/53.pdf");
+    expect(createSignedUrl).toHaveBeenCalledWith("quotes/4/53.pdf", 300);
   });
 
   it("falha de forma neutra quando o backend não possui cliente de serviço", async () => {

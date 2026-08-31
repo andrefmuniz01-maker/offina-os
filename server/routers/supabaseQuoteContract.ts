@@ -125,6 +125,7 @@ export const publicQuoteViewSchema = z.object({
     total: z.number().nonnegative(),
     notes: z.string().nullable(),
     terms: z.string().nullable(),
+    pdfStorageKey: z.string().nullable(),
   }).strict(),
   items: z.array(z.object({
     description: z.string().min(1),

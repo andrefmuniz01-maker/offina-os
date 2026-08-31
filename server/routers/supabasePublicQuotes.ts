@@ -5,6 +5,7 @@ import { publicProcedure, router } from "../_core/trpc";
 import { parsePublicQuoteDecision, parsePublicQuoteView } from "./supabaseQuoteContract";
 
 const tokenInput = z.object({ token: z.string().trim().min(32).max(128) });
+const PDF_SIGNED_URL_TTL_SECONDS = 300;
 
 export const supabasePublicQuoteRouter = router({
   view: publicProcedure.input(tokenInput).query(async ({ input }) => {
@@ -17,7 +18,14 @@ export const supabasePublicQuoteRouter = router({
 
     const result = parsePublicQuoteView(data);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível consultar esta proposta agora." });
-    return result.data;
+
+    const { pdfStorageKey, ...quoteWithoutPdfKey } = result.data.quote;
+    let pdfUrl: string | null = null;
+    if (pdfStorageKey) {
+      const { data: signed } = await supabase.storage.from("quote-proposals").createSignedUrl(pdfStorageKey, PDF_SIGNED_URL_TTL_SECONDS);
+      pdfUrl = signed?.signedUrl ?? null;
+    }
+    return { ...result.data, quote: { ...quoteWithoutPdfKey, pdfUrl } };
   }),
 
   decide: publicProcedure.input(tokenInput.extend({ decision: z.enum(["approved", "rejected"]) })).mutation(async ({ input }) => {

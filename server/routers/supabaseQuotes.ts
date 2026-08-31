@@ -1,8 +1,10 @@
 import { TRPCError } from "@trpc/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createSupabaseClient } from "../_core/supabase";
+import { createSupabaseClient, createSupabaseServiceRoleClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
+import { generateQuotePdfBuffer } from "../lib/quotePdf";
 import { parseWorkspaceQuoteDetail, parseWorkspaceQuoteDiscountUpdate, parseWorkspaceQuoteFinalize, parseWorkspaceQuoteList, parseWorkspaceQuoteManualShare } from "./supabaseQuoteContract";
 
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -19,6 +21,38 @@ function databaseError(error: { code?: string | null; message?: string | null } 
   if (error?.code === "P0002") return new TRPCError({ code: "NOT_FOUND", message: error.message ?? "Orçamento não encontrado nesta oficina." });
   if (error?.code === "P0001") return new TRPCError({ code: "CONFLICT", message: error.message ?? "Este orçamento foi alterado em outra sessão." });
   return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível consultar os orçamentos no banco Supabase." });
+}
+
+async function generateAndAttachQuotePdf(client: SupabaseClient, tenantId: number, quoteId: number, workshopName: string) {
+  const { data, error } = await client.rpc("workspace_quote_detail", { target_tenant_id: tenantId, target_quote_id: quoteId });
+  if (error || !data) throw new Error(`Não foi possível carregar o detalhe do orçamento para o PDF: ${error?.message ?? "dados vazios"}`);
+  const result = parseWorkspaceQuoteDetail(data);
+  if (!result.success) throw new Error("O detalhe do orçamento retornou dados em formato inválido para o PDF.");
+
+  const buffer = await generateQuotePdfBuffer({
+    workshopName,
+    quoteNumber: result.data.quote.number,
+    customerName: result.data.customer.name,
+    vehicleMake: result.data.vehicle.make,
+    vehicleModel: result.data.vehicle.model,
+    vehiclePlate: result.data.vehicle.plate,
+    validUntil: result.data.quote.validUntil,
+    items: result.data.items.map(item => ({ description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, discount: item.discount })),
+    subtotal: result.data.quote.subtotal,
+    discountTotal: result.data.quote.discountTotal,
+    total: result.data.quote.total,
+    notes: result.data.quote.notes,
+    terms: result.data.quote.terms,
+  });
+
+  const serviceRoleClient = createSupabaseServiceRoleClient();
+  if (!serviceRoleClient) throw new Error("Service Role do Supabase não está configurado para armazenar o PDF.");
+  const storageKey = `quotes/${tenantId}/${quoteId}.pdf`;
+  const { error: uploadError } = await serviceRoleClient.storage.from("quote-proposals").upload(storageKey, buffer, { contentType: "application/pdf", upsert: true });
+  if (uploadError) throw new Error(`Falha ao enviar o PDF para o armazenamento: ${uploadError.message}`);
+
+  const { error: attachError } = await client.rpc("workspace_attach_quote_pdf", { target_tenant_id: tenantId, target_quote_id: quoteId, storage_key_input: storageKey });
+  if (attachError) throw new Error(`Falha ao vincular o PDF ao orçamento: ${attachError.message}`);
 }
 
 export const supabaseQuoteRouter = router({
@@ -97,7 +131,8 @@ export const supabaseQuoteRouter = router({
     expectedUpdatedAt: z.string().datetime({ offset: true }),
   })).mutation(async ({ ctx, input }) => {
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
-    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_prepare_quote_manual_share", {
+    const client = clientFor(ctx.supabaseUser);
+    const { data, error } = await client.rpc("workspace_prepare_quote_manual_share", {
       target_tenant_id: input.tenantId,
       target_quote_id: input.quoteId,
       expected_updated_at_input: input.expectedUpdatedAt,
@@ -107,6 +142,13 @@ export const supabaseQuoteRouter = router({
     if (!result.success || result.data.tenantId !== input.tenantId || result.data.id !== input.quoteId) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O preparo do compartilhamento retornou dados incompatíveis." });
     }
+
+    try {
+      await generateAndAttachQuotePdf(client, input.tenantId, input.quoteId, result.data.workshopName);
+    } catch (pdfError) {
+      console.error("[quotePdf] Não foi possível gerar/anexar o PDF da proposta:", pdfError);
+    }
+
     return result.data;
   }),
 });
