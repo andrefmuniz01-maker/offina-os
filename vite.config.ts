@@ -161,6 +161,18 @@ export default defineConfig({
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
+  optimizeDeps: {
+    // Pré-otimiza as dependências do caminho de autenticação para que o Vite não
+    // dispare uma re-otimização (e reload forçado) bem no meio do primeiro login
+    // de um projeto recém-clonado, o que derrubava a chamada auth.me em andamento.
+    include: [
+      "@supabase/supabase-js",
+      "@trpc/client",
+      "@trpc/react-query",
+      "@tanstack/react-query",
+      "superjson",
+    ],
+  },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),

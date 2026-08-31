@@ -29,7 +29,11 @@ export default function AuthCallback() {
   const passwordSetupMode = useMemo(() => requiresPasswordSetup(new URLSearchParams(window.location.hash.slice(1)).get("type")), []);
   const meQuery = trpc.auth.me.useQuery(undefined, {
     enabled: sessionState === "ready" && !recoveryReady,
-    retry: false,
+    // Logo após o link mágico, a otimização de dependências do Vite (em um projeto
+    // recém-clonado) pode derrubar a primeira chamada antes de terminar. Um pequeno
+    // retry evita travar o usuário na mensagem de "perfil indisponível" por isso.
+    retry: 2,
+    retryDelay: attempt => 500 * (attempt + 1),
     refetchOnWindowFocus: false,
   });
 
