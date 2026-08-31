@@ -83,17 +83,23 @@ export const workspaceQuoteManualShareSchema = z.object({
   publicToken: z.string().length(64),
   messageTemplate: z.string().min(1).max(1600),
   customerName: z.string().min(1),
+  customerWhatsapp: z.string().min(1),
   vehicleName: z.string().min(1),
   workshopName: z.string().min(1),
   total: z.number().nonnegative(),
 }).strict();
 
-export const workspaceGenerateAndSendQuoteSchema = workspaceQuoteManualShareSchema.extend({
-  customerWhatsapp: z.string().min(1),
-});
+export const workspaceGenerateQuoteSchema = z.object({
+  id: z.number().int().positive(),
+  tenantId: z.number().int().positive(),
+  requestId: z.number().int().positive(),
+  status: z.literal("ready"),
+  updatedAt: z.string(),
+  total: z.number().nonnegative(),
+}).strict();
 
-export function parseWorkspaceGenerateAndSendQuote(value: unknown) {
-  return workspaceGenerateAndSendQuoteSchema.safeParse(value);
+export function parseWorkspaceGenerateQuote(value: unknown) {
+  return workspaceGenerateQuoteSchema.safeParse(value);
 }
 
 export const publicQuoteViewSchema = z.object({

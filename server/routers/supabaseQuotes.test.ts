@@ -13,7 +13,7 @@ const row = { quote, customer: { id: 7, name: "Cliente", whatsapp: "11999999999"
 const detail = { quote: { ...quote, notes: null, terms: null }, customer: row.customer, vehicle: row.vehicle, items: [{ id: 71, itemType: "service", description: "Instalação", quantity: 1, unitPrice: 750, discount: 0, sortOrder: 0 }] } as const;
 const discountUpdate = { id: 53, tenantId: 4, status: "draft", subtotal: 839.9, discountTotal: 40, total: 799.9, updatedAt: "2026-08-27T12:05:00.000Z" } as const;
 const finalized = { id: 53, tenantId: 4, requestId: 14, status: "ready", updatedAt: "2026-08-27T12:06:00.000Z" } as const;
-const preparedShare = { id: 53, tenantId: 4, requestId: 14, status: "sent", updatedAt: "2026-08-27T12:07:00.000Z", publicToken: "a".repeat(64), messageTemplate: "Olá {{cliente}}, {{link}}", customerName: "Cliente", vehicleName: "BMW 320i", workshopName: "Oficina", total: 799.9 } as const;
+const preparedShare = { id: 53, tenantId: 4, requestId: 14, status: "sent", updatedAt: "2026-08-27T12:07:00.000Z", publicToken: "a".repeat(64), messageTemplate: "Olá {{cliente}}, {{link}}", customerName: "Cliente", customerWhatsapp: "11999999999", vehicleName: "BMW 320i", workshopName: "Oficina", total: 799.9 } as const;
 
 function context(supabaseUser = user) {
   return { req: {} as never, res: {} as never, user: null, supabaseUser } as never;

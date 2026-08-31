@@ -29,15 +29,9 @@ const generated = {
   id: 73,
   tenantId: 4,
   requestId: 14,
-  status: "sent",
+  status: "ready",
   updatedAt: "2026-08-31T21:14:09.142088Z",
-  publicToken: "151567eebf20b4e12aa4be65e803ccc53ab14bdab81e7862b46a7fc53c49264d",
-  messageTemplate: "Olá, {{cliente}}. Preparamos uma sugestão para seu veículo.",
-  customerName: "Cliente Demo",
-  vehicleName: "Volkswagen Gol",
-  workshopName: "Auto Prime",
   total: 710,
-  customerWhatsapp: "11900001111",
 } as const;
 
 function context(user = supabaseUser) {
@@ -49,7 +43,7 @@ function context(user = supabaseUser) {
   } as never;
 }
 
-describe("workspaceQuoteRequests.generateAndSend", () => {
+describe("workspaceQuoteRequests.generateQuote", () => {
   beforeEach(() => {
     mocks.rpc.mockReset();
     mocks.requireSupabaseTenantPermission.mockReset().mockResolvedValue({ tenantId: 4 });
@@ -58,7 +52,7 @@ describe("workspaceQuoteRequests.generateAndSend", () => {
 
   it("nega a geração sem uma identidade Supabase materializada", async () => {
     const caller = supabaseQuoteRequestRouter.createCaller(context(null as never));
-    await expect(caller.generateAndSend({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
@@ -66,17 +60,17 @@ describe("workspaceQuoteRequests.generateAndSend", () => {
     mocks.requireSupabaseTenantPermission.mockRejectedValue(new TRPCError({ code: "FORBIDDEN", message: "Sem acesso ao tenant." }));
     const caller = supabaseQuoteRequestRouter.createCaller(context());
 
-    await expect(caller.generateAndSend({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(mocks.requireSupabaseTenantPermission).toHaveBeenCalledWith(supabaseUser, 4, "quotes.manage");
     expect(mocks.rpc).not.toHaveBeenCalled();
   });
 
-  it("chama a RPC de geração com os IDs do tenant e da solicitação e devolve o resultado", async () => {
+  it("chama a RPC de geração com os IDs do tenant e da solicitação e devolve o orçamento pronto, sem enviar", async () => {
     mocks.rpc.mockResolvedValue({ data: generated, error: null });
     const caller = supabaseQuoteRequestRouter.createCaller(context());
 
-    await expect(caller.generateAndSend({ tenantId: 4, quoteRequestId: 14 })).resolves.toEqual(generated);
-    expect(mocks.rpc).toHaveBeenCalledWith("workspace_generate_and_send_quote", {
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).resolves.toEqual(generated);
+    expect(mocks.rpc).toHaveBeenCalledWith("workspace_generate_quote_from_request", {
       target_tenant_id: 4,
       target_request_id: 14,
     });
@@ -86,7 +80,7 @@ describe("workspaceQuoteRequests.generateAndSend", () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: "Estoque indisponível para finalizar a proposta: Filtro de cabine" } });
     const caller = supabaseQuoteRequestRouter.createCaller(context());
 
-    await expect(caller.generateAndSend({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
       code: "CONFLICT",
       message: "Estoque indisponível para finalizar a proposta: Filtro de cabine",
     });
@@ -96,9 +90,18 @@ describe("workspaceQuoteRequests.generateAndSend", () => {
     mocks.rpc.mockResolvedValue({ data: { ...generated, requestId: 99 }, error: null });
     const caller = supabaseQuoteRequestRouter.createCaller(context());
 
-    await expect(caller.generateAndSend({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
       code: "INTERNAL_SERVER_ERROR",
       message: "A geração da proposta retornou dados incompatíveis.",
+    });
+  });
+
+  it("rejeita uma resposta que já esteja marcada como enviada (o RPC não deve mais enviar sozinho)", async () => {
+    mocks.rpc.mockResolvedValue({ data: { ...generated, status: "sent" }, error: null });
+    const caller = supabaseQuoteRequestRouter.createCaller(context());
+
+    await expect(caller.generateQuote({ tenantId: 4, quoteRequestId: 14 })).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
     });
   });
 });

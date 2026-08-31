@@ -4,7 +4,7 @@ import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission } from "../supabaseTenantAccess";
 import { parseWorkspaceQuoteDraft, parseWorkspaceQuotePreparation, parseWorkspaceQuoteRequestHistory, parseWorkspaceQuoteRequestList } from "./supabaseQuoteRequestContract";
-import { parseWorkspaceGenerateAndSendQuote } from "./supabaseQuoteContract";
+import { parseWorkspaceGenerateQuote } from "./supabaseQuoteContract";
 
 const status = z.enum(["new", "in_analysis", "awaiting_information", "in_quoting", "ready", "sent", "approved", "rejected", "expired", "cancelled"]);
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -90,14 +90,14 @@ export const supabaseQuoteRequestRouter = router({
     return { ok: true };
   }),
 
-  generateAndSend: supabaseProtectedProcedure.input(tenantInput.extend({ quoteRequestId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  generateQuote: supabaseProtectedProcedure.input(tenantInput.extend({ quoteRequestId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "quotes.manage");
-    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_generate_and_send_quote", {
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_generate_quote_from_request", {
       target_tenant_id: input.tenantId,
       target_request_id: input.quoteRequestId,
     });
     if (error || !data) throw databaseError(error);
-    const result = parseWorkspaceGenerateAndSendQuote(data);
+    const result = parseWorkspaceGenerateQuote(data);
     if (!result.success || result.data.tenantId !== input.tenantId || result.data.requestId !== input.quoteRequestId) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A geração da proposta retornou dados incompatíveis." });
     }

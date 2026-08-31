@@ -76,6 +76,7 @@ export default function Requests() {
   const [historyRequestId, setHistoryRequestId] = useState<number | null>(null);
   const [confirmRequestId, setConfirmRequestId] = useState<number | null>(null);
   const [discardRequestId, setDiscardRequestId] = useState<number | null>(null);
+  const [readyQuote, setReadyQuote] = useState<{ quoteId: number; updatedAt: string } | null>(null);
   const [sentResult, setSentResult] = useState<{ whatsappLink: string; publicLink: string; requestNumber: number } | null>(null);
   const utils = trpc.useUtils();
   const requests = trpc.workspaceQuoteRequests.list.useQuery(
@@ -100,7 +101,15 @@ export default function Requests() {
     },
     onError: error => toast.error(error.message),
   });
-  const generateAndSend = trpc.workspaceQuoteRequests.generateAndSend.useMutation({
+  const generateQuote = trpc.workspaceQuoteRequests.generateQuote.useMutation({
+    onSuccess: output => {
+      setConfirmRequestId(null);
+      setReadyQuote({ quoteId: output.id, updatedAt: output.updatedAt });
+      utils.workspaceQuoteRequests.history.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const sendQuote = trpc.workspaceQuotes.prepareManualShare.useMutation({
     onSuccess: output => {
       const publicLink = new URL(`/orcamento/${output.publicToken}`, window.location.origin).toString();
       const message = renderQuoteMessageTemplate(output.messageTemplate, {
@@ -110,9 +119,9 @@ export default function Requests() {
         link: publicLink,
         workshop: output.workshopName,
       });
-      setConfirmRequestId(null);
+      setReadyQuote(null);
       setSentResult({ whatsappLink: buildWhatsappLink(output.customerWhatsapp, message), publicLink, requestNumber: output.requestId });
-      toast.success("Proposta gerada e enviada.");
+      toast.success("Proposta enviada. A solicitação passou para Orçamentos.");
       utils.workspaceQuoteRequests.list.invalidate();
       utils.workspaceQuoteRequests.history.invalidate();
     },
@@ -175,13 +184,13 @@ export default function Requests() {
               <CardContent className="space-y-4 p-5">
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                   <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold text-slate-950">#{String(request.number).padStart(6, "0")} · {request.serviceLabel}</p><Badge variant="outline" className={getRequestStatusTone(request.status as RequestQueueStatus)}>{labels[request.status] ?? request.status}</Badge><Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">{request.source === "public_link" ? "Link público" : request.source}</Badge></div><p className="mt-2 text-sm font-medium text-slate-700">{customer?.name ?? request.requesterName} <span className="font-normal text-slate-400">·</span> {vehicle ? `${vehicle.make} ${vehicle.model}` : "Veículo a confirmar"}</p><div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500"><span className={urgency === "normal" ? "inline-flex items-center gap-1" : "inline-flex items-center gap-1 font-semibold text-amber-800"}><Clock3 className="h-3.5 w-3.5" />Em fila: {formatQueueMinutes(queueMinutes)}</span><span className="inline-flex items-center gap-1"><UserRound className="h-3.5 w-3.5" />Responsável: {assignedUser?.name ?? "Não atribuído"}</span></div><p className="mt-3 max-w-2xl text-sm text-slate-500">{request.description || "Sem observações adicionais."}</p></div>
-                  <div className="w-full rounded-xl border border-slate-100 bg-slate-50 p-3 xl:max-w-xs"><p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><AlertCircle className="h-3.5 w-3.5 text-orange-700" />Próxima ação</p><p className="mt-1 text-sm font-semibold text-slate-900">Gerar e enviar a proposta</p><p className="mt-1 text-xs leading-relaxed text-slate-500">Um clique cria o orçamento a partir do catálogo, reserva o estoque e prepara o envio.</p></div>
+                  <div className="w-full rounded-xl border border-slate-100 bg-slate-50 p-3 xl:max-w-xs"><p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500"><AlertCircle className="h-3.5 w-3.5 text-orange-700" />Próxima ação</p><p className="mt-1 text-sm font-semibold text-slate-900">Gerar a proposta</p><p className="mt-1 text-xs leading-relaxed text-slate-500">Cria o orçamento a partir do catálogo e reserva o estoque. Só vira Orçamento quando você confirmar o envio ao cliente.</p></div>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setHistoryRequestId(current => current === request.id ? null : request.id)}><History className="mr-2 h-4 w-4" />{historyRequestId === request.id ? "Ocultar trilha" : "Ver trilha"}</Button>
-                    <Button size="sm" disabled={!request.serviceId} onClick={() => setConfirmRequestId(request.id)}><Sparkles className="mr-2 h-4 w-4" />Gerar e enviar proposta</Button>
+                    <Button size="sm" disabled={!request.serviceId} onClick={() => setConfirmRequestId(request.id)}><Sparkles className="mr-2 h-4 w-4" />{request.status === "ready" ? "Enviar proposta" : "Gerar proposta"}</Button>
                     <Button size="sm" variant="outline" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={updateStatus.isPending} onClick={() => setDiscardRequestId(request.id)}><Ban className="mr-2 h-4 w-4" />Descartar</Button>
                   </div>
                   <div className="flex w-full items-center gap-3 lg:w-auto"><p className="whitespace-nowrap text-xs font-medium text-slate-600">Responsável</p><Select disabled={assignees.isLoading || updateStatus.isPending} value={request.assignedToUserId ? String(request.assignedToUserId) : "unassigned"} onValueChange={value => updateStatus.mutate({ tenantId, quoteRequestId: request.id, status: request.status, assignedToUserId: value === "unassigned" ? null : value })}><SelectTrigger className="w-full lg:w-64"><SelectValue placeholder="Selecionar responsável" /></SelectTrigger><SelectContent><SelectItem value="unassigned">Não atribuído</SelectItem>{assignees.data?.map(member => <SelectItem key={member.id} value={String(member.id)}>{member.name} · {member.role}</SelectItem>)}</SelectContent></Select></div>
@@ -199,7 +208,7 @@ export default function Requests() {
 
       <Dialog open={isConfirmOpen} onOpenChange={open => { if (!open) setConfirmRequestId(null); }}>
         <DialogContent className="max-w-xl">
-          <DialogHeader><DialogTitle>Confirmar geração da proposta</DialogTitle><DialogDescription>Revise antes de confirmar. Esta ação cria o orçamento, reserva o estoque necessário e já prepara o envio ao cliente — não é possível editar itens aqui.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Confirmar geração da proposta</DialogTitle><DialogDescription>Revise antes de confirmar. Esta ação cria o orçamento e reserva o estoque necessário — não é possível editar itens aqui. A solicitação só sai de Novas solicitações quando você confirmar o envio ao cliente na próxima etapa.</DialogDescription></DialogHeader>
           {preparation.isLoading ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, index) => <Skeleton className="h-12" key={index} />)}</div> : null}
           {preparation.isError ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">{preparation.error.message || "Não foi possível preparar esta composição agora."}</p> : null}
           {preparation.data ? <div className="space-y-4">
@@ -211,7 +220,14 @@ export default function Requests() {
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white"><table className="w-full min-w-[520px] text-left text-sm"><thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500"><tr><th className="px-3 py-2 font-medium">Item</th><th className="px-3 py-2 font-medium">Quantidade</th><th className="px-3 py-2 font-medium">Valor unitário</th><th className="px-3 py-2 font-medium">Estoque</th></tr></thead><tbody>{preparation.data.suggestedItems.map((item, index) => <tr className="border-b border-slate-100 last:border-0" key={`${item.itemType}-${item.productId ?? item.serviceId}-${index}`}><td className="px-3 py-3 font-medium text-slate-900">{item.description}</td><td className="px-3 py-3 tabular-nums text-slate-700">{item.quantity}</td><td className="px-3 py-3 tabular-nums text-slate-700">{formatCurrency(item.unitPrice)}</td><td className="px-3 py-3"><Badge className={availabilityTones[item.availability]}>{availabilityLabels[item.availability]}</Badge></td></tr>)}</tbody></table></div>
             <div className="rounded-lg bg-slate-50 p-4 text-sm"><div className="flex justify-between text-base text-slate-950"><span>Total</span><strong>{formatCurrency(preparation.data.total)}</strong></div></div>
           </div> : null}
-          <DialogFooter><Button variant="outline" onClick={() => setConfirmRequestId(null)}>Cancelar</Button><Button disabled={!preparation.data || generateAndSend.isPending} onClick={() => confirmRequestId && generateAndSend.mutate({ tenantId, quoteRequestId: confirmRequestId })}>{generateAndSend.isPending ? "Gerando…" : "Confirmar e enviar"}</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setConfirmRequestId(null)}>Cancelar</Button><Button disabled={!preparation.data || generateQuote.isPending} onClick={() => confirmRequestId && generateQuote.mutate({ tenantId, quoteRequestId: confirmRequestId })}>{generateQuote.isPending ? "Gerando…" : "Confirmar geração"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={readyQuote !== null} onOpenChange={open => { if (!open) setReadyQuote(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Proposta pronta. Enviar ao cliente agora?</DialogTitle><DialogDescription>A solicitação continua em Novas solicitações até você confirmar o envio aqui. Ao confirmar, o link é gerado, a solicitação passa para Orçamentos (Aguardando retorno) e o WhatsApp abre com a mensagem pronta.</DialogDescription></DialogHeader>
+          <DialogFooter><Button variant="outline" onClick={() => setReadyQuote(null)}>Deixar para depois</Button><Button disabled={!readyQuote || sendQuote.isPending} onClick={() => readyQuote && sendQuote.mutate({ tenantId, quoteId: readyQuote.quoteId, expectedUpdatedAt: readyQuote.updatedAt })}><MessageCircle className="mr-2 h-4 w-4" />{sendQuote.isPending ? "Enviando…" : "Confirmar envio e abrir WhatsApp"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
