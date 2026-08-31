@@ -26,6 +26,14 @@ export type TrpcContext = {
   user: User | null;
   /** Identidade validada por Supabase Auth e profile protegido por RLS. */
   supabaseUser: SupabaseSessionUser | null;
+  /**
+   * true quando um token foi enviado mas a validação falhou por uma exceção
+   * (ex.: falha de rede ao consultar o Supabase Auth), e não por rejeição
+   * legítima do token. Distingue "sessão inválida" de "não foi possível
+   * verificar agora", para que auth.me não relate uma falha transitória de
+   * infraestrutura como se o usuário estivesse deslogado.
+   */
+  supabaseAuthUnavailable?: boolean;
 };
 
 export function applySupabaseProfileRole(
@@ -70,6 +78,7 @@ export async function createContext(
 ): Promise<TrpcContext> {
   let user: User | null = null;
   let supabaseUser: SupabaseSessionUser | null = null;
+  let supabaseAuthUnavailable = false;
 
   const accessToken = getBearerToken(opts.req.headers.authorization);
   if (accessToken) {
@@ -100,8 +109,14 @@ export async function createContext(
         }
       }
     } catch {
+      // getSupabaseAuthUser/getSupabaseProfile só chegam a lançar exceção por
+      // falha de infraestrutura (ex.: rede indisponível); um token realmente
+      // inválido ou expirado é reportado pelo Supabase via `error` e já
+      // retorna null sem lançar. Por isso, uma exceção aqui nunca deve ser
+      // tratada como "usuário sem sessão".
       user = null;
       supabaseUser = null;
+      supabaseAuthUnavailable = true;
     }
   }
 
@@ -110,5 +125,6 @@ export async function createContext(
     res: opts.res,
     user,
     supabaseUser,
+    supabaseAuthUnavailable,
   };
 }

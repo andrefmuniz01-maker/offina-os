@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { platformRouter, tenantRouter } from "./routers/platform";
@@ -26,6 +27,9 @@ export const appRouter = router({
       if (opts.ctx.supabaseUser) {
         const { id, name, email, platformRole } = opts.ctx.supabaseUser;
         return { id, name, email, platformRole };
+      }
+      if (opts.ctx.supabaseAuthUnavailable) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível verificar sua sessão agora." });
       }
       if (!opts.ctx.user) return null;
       const { id, name, email, platformRole } = opts.ctx.user;
