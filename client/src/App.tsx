@@ -20,6 +20,7 @@ const InternalDemo = lazy(() => import("./pages/InternalDemo"));
 const Catalog = lazy(() => import("./pages/Catalog"));
 const Categories = lazy(() => import("./pages/Categories"));
 const CatalogItems = lazy(() => import("./pages/CatalogItems"));
+const CatalogHub = lazy(() => import("./pages/CatalogHub"));
 const Purchases = lazy(() => import("./pages/Purchases"));
 const WorkOrder = lazy(() => import("./pages/WorkOrder"));
 const Finance = lazy(() => import("./pages/Finance"));
@@ -47,6 +48,7 @@ function Router() {
     <Route path={"/configuracoes"} component={Settings} />
     <Route path={"/plataforma"} component={Platform} />
     <Route path={"/demo-interna"} component={InternalDemo} />
+    <Route path={"/catalogo"} component={CatalogHub} />
     <Route path={"/cadastros"} component={Catalog} />
     <Route path={"/cadastros/itens"} component={CatalogItems} />
     <Route path={"/categorias"} component={Categories} />

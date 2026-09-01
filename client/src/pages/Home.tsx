@@ -10,7 +10,7 @@ import { trpc } from "@/lib/trpc";
 // Regras reutilizáveis ficam fora do componente para manter a atualização rápida estável.
 import { getHomeNavigationContext, getWorkspaceMenuKeys, getWorkspaceMetrics, getWorkspaceNoTenantState, getWorkspacePriorityKeys, type WorkspaceDailyMenuKey, type WorkspaceRole } from "@/lib/homeWorkspace";
 import { isDemoWorkspace, selectWorkspace, withDemoContext } from "@/lib/demoWorkspace";
-import { ArrowRight, Bell, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
+import { ArrowRight, Bell, Boxes, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ const workspaceMenuDefinitions: Array<DashboardMenuItem & { key: WorkspaceDailyM
   { key: "quotes", icon: ReceiptText, label: "Orçamentos", path: "/solicitacoes" },
   { key: "operations", icon: CalendarClock, label: "Agenda & pátio", path: "/operacao" },
   { key: "inventory", icon: PackageSearch, label: "Estoque", path: "/estoque" },
+  { key: "catalog", icon: Boxes, label: "Catálogo", path: "/catalogo" },
   { key: "customers", icon: UsersRound, label: "Clientes", path: "/clientes" },
   { key: "team", icon: UsersRound, label: "Equipe", path: "/equipe" },
   { key: "finance", icon: CircleDollarSign, label: "Financeiro", path: "/financeiro" },

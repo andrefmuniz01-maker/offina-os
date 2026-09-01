@@ -1,5 +1,5 @@
 export type WorkspaceRole = "owner" | "admin" | "attendant" | "technician";
-export type WorkspaceDailyMenuKey = "today" | "requests" | "quotes" | "operations" | "inventory" | "customers" | "team" | "finance" | "settings";
+export type WorkspaceDailyMenuKey = "today" | "requests" | "quotes" | "operations" | "inventory" | "catalog" | "customers" | "team" | "finance" | "settings";
 export type WorkspaceDailyPriorityKey = "commercial" | "operation" | "inventory";
 
 export type DashboardStats = {
@@ -35,8 +35,8 @@ export function getWorkspaceMetrics(stats: DashboardStats, role: WorkspaceRole) 
 
 export function getWorkspaceMenuKeys(role: WorkspaceRole): WorkspaceDailyMenuKey[] {
   if (role === "technician") return ["today", "operations"];
-  if (role === "attendant") return ["today", "quotes", "operations", "customers"];
-  return ["today", "quotes", "operations", "inventory", "customers", "team", "finance", "settings"];
+  if (role === "attendant") return ["today", "quotes", "operations", "catalog", "customers"];
+  return ["today", "quotes", "operations", "inventory", "catalog", "customers", "team", "finance", "settings"];
 }
 
 export function getWorkspacePriorityKeys(role: WorkspaceRole): WorkspaceDailyPriorityKey[] {
