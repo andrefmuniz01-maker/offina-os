@@ -1,7 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { platformRouter, tenantRouter } from "./routers/platform";
+import { tenantRouter } from "./routers/platform";
+import { supabasePlatformRouter } from "./routers/supabasePlatform";
 import { catalogRouter, customerRouter, vehicleRouter } from "./routers/catalog";
 import { supabaseCatalogRouter } from "./routers/supabaseCatalog";
 import { inventoryRouter } from "./routers/inventory";
@@ -37,7 +38,7 @@ export const appRouter = router({
     }),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
-  platform: platformRouter,
+  platform: supabasePlatformRouter,
   tenant: tenantRouter,
   workspace: supabaseWorkspaceRouter,
   workspaceCustomers: supabaseCustomerRouter,
