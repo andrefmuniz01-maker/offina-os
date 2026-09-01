@@ -45,7 +45,17 @@ export function getBearerToken(value: string | undefined): string | null {
 export async function getSupabaseAuthUser(accessToken: string) {
   const supabase = createSupabaseClient();
   const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user) return null;
+  if (error) {
+    // Um token genuinamente expirado/inválido volta com status 4xx. Qualquer
+    // outro erro (5xx, timeout, indisponibilidade do Auth) não significa que a
+    // sessão é inválida — só que não foi possível verificá-la agora. Tratar os
+    // dois casos da mesma forma faz uma instabilidade passageira parecer uma
+    // sessão expirada.
+    const status = (error as { status?: number }).status;
+    if (status !== undefined && status >= 400 && status < 500) return null;
+    throw new Error(`Falha ao validar a sessão Supabase: ${error.message}`);
+  }
+  if (!data.user) return null;
   return data.user;
 }
 
