@@ -6,6 +6,23 @@ import { requireSupabaseTenantPermission, getSupabaseTenantAccess, hasSupabasePe
 
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
 
+const openingHoursDaySchema = z.object({
+  closed: z.boolean().optional(),
+  open: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  close: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+}).strict();
+const openingHoursSchema = z.object({
+  monday: openingHoursDaySchema.optional(),
+  tuesday: openingHoursDaySchema.optional(),
+  wednesday: openingHoursDaySchema.optional(),
+  thursday: openingHoursDaySchema.optional(),
+  friday: openingHoursDaySchema.optional(),
+  saturday: openingHoursDaySchema.optional(),
+  sunday: openingHoursDaySchema.optional(),
+}).strict().nullable();
+
+const workspaceBaySchema = z.object({ id: z.number().int().positive(), name: z.string().min(1), active: z.boolean(), sortOrder: z.number().int() }).strict();
+
 const workspaceTeamPermission = z.enum([
   "tenant.manage",
   "team.manage",
@@ -101,12 +118,38 @@ export const supabaseManagementRouter = router({
       await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_get_tenant_settings", { target_tenant_id: input.tenantId });
       if (error) throw databaseError(error);
-      return data as { legalName: string | null; document: string | null; phone: string | null; whatsapp: string | null; email: string | null; defaultLaborHourlyRate: number; defaultPartsMarginPercent: number; defaultPartsMarkupPercent: number; quoteValidityDays: number; minimumMarginPercent: number; attendantMaxDiscountPercent: number; quoteMessageTemplate: string | null };
+      return data as { legalName: string | null; document: string | null; phone: string | null; whatsapp: string | null; email: string | null; defaultLaborHourlyRate: number; defaultPartsMarginPercent: number; defaultPartsMarkupPercent: number; quoteValidityDays: number; minimumMarginPercent: number; attendantMaxDiscountPercent: number; quoteMessageTemplate: string | null; openingHours: z.infer<typeof openingHoursSchema> };
     }),
-    update: supabaseProtectedProcedure.input(tenantInput.extend({ legalName: z.string().nullable(), document: z.string().nullable(), phone: z.string().nullable(), whatsapp: z.string().nullable(), email: z.string().nullable(), defaultLaborHourlyRate: z.number().finite().nonnegative(), defaultPartsMarginPercent: z.number().finite().nonnegative(), defaultPartsMarkupPercent: z.number().finite().nonnegative(), quoteValidityDays: z.number().int().min(1).max(365), minimumMarginPercent: z.number().finite().nonnegative(), attendantMaxDiscountPercent: z.number().finite().nonnegative(), quoteMessageTemplate: z.string().nullable() })).mutation(async ({ ctx, input }) => {
-      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_update_tenant_settings", { target_tenant_id: input.tenantId, payload: { legalName: input.legalName, document: input.document, phone: input.phone, whatsapp: input.whatsapp, email: input.email, defaultLaborHourlyRate: input.defaultLaborHourlyRate, defaultPartsMarginPercent: input.defaultPartsMarginPercent, defaultPartsMarkupPercent: input.defaultPartsMarkupPercent, quoteValidityDays: input.quoteValidityDays, minimumMarginPercent: input.minimumMarginPercent, attendantMaxDiscountPercent: input.attendantMaxDiscountPercent, quoteMessageTemplate: input.quoteMessageTemplate } });
+    update: supabaseProtectedProcedure.input(tenantInput.extend({ legalName: z.string().nullable(), document: z.string().nullable(), phone: z.string().nullable(), whatsapp: z.string().nullable(), email: z.string().nullable(), defaultLaborHourlyRate: z.number().finite().nonnegative(), defaultPartsMarginPercent: z.number().finite().nonnegative(), defaultPartsMarkupPercent: z.number().finite().nonnegative(), quoteValidityDays: z.number().int().min(1).max(365), minimumMarginPercent: z.number().finite().nonnegative(), attendantMaxDiscountPercent: z.number().finite().nonnegative(), quoteMessageTemplate: z.string().nullable(), openingHours: openingHoursSchema.optional() })).mutation(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
+      const payload: Record<string, unknown> = { legalName: input.legalName, document: input.document, phone: input.phone, whatsapp: input.whatsapp, email: input.email, defaultLaborHourlyRate: input.defaultLaborHourlyRate, defaultPartsMarginPercent: input.defaultPartsMarginPercent, defaultPartsMarkupPercent: input.defaultPartsMarkupPercent, quoteValidityDays: input.quoteValidityDays, minimumMarginPercent: input.minimumMarginPercent, attendantMaxDiscountPercent: input.attendantMaxDiscountPercent, quoteMessageTemplate: input.quoteMessageTemplate };
+      if (input.openingHours !== undefined) payload.openingHours = input.openingHours;
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_update_tenant_settings", { target_tenant_id: input.tenantId, payload });
       if (error) throw databaseError(error);
       return data as { legalName: string | null };
+    }),
+  }),
+
+  bays: router({
+    list: supabaseProtectedProcedure.input(tenantInput).query(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_list_bays", { target_tenant_id: input.tenantId });
+      if (error) throw databaseError(error);
+      const result = z.array(workspaceBaySchema).safeParse(data ?? []);
+      if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "As baias retornaram dados incompatíveis." });
+      return result.data;
+    }),
+    upsert: supabaseProtectedProcedure.input(tenantInput.extend({ bayId: z.number().int().positive().optional(), name: z.string().trim().min(1).max(80), active: z.boolean().default(true), sortOrder: z.number().int().default(0) })).mutation(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_upsert_bay", { target_tenant_id: input.tenantId, target_bay_id: input.bayId ?? null, name_input: input.name, active_input: input.active, sort_order_input: input.sortOrder });
+      if (error) throw databaseError(error);
+      return data as { id: number };
+    }),
+    remove: supabaseProtectedProcedure.input(tenantInput.extend({ bayId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
+      const { error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_delete_bay", { target_tenant_id: input.tenantId, target_bay_id: input.bayId });
+      if (error) throw databaseError(error);
+      return { success: true } as const;
     }),
   }),
 

@@ -240,6 +240,29 @@ export const workspaceWorkOrderKanbanSchema = z.array(z.object({
   appointment: z.object({ id: z.number().int().positive(), status: operationStatusSchema, scheduledStart: z.string().datetime({ offset: true }), scheduledEnd: z.string().datetime({ offset: true }), bay: z.string().nullable() }).strict().nullable(),
 }).strict());
 
+export const workspaceManualAppointmentSchema = z.object({
+  appointmentId: z.number().int().positive(),
+  workOrderId: z.number().int().positive(),
+  workOrderNumber: z.number().int().positive(),
+  scheduledEnd: z.string().datetime({ offset: true }),
+}).strict();
+
+export const workspaceCalendarAppointmentListSchema = z.array(z.object({
+  id: z.number().int().positive(),
+  bayId: z.number().int().positive().nullable(),
+  bayName: z.string().nullable(),
+  status: operationStatusSchema,
+  scheduledStart: z.string().datetime({ offset: true }),
+  scheduledEnd: z.string().datetime({ offset: true }),
+  promisedDeliveryAt: z.string().datetime({ offset: true }).nullable(),
+  customerName: z.string(),
+  vehicleName: z.string(),
+  workOrderId: z.number().int().positive().nullable(),
+  notes: z.string().nullable(),
+}).strict());
+
+export function parseWorkspaceManualAppointment(value: unknown) { return workspaceManualAppointmentSchema.safeParse(value); }
+export function parseWorkspaceCalendarAppointments(value: unknown) { return workspaceCalendarAppointmentListSchema.safeParse(value); }
 export function parseWorkspaceAppointmentList(value: unknown) { return workspaceAppointmentListSchema.safeParse(value); }
 export function parseWorkspaceWorkOrderKanban(value: unknown) { return workspaceWorkOrderKanbanSchema.safeParse(value); }
 export function parseWorkspaceWorkOrderDetail(value: unknown) { return workspaceWorkOrderDetailSchema.safeParse(value); }

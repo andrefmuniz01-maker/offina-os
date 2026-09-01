@@ -6,6 +6,8 @@ import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission } from "../supabaseTenantAccess";
 import {
   parseWorkspaceAppointmentList,
+  parseWorkspaceCalendarAppointments,
+  parseWorkspaceManualAppointment,
   parseWorkspaceQuoteSchedule,
   parseWorkspaceWorkOrderChecklistUpdate,
   parseWorkspaceWorkOrderDetail,
@@ -21,7 +23,27 @@ const scheduleInput = z.object({
   scheduledEnd: z.string().datetime({ offset: true }),
   assignedToUserId: z.string().uuid().optional(),
   bay: z.string().trim().max(80).optional(),
+  bayId: z.number().int().positive().optional(),
   notes: z.string().trim().max(4000).optional(),
+  promisedDeliveryAt: z.string().datetime({ offset: true }).optional(),
+});
+
+const manualAppointmentInput = z.object({
+  tenantId: z.number().int().positive(),
+  customerId: z.number().int().positive(),
+  vehicleId: z.number().int().positive(),
+  serviceIds: z.array(z.number().int().positive()).min(1).max(30),
+  scheduledStart: z.string().datetime({ offset: true }),
+  bayId: z.number().int().positive(),
+  promisedDeliveryAt: z.string().datetime({ offset: true }).optional(),
+  assignedToUserId: z.string().uuid().optional(),
+  notes: z.string().trim().max(4000).optional(),
+});
+
+const calendarRangeInput = z.object({
+  tenantId: z.number().int().positive(),
+  from: z.string().datetime({ offset: true }),
+  to: z.string().datetime({ offset: true }),
 });
 
 const workOrderReferenceInput = z.object({
@@ -80,10 +102,41 @@ export const supabaseOperationsRouter = router({
       assigned_to_user_id_input: input.assignedToUserId ?? null,
       bay_input: input.bay ?? null,
       notes_input: input.notes ?? null,
+      bay_id_input: input.bayId ?? null,
+      promised_delivery_at_input: input.promisedDeliveryAt ?? null,
     });
     if (error || !data) throw databaseError(error);
     const result = parseWorkspaceQuoteSchedule(data);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O agendamento retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  createManualAppointment: supabaseProtectedProcedure.input(manualAppointmentInput).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "appointments.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_create_manual_appointment", {
+      target_tenant_id: input.tenantId,
+      customer_id_input: input.customerId,
+      vehicle_id_input: input.vehicleId,
+      service_ids_input: input.serviceIds,
+      scheduled_start_input: input.scheduledStart,
+      bay_id_input: input.bayId,
+      promised_delivery_at_input: input.promisedDeliveryAt ?? null,
+      assigned_to_user_id_input: input.assignedToUserId ?? null,
+      notes_input: input.notes ?? null,
+    });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceManualAppointment(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O agendamento manual retornou dados incompatíveis." });
+    return result.data;
+  }),
+
+  calendar: supabaseProtectedProcedure.input(calendarRangeInput).query(async ({ ctx, input }) => {
+    const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
+    if (!hasSupabasePermission(access, "appointments.manage") && access.membership?.role !== "technician") throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso à agenda desta oficina." });
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_calendar_appointments", { target_tenant_id: input.tenantId, range_start_input: input.from, range_end_input: input.to });
+    if (error || !data) throw databaseError(error);
+    const result = parseWorkspaceCalendarAppointments(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O calendário retornou dados incompatíveis." });
     return result.data;
   }),
 
