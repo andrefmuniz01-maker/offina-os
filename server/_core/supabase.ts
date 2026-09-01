@@ -60,7 +60,12 @@ export async function getSupabaseProfile(accessToken: string, profileId: string)
     .eq("id", profileId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  // O query builder do PostgREST nunca lança exceção: uma falha de infra (rede,
+  // timeout, RLS) chega aqui como `error`, igual a "perfil não encontrado". Sem
+  // essa distinção, createContext trata as duas a mesma forma e o usuário vê
+  // "perfil operacional indisponível" quando na verdade a consulta falhou.
+  if (error) throw new Error(`Falha ao consultar o profile Supabase: ${error.message}`);
+  if (!data) return null;
 
   return {
     id: data.id,

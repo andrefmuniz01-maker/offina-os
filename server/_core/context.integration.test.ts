@@ -95,6 +95,16 @@ describe("createContext com Supabase", () => {
     expect(db.getUserByEmail).not.toHaveBeenCalled();
   });
 
+  it("reporta indisponibilidade (nunca 'perfil ausente') quando a consulta ao profile falha por infraestrutura", async () => {
+    vi.mocked(getSupabaseProfile).mockRejectedValue(new Error("Falha ao consultar o profile Supabase: canceling statement due to statement timeout"));
+
+    const context = await createContext(options());
+
+    expect(context.supabaseUser).toBeNull();
+    expect(context.supabaseAuthUnavailable).toBe(true);
+    await expect(appRouter.createCaller(context).auth.me()).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
   it("preserva a identidade Supabase mesmo sem usuário legado durante a transição", async () => {
     vi.mocked(getSupabaseProfile).mockResolvedValue({
       id: "c577d57b-6375-431d-8549-971a4b20c0ed",

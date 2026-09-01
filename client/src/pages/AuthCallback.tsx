@@ -17,6 +17,18 @@ export function isValidPassword(password: string) {
   return password.length >= 10 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password);
 }
 
+/**
+ * Distingue "a verificação falhou" (transitório, vale recarregar) de "o perfil
+ * realmente não existe" (precisa de um Super Admin). Tratar as duas a mesma
+ * forma faz uma falha passageira de rede/infra parecer um problema
+ * administrativo permanente.
+ */
+export function getMeQueryOutcomeMessage(hasError: boolean, hasData: boolean): string | null {
+  if (hasError) return "Não foi possível verificar sua sessão agora. Recarregue a página em instantes.";
+  if (!hasData) return "Seu link foi validado, mas seu perfil operacional ainda não está disponível. Contate um Super Admin.";
+  return null;
+}
+
 export default function AuthCallback() {
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState("Validando seu acesso seguro…");
@@ -103,12 +115,13 @@ export default function AuthCallback() {
   useEffect(() => {
     if (sessionState !== "ready" || meQuery.isLoading) return;
 
-    if (meQuery.error || !meQuery.data) {
-      setMessage("Seu link foi validado, mas seu perfil operacional ainda não está disponível. Contate um Super Admin.");
+    const outcomeMessage = getMeQueryOutcomeMessage(Boolean(meQuery.error), Boolean(meQuery.data));
+    if (outcomeMessage) {
+      setMessage(outcomeMessage);
       return;
     }
 
-    setLocation(getPostLoginPath(meQuery.data.platformRole));
+    setLocation(getPostLoginPath(meQuery.data!.platformRole));
   }, [meQuery.data, meQuery.error, meQuery.isLoading, sessionState, setLocation]);
 
   if (recoveryReady) {
