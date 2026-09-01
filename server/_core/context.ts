@@ -108,12 +108,13 @@ export async function createContext(
           }
         }
       }
-    } catch {
+    } catch (err) {
       // getSupabaseAuthUser/getSupabaseProfile só chegam a lançar exceção por
       // falha de infraestrutura (ex.: rede indisponível); um token realmente
       // inválido ou expirado é reportado pelo Supabase via `error` e já
       // retorna null sem lançar. Por isso, uma exceção aqui nunca deve ser
       // tratada como "usuário sem sessão".
+      console.error("[createContext] Falha ao verificar a sessão Supabase:", err);
       user = null;
       supabaseUser = null;
       supabaseAuthUnavailable = true;

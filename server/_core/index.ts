@@ -1,4 +1,14 @@
 import "dotenv/config";
+// "dotenv/config" carrega somente ".env". Este projeto usa ".env.local" (a
+// convenção do Vite para segredos locais, já no .gitignore), então sem isso
+// o processo do servidor sobe sem nenhuma credencial do Supabase configurada
+// — toda chamada de auth falha com "Supabase Auth não está configurado no
+// servidor.", disfarçada de sessão/perfil indisponível para quem só vê a UI.
+// Precisa ser um side-effect import (não uma chamada de função aqui embaixo):
+// imports são avaliados antes de qualquer statement deste arquivo, então uma
+// chamada direta rodaria tarde demais, depois que os módulos abaixo já leram
+// process.env nos seus próprios top-levels.
+import "./loadEnvLocal";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
