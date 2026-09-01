@@ -4,8 +4,9 @@
     {
       "name": "oficinaos-dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev:preview"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
