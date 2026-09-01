@@ -17,9 +17,6 @@ const Inventory = lazy(() => import("./pages/Inventory"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Platform = lazy(() => import("./pages/Platform"));
 const InternalDemo = lazy(() => import("./pages/InternalDemo"));
-const Catalog = lazy(() => import("./pages/Catalog"));
-const Categories = lazy(() => import("./pages/Categories"));
-const CatalogItems = lazy(() => import("./pages/CatalogItems"));
 const CatalogHub = lazy(() => import("./pages/CatalogHub"));
 const Purchases = lazy(() => import("./pages/Purchases"));
 const WorkOrder = lazy(() => import("./pages/WorkOrder"));
@@ -48,10 +45,12 @@ function Router() {
     <Route path={"/configuracoes"} component={Settings} />
     <Route path={"/plataforma"} component={Platform} />
     <Route path={"/demo-interna"} component={InternalDemo} />
+    {/* Catálogo é uma tela só, com abas. As rotas antigas (três telas
+        separadas e sobrepostas para a mesma coisa) apontam para ela. */}
     <Route path={"/catalogo"} component={CatalogHub} />
-    <Route path={"/cadastros"} component={Catalog} />
-    <Route path={"/cadastros/itens"} component={CatalogItems} />
-    <Route path={"/categorias"} component={Categories} />
+    <Route path={"/cadastros"} component={CatalogHub} />
+    <Route path={"/cadastros/itens"} component={CatalogHub} />
+    <Route path={"/categorias"} component={CatalogHub} />
     <Route path={"/compras"} component={Purchases} />
     <Route path={"/os/:id/anotacoes"} component={WorkOrderNotes} />
     <Route path={"/os/:id"} component={WorkOrder} />
