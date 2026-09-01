@@ -17,7 +17,9 @@ const Inventory = lazy(() => import("./pages/Inventory"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Platform = lazy(() => import("./pages/Platform"));
 const InternalDemo = lazy(() => import("./pages/InternalDemo"));
-const CatalogHub = lazy(() => import("./pages/CatalogHub"));
+const CatalogProducts = lazy(() => import("./pages/CatalogProducts"));
+const CatalogServices = lazy(() => import("./pages/CatalogServices"));
+const CatalogSuppliers = lazy(() => import("./pages/CatalogSuppliers"));
 const Purchases = lazy(() => import("./pages/Purchases"));
 const WorkOrder = lazy(() => import("./pages/WorkOrder"));
 const Finance = lazy(() => import("./pages/Finance"));
@@ -45,12 +47,16 @@ function Router() {
     <Route path={"/configuracoes"} component={Settings} />
     <Route path={"/plataforma"} component={Platform} />
     <Route path={"/demo-interna"} component={InternalDemo} />
-    {/* Catálogo é uma tela só, com abas. As rotas antigas (três telas
-        separadas e sobrepostas para a mesma coisa) apontam para ela. */}
-    <Route path={"/catalogo"} component={CatalogHub} />
-    <Route path={"/cadastros"} component={CatalogHub} />
-    <Route path={"/cadastros/itens"} component={CatalogHub} />
-    <Route path={"/categorias"} component={CatalogHub} />
+    {/* Catálogo: três telas simples (Produtos, Serviços, Fornecedores),
+        cada uma com seu próprio item no menu lateral. Rotas antigas apontam
+        para Produtos, que é a entrada padrão do Catálogo. */}
+    <Route path={"/catalogo"} component={CatalogProducts} />
+    <Route path={"/catalogo/produtos"} component={CatalogProducts} />
+    <Route path={"/catalogo/servicos"} component={CatalogServices} />
+    <Route path={"/catalogo/fornecedores"} component={CatalogSuppliers} />
+    <Route path={"/cadastros"} component={CatalogProducts} />
+    <Route path={"/cadastros/itens"} component={CatalogProducts} />
+    <Route path={"/categorias"} component={CatalogProducts} />
     <Route path={"/compras"} component={Purchases} />
     <Route path={"/os/:id/anotacoes"} component={WorkOrderNotes} />
     <Route path={"/os/:id"} component={WorkOrder} />

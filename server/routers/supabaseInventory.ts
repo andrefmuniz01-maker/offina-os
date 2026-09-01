@@ -62,6 +62,14 @@ export const supabaseInventoryRouter = router({
       const result = await runRpc<Record<string, unknown>>(ctx.supabaseUser!.accessToken, "workspace_create_purchase_order", { target_tenant_id: input.tenantId, supplier_id_input: input.supplierId ?? null, notes_input: input.notes ?? null, items_input: input.items.map(item => ({ productId: item.productId, quantity: item.quantity, unitCost: item.unitCost })) });
       return { id: Number(result.id), number: Number(result.number) };
     }),
+    // Compra de balcão: a peça já chegou, então cria e recebe o pedido na mesma
+    // chamada (uma transação no banco), sem o passo intermediário de "receber".
+    createAndReceive: supabaseProtectedProcedure.input(tenantIdInput.extend({ supplierId: z.number().int().positive().optional(), notes: z.string().max(4000).optional(), items: z.array(z.object({ productId: z.number().int().positive(), quantity: quantityInput, unitCost: moneyInput })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
+      const access = await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "purchases.manage");
+      if (!hasSupabasePermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode registrar custos de compra." });
+      const result = await runRpc<Record<string, unknown>>(ctx.supabaseUser!.accessToken, "workspace_create_and_receive_purchase_order", { target_tenant_id: input.tenantId, supplier_id_input: input.supplierId ?? null, notes_input: input.notes ?? null, items_input: input.items.map(item => ({ productId: item.productId, quantity: item.quantity, unitCost: item.unitCost })) });
+      return { id: Number(result.id), number: Number(result.number) };
+    }),
     receive: supabaseProtectedProcedure.input(tenantIdInput.extend({ purchaseOrderId: z.number().int().positive(), items: z.array(z.object({ itemId: z.number().int().positive(), receivedQuantity: quantityInput })).min(1).max(100) })).mutation(async ({ ctx, input }) => {
       const access = await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "purchases.manage");
       if (!hasSupabasePermission(access, "financial.manage")) throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não pode concluir recebimentos com custo." });
