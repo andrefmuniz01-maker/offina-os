@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { PeriodPicker } from "@/components/PeriodPicker";
+import { addDays, getPeriodRange, startOfDay, startOfMonth, startOfWeek, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
-import { CalendarClock, ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarClock, Plus, UserPlus } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const SLOT_MINUTES = 30;
@@ -26,10 +28,8 @@ const statusLabels: Record<string, string> = {
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dateHeaderFormat = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
 const fullDateFormat = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+const dayNumberFormat = new Intl.DateTimeFormat("pt-BR", { day: "numeric" });
 
-function startOfDay(date: Date) { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; }
-function addDays(date: Date, days: number) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
-function startOfWeek(date: Date) { const d = startOfDay(date); const day = d.getDay(); return addDays(d, day === 0 ? -6 : 1 - day); }
 function toDatetimeLocalValue(date: Date) { const pad = (n: number) => String(n).padStart(2, "0"); return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`; }
 
 type CalendarAppointment = {
@@ -181,27 +181,31 @@ function NewAppointmentDialog({ tenantId, initial, onClose }: { tenantId: number
 }
 
 export function AgendaCalendar({ tenantId }: { tenantId: number }) {
-  const [view, setView] = useState<"day" | "week">("week");
+  const [view, setView] = useState<PeriodView>("week");
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const [newAppointment, setNewAppointment] = useState<{ bayId?: number; start?: Date } | null>(null);
 
-  const rangeStart = view === "day" ? startOfDay(anchor) : startOfWeek(anchor);
-  const rangeEnd = view === "day" ? addDays(rangeStart, 1) : addDays(rangeStart, 7);
+  const range = getPeriodRange(view, anchor);
+  const rangeStart = range.start;
+  const rangeEnd = range.end;
+  // A grade de mês mostra dias de meses vizinhos para completar as semanas;
+  // busca esse período estendido para esses dias não parecerem vazios à toa.
+  const fetchStart = view === "month" ? startOfWeek(rangeStart) : rangeStart;
+  const fetchEnd = view === "month" ? addDays(startOfWeek(rangeStart), 42) : rangeEnd;
 
   const bays = trpc.workspaceManagement.bays.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) });
-  const calendar = trpc.workspaceOperations.calendar.useQuery({ tenantId, from: rangeStart.toISOString(), to: rangeEnd.toISOString() }, { enabled: Boolean(tenantId) });
+  const calendar = trpc.workspaceOperations.calendar.useQuery({ tenantId, from: fetchStart.toISOString(), to: fetchEnd.toISOString() }, { enabled: Boolean(tenantId) });
   const appointments = (calendar.data ?? []) as CalendarAppointment[];
   const activeBays = (bays.data ?? []).filter((bay: Bay) => bay.active);
 
-  const navigate = (direction: -1 | 1) => setAnchor(current => addDays(current, direction * (view === "day" ? 1 : 7)));
+  const goToDay = (date: Date) => { setAnchor(startOfDay(date)); setView("day"); };
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-orange-700" /><h2 className="font-semibold text-slate-900">Agenda</h2></div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1"><Button type="button" size="sm" variant={view === "day" ? "default" : "outline"} onClick={() => setView("day")}>Dia</Button><Button type="button" size="sm" variant={view === "week" ? "default" : "outline"} onClick={() => setView("week")}>Semana</Button></div>
-          <div className="flex items-center gap-1"><Button type="button" size="icon" variant="outline" onClick={() => navigate(-1)} aria-label="Período anterior"><ChevronLeft className="h-4 w-4" /></Button><Button type="button" size="sm" variant="outline" onClick={() => setAnchor(startOfDay(new Date()))}>Hoje</Button><Button type="button" size="icon" variant="outline" onClick={() => navigate(1)} aria-label="Próximo período"><ChevronRight className="h-4 w-4" /></Button></div>
+          <PeriodPicker view={view} onViewChange={setView} anchor={anchor} onAnchorChange={setAnchor} />
           <Button type="button" size="sm" onClick={() => setNewAppointment({ start: new Date() })}><Plus className="mr-1.5 h-4 w-4" />Novo agendamento</Button>
         </div>
       </div>
@@ -212,7 +216,9 @@ export function AgendaCalendar({ tenantId }: { tenantId: number }) {
       {!bays.isLoading && !calendar.isLoading && activeBays.length ? (
         view === "day"
           ? <DayGrid day={rangeStart} bays={activeBays} appointments={appointments.filter(item => item.bayId !== null)} onSlotClick={(bayId, start) => setNewAppointment({ bayId, start })} />
-          : <WeekAgenda weekStart={rangeStart} appointments={appointments} onCreateOnDay={date => setNewAppointment({ start: date })} />
+          : view === "week"
+            ? <WeekAgenda weekStart={rangeStart} appointments={appointments} onCreateOnDay={date => setNewAppointment({ start: date })} />
+            : <MonthGrid monthStart={rangeStart} appointments={appointments} onDayClick={goToDay} />
       ) : null}
 
       {view === "day" && appointments.some(item => item.bayId === null) ? (
@@ -312,6 +318,37 @@ function DayGrid({ day, bays, appointments, onSlotClick }: { day: Date; bays: Ba
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function MonthGrid({ monthStart, appointments, onDayClick }: { monthStart: Date; appointments: CalendarAppointment[]; onDayClick: (date: Date) => void }) {
+  const gridStart = startOfWeek(monthStart);
+  const days = Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
+  const month = monthStart.getMonth();
+  const today = startOfDay(new Date());
+  const weekdayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[640px] grid-cols-7 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
+        {weekdayLabels.map(label => <div key={label} className="bg-slate-50 p-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>)}
+        {days.map(day => {
+          const dayEnd = addDays(day, 1);
+          const dayItems = appointments.filter(item => { const start = new Date(item.scheduledStart); return start >= day && start < dayEnd; }).sort((a, b) => a.scheduledStart.localeCompare(b.scheduledStart));
+          const isCurrentMonth = day.getMonth() === month;
+          const isToday = day.getTime() === today.getTime();
+          return (
+            <button type="button" key={day.toISOString()} onClick={() => onDayClick(day)} className={`min-h-24 space-y-1 bg-white p-1.5 text-left transition-colors hover:bg-orange-50/60 ${!isCurrentMonth ? "opacity-40" : ""}`}>
+              <p className={`text-xs font-medium ${isToday ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-white" : "text-slate-600"}`}>{dayNumberFormat.format(day)}</p>
+              <div className="space-y-0.5">
+                {dayItems.slice(0, 2).map(item => <p key={item.id} className="truncate rounded bg-orange-50 px-1 py-0.5 text-[10px] text-orange-900">{timeFormat.format(new Date(item.scheduledStart))} {item.customerName}</p>)}
+                {dayItems.length > 2 ? <p className="px-1 text-[10px] font-medium text-slate-500">+{dayItems.length - 2} mais</p> : null}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

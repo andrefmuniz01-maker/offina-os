@@ -22,7 +22,9 @@ const CatalogServices = lazy(() => import("./pages/CatalogServices"));
 const CatalogSuppliers = lazy(() => import("./pages/CatalogSuppliers"));
 const Purchases = lazy(() => import("./pages/Purchases"));
 const WorkOrder = lazy(() => import("./pages/WorkOrder"));
-const Finance = lazy(() => import("./pages/Finance"));
+const FinanceSummary = lazy(() => import("./pages/FinanceSummary"));
+const FinanceExpenses = lazy(() => import("./pages/FinanceExpenses"));
+const FinanceRevenues = lazy(() => import("./pages/FinanceRevenues"));
 const Clients = lazy(() => import("./pages/Clients"));
 const WorkOrderNotes = lazy(() => import("./pages/WorkOrderNotes"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -60,7 +62,9 @@ function Router() {
     <Route path={"/compras"} component={Purchases} />
     <Route path={"/os/:id/anotacoes"} component={WorkOrderNotes} />
     <Route path={"/os/:id"} component={WorkOrder} />
-    <Route path={"/financeiro"} component={Finance} />
+    <Route path={"/financeiro"} component={FinanceSummary} />
+    <Route path={"/financeiro/despesas"} component={FinanceExpenses} />
+    <Route path={"/financeiro/receitas"} component={FinanceRevenues} />
     <Route path={"/clientes"} component={Clients} />
     <Route path={"/notificacoes"} component={Notifications} />
     <Route path={"/equipe"} component={Team} />

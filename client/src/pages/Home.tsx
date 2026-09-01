@@ -58,7 +58,7 @@ function WorkspaceDashboard({ tenantId, tenantName, tenantSlug, role }: { tenant
     const allowed = new Set(getWorkspacePriorityKeys(role));
     return [
       { key: "commercial" as const, title: `${stats.commercial.pendingQuoteCount} orçamento(s) aguardam resposta`, detail: "Priorize os retornos comerciais antes de iniciar novos atendimentos.", href: withDemoContext("/orcamentos"), icon: ReceiptText, tone: "bg-amber-50 text-amber-700" },
-      { key: "operation" as const, title: `${stats.operation.scheduled} compromisso(s) aguardam confirmação`, detail: "Revise agenda, baia e disponibilidade da equipe para o dia.", href: withDemoContext("/operacao"), icon: CalendarClock, tone: "bg-sky-50 text-sky-700" },
+      { key: "operation" as const, title: `${stats.operation.scheduled} compromisso(s) agendados`, detail: "Revise a agenda e a disponibilidade de baia para os próximos atendimentos.", href: withDemoContext("/operacao"), icon: CalendarClock, tone: "bg-sky-50 text-sky-700" },
       { key: "inventory" as const, title: `${stats.inventory.critical} item(ns) precisam de revisão`, detail: "O cálculo considera saldo físico, reservas e estoque mínimo configurado.", href: withDemoContext("/estoque"), icon: PackageSearch, tone: "bg-red-50 text-red-700" },
     ].filter(item => allowed.has(item.key));
   }, [role, stats]);

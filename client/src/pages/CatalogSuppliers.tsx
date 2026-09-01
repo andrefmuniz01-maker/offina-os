@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Boxes, Search, ShoppingCart, Truck, Wrench } from "lucide-react";
+import { ArrowLeft, Boxes, Search, Truck, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,7 +19,6 @@ const menu: DashboardMenuItem[] = [
   { icon: Boxes, label: "Produtos", path: "/catalogo/produtos" },
   { icon: Wrench, label: "Serviços", path: "/catalogo/servicos" },
   { icon: Truck, label: "Fornecedores", path: "/catalogo/fornecedores" },
-  { icon: ShoppingCart, label: "Compras", path: "/compras" },
 ];
 
 export default function CatalogSuppliers() {

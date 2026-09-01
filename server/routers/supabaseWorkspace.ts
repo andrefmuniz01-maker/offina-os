@@ -139,9 +139,9 @@ export const supabaseWorkspaceRouter = router({
     return { tenantId: Number(data) };
   }),
 
-  dashboardOverview: supabaseProtectedProcedure.input(tenantIdInput).query(async ({ ctx, input }) => {
+  dashboardOverview: supabaseProtectedProcedure.input(tenantIdInput.extend({ rangeStart: z.string().datetime({ offset: true }).optional(), rangeEnd: z.string().datetime({ offset: true }).optional() })).query(async ({ ctx, input }) => {
     const supabase = supabaseForContext(ctx.supabaseUser);
-    const { data, error } = await supabase.rpc("workspace_dashboard_overview", { target_tenant_id: input.tenantId });
+    const { data, error } = await supabase.rpc("workspace_dashboard_overview", { target_tenant_id: input.tenantId, range_start_input: input.rangeStart ?? null, range_end_input: input.rangeEnd ?? null });
     if (error || !data) throw databaseError(error);
     return mapDashboard(data as DashboardOverview);
   }),
