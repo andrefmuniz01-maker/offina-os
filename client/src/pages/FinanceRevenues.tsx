@@ -1,4 +1,5 @@
 import DashboardLayout, { type DashboardMenuItem } from "@/components/DashboardLayout";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { financialErrorMessage, hasFinancialPermissionError } from "@/lib/financialStates";
 import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CircleDollarSign, Landmark, Search, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
@@ -33,8 +35,11 @@ export default function FinanceRevenues() {
   const [status, setStatus] = useState<RevenueStatus>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<PeriodView>("month");
+  const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
+  const range = getPeriodRange(view, anchor);
 
-  const revenues = trpc.workspaceFinance.revenues.list.useQuery({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 15 }, { enabled: Boolean(tenantId) });
+  const revenues = trpc.workspaceFinance.revenues.list.useQuery({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 15, rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() }, { enabled: Boolean(tenantId) });
   const financeForbidden = hasFinancialPermissionError(revenues.error?.data?.code);
 
   const receiveRevenue = trpc.workspaceFinance.revenues.markReceived.useMutation({
@@ -51,6 +56,8 @@ export default function FinanceRevenues() {
       <div><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Receitas</h1><p className="mt-1 text-sm text-slate-500">Receitas nascem de orçamentos aprovados e ordens de serviço concluídas. Confirme o recebimento quando o pagamento cair.</p></div>
       <Badge className="w-fit bg-slate-950 text-white hover:bg-slate-950">Acesso financeiro</Badge>
     </header>
+
+    <PeriodPicker view={view} onViewChange={next => { setView(next); setPage(1); }} anchor={anchor} onAnchorChange={next => { setAnchor(next); setPage(1); }} />
 
     <Card className="border-slate-200 shadow-sm">
       <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">

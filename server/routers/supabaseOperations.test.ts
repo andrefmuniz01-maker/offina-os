@@ -114,7 +114,7 @@ describe("workspaceOperations.workOrderDetail e execução", () => {
     mocks.rpc.mockResolvedValueOnce({ data: { success: true, status: "diagnosis" }, error: null });
     const caller = supabaseOperationsRouter.createCaller({ supabaseUser: user } as never);
     await expect(caller.updateWorkOrderStatus({ ...workOrderInput, status: "diagnosis" })).resolves.toEqual({ success: true, status: "diagnosis" });
-    expect(mocks.rpc).toHaveBeenLastCalledWith("workspace_update_work_order_status", { target_tenant_id: 4, target_work_order_id: 51, next_status_input: "diagnosis", notes_input: null });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("workspace_update_work_order_status", { target_tenant_id: 4, target_work_order_id: 51, next_status: "diagnosis", notes_input: null });
 
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "P0001", message: "Saldo reservado incompatível." } });
     await expect(caller.updateWorkOrderStatus({ ...workOrderInput, status: "delivered" })).rejects.toMatchObject({ code: "CONFLICT" });

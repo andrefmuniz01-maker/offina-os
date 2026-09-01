@@ -190,7 +190,7 @@ export const supabaseOperationsRouter = router({
     const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_update_work_order_status", {
       target_tenant_id: input.tenantId,
       target_work_order_id: input.workOrderId,
-      next_status_input: input.status,
+      next_status: input.status,
       notes_input: input.notes ?? null,
     });
     if (error || !data) throw databaseError(error);

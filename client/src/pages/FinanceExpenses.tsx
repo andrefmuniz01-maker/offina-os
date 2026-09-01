@@ -1,4 +1,5 @@
 import DashboardLayout, { type DashboardMenuItem } from "@/components/DashboardLayout";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { financialErrorMessage, hasFinancialPermissionError } from "@/lib/financialStates";
 import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CheckCircle2, CircleDollarSign, Landmark, Plus, Search, TrendingUp, Wallet } from "lucide-react";
 import { useState } from "react";
@@ -34,8 +36,11 @@ export default function FinanceExpenses() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [form, setForm] = useState({ category: "", amount: "0", date: new Date().toISOString().slice(0, 10) });
+  const [view, setView] = useState<PeriodView>("month");
+  const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
+  const range = getPeriodRange(view, anchor);
 
-  const expenses = trpc.workspaceFinance.expenses.list.useQuery({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 15 }, { enabled: Boolean(tenantId) });
+  const expenses = trpc.workspaceFinance.expenses.list.useQuery({ tenantId, status: status === "all" ? undefined : status, search: search.trim() || undefined, page, pageSize: 15, rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() }, { enabled: Boolean(tenantId) });
   const financeForbidden = hasFinancialPermissionError(expenses.error?.data?.code);
 
   const invalidate = () => { utils.workspaceFinance.expenses.list.invalidate(); utils.workspace.dashboardOverview.invalidate(); };
@@ -57,6 +62,8 @@ export default function FinanceExpenses() {
       <div><Link href="/"><a className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Visão geral</a></Link><h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Despesas</h1><p className="mt-1 text-sm text-slate-500">Registre compromissos financeiros reais. Eles não são criados automaticamente.</p></div>
       <Badge className="w-fit bg-slate-950 text-white hover:bg-slate-950">Acesso financeiro</Badge>
     </header>
+
+    <PeriodPicker view={view} onViewChange={next => { setView(next); setPage(1); }} anchor={anchor} onAnchorChange={next => { setAnchor(next); setPage(1); }} />
 
     <div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
       <Card className="border-slate-200 shadow-sm">
