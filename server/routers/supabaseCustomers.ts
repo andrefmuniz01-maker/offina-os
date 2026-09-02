@@ -53,6 +53,7 @@ function mapVehicle(row: Record<string, unknown>) {
     mileage: row.mileage === null ? null : Number(row.mileage),
     engine: row.engine ? String(row.engine) : null,
     notes: row.notes ? String(row.notes) : null,
+    active: Boolean(row.active),
     createdAt: new Date(String(row.created_at)),
     updatedAt: new Date(String(row.updated_at)),
   };
@@ -167,6 +168,37 @@ export const supabaseCustomerRouter = router({
     return { id: Number(data) };
   }),
 
+  update: supabaseProtectedProcedure.input(tenantIdInput.extend({
+    customerId: z.number().int().positive(),
+    name: z.string().trim().min(2).max(180),
+    whatsapp: z.string().trim().min(8).max(32),
+    email: z.string().email().optional(),
+    document: z.string().max(32).optional(),
+    notes: z.string().max(4000).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "customers.manage");
+    const supabase = clientForContext(ctx.supabaseUser);
+    const { data, error } = await supabase.rpc("workspace_update_customer", {
+      target_tenant_id: input.tenantId,
+      target_customer_id: input.customerId,
+      customer_name: input.name,
+      customer_whatsapp: input.whatsapp,
+      customer_email: input.email ?? null,
+      customer_document: input.document ?? null,
+      customer_notes: input.notes ?? null,
+    });
+    if (error || !data) throw databaseError(error);
+    return { success: true as const };
+  }),
+
+  setActive: supabaseProtectedProcedure.input(tenantIdInput.extend({ customerId: z.number().int().positive(), active: z.boolean() })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "customers.manage");
+    const supabase = clientForContext(ctx.supabaseUser);
+    const { data, error } = await supabase.rpc("workspace_set_customer_active", { target_tenant_id: input.tenantId, target_customer_id: input.customerId, active_input: input.active });
+    if (error || !data) throw databaseError(error);
+    return { success: true as const, active: input.active };
+  }),
+
   workOrderHistory: supabaseProtectedProcedure.input(tenantIdInput.extend({ customerId: z.number().int().positive() })).query(async ({ ctx, input }) => {
     await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "customers.manage");
     const supabase = clientForContext(ctx.supabaseUser);
@@ -182,7 +214,7 @@ export const supabaseVehicleRouter = router({
     await assertCustomerInTenant(supabase, input.tenantId, input.customerId);
     const { data, error } = await supabase
       .from("vehicles")
-      .select("id, tenant_id, customer_id, make, model, model_year, manufacture_year, plate, mileage, engine, notes, created_at, updated_at")
+      .select("id, tenant_id, customer_id, make, model, model_year, manufacture_year, plate, mileage, engine, notes, active, created_at, updated_at")
       .eq("tenant_id", input.tenantId)
       .eq("customer_id", input.customerId)
       .order("created_at", { ascending: false });
@@ -217,6 +249,43 @@ export const supabaseVehicleRouter = router({
     });
     if (error || !data) throw databaseError(error);
     return { id: Number(data) };
+  }),
+
+  update: supabaseProtectedProcedure.input(tenantIdInput.extend({
+    vehicleId: z.number().int().positive(),
+    make: z.string().trim().min(1).max(100),
+    model: z.string().trim().min(1).max(140),
+    modelYear: z.number().int().min(1900).max(2100).optional(),
+    manufactureYear: z.number().int().min(1900).max(2100).optional(),
+    plate: z.string().trim().max(16).optional(),
+    mileage: z.number().int().nonnegative().optional(),
+    engine: z.string().trim().max(120).optional(),
+    notes: z.string().max(4000).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "customers.manage");
+    const supabase = clientForContext(ctx.supabaseUser);
+    const { data, error } = await supabase.rpc("workspace_update_vehicle", {
+      target_tenant_id: input.tenantId,
+      target_vehicle_id: input.vehicleId,
+      vehicle_make: input.make,
+      vehicle_model: input.model,
+      vehicle_model_year: input.modelYear ?? null,
+      vehicle_manufacture_year: input.manufactureYear ?? null,
+      vehicle_plate: input.plate ?? null,
+      vehicle_mileage: input.mileage ?? null,
+      vehicle_engine: input.engine ?? null,
+      vehicle_notes: input.notes ?? null,
+    });
+    if (error || !data) throw databaseError(error);
+    return { success: true as const };
+  }),
+
+  setActive: supabaseProtectedProcedure.input(tenantIdInput.extend({ vehicleId: z.number().int().positive(), active: z.boolean() })).mutation(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "customers.manage");
+    const supabase = clientForContext(ctx.supabaseUser);
+    const { data, error } = await supabase.rpc("workspace_set_vehicle_active", { target_tenant_id: input.tenantId, target_vehicle_id: input.vehicleId, active_input: input.active });
+    if (error || !data) throw databaseError(error);
+    return { success: true as const, active: input.active };
   }),
 
   workOrderHistory: supabaseProtectedProcedure.input(tenantIdInput.extend({ vehicleId: z.number().int().positive() })).query(async ({ ctx, input }) => {
