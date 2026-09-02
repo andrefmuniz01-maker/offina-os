@@ -21,6 +21,19 @@ describe("demoWorkspace", () => {
     expect(selectWorkspace([workspaces[0]], true)).toBeUndefined();
   });
 
+  it("prefere um vínculo real ao primeiro item da lista (Super Admin enxerga toda oficina)", () => {
+    const superAdminView: WorkspaceEntry[] = [
+      { tenant: { id: 2, name: "Auto Prime Centro Automotivo", slug: "performance-garage", isDemo: true }, isMember: false },
+      { tenant: { id: 7, name: "Oficina Real Do Dono", slug: "oficina-real", isDemo: false }, isMember: true },
+    ];
+    expect(selectWorkspace(superAdminView, false)?.tenant.id).toBe(7);
+  });
+
+  it("cai no primeiro item quando ninguém tem vínculo real (caso normal de um único tenant)", () => {
+    const singleTenantUser: WorkspaceEntry[] = [{ tenant: { id: 10, name: "Oficina normal", slug: "normal", isDemo: false } }];
+    expect(selectWorkspace(singleTenantUser, false)?.tenant.id).toBe(10);
+  });
+
   it("preserva demo=1 apenas em links internos", () => {
     vi.stubGlobal("window", { location: { search: "?demo=1" } });
     expect(isDemoWorkspace()).toBe(true);

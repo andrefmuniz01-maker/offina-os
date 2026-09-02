@@ -15,6 +15,7 @@ type WorkspaceRow = {
   is_demo: boolean;
   role: "owner" | "admin" | "attendant" | "technician";
   permissions: string[] | null;
+  is_member: boolean;
 };
 
 type DashboardOverview = {
@@ -70,6 +71,7 @@ function mapWorkspace(row: WorkspaceRow) {
       permissions: row.permissions ?? [],
       active: true,
     },
+    isMember: row.is_member,
   };
 }
 

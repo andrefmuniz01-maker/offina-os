@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CheckCircle2, ClipboardCheck, PackageMinus, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -48,7 +49,7 @@ export default function WorkOrder() {
   const [, params] = useRoute("/os/:id");
   const workOrderId = Number(params?.id ?? 0);
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = mine.data?.[0]?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const detail = trpc.workspaceOperations.workOrderDetail.useQuery({ tenantId, workOrderId }, { enabled: Boolean(tenantId && workOrderId) });
