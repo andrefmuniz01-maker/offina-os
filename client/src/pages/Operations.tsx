@@ -10,7 +10,7 @@ import { SafeLink as Link } from "@/components/SafeLink";
 import { getOperationNextAction, getYardStatusTone, type YardQueueStatus } from "@/lib/operationsQueue";
 import { canManageAppointments, getOperationsScopeCopy } from "@/lib/operationAccess";
 import type { WorkspaceRole } from "@/lib/homeWorkspace";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { yardMobileScrollHint, yardRegionLabel } from "@/lib/operationsRoutes";
 import { Activity, AlertCircle, ArrowLeft, CalendarClock, CarFront, CircleCheck, Search, UsersRound, Wrench } from "lucide-react";
@@ -45,7 +45,7 @@ function defaultAgendaEnd() {
 export default function Operations() {
   const demoMode = isDemoWorkspace();
   const mine = trpc.workspace.mine.useQuery();
-  const workspace = selectWorkspace(mine.data, demoMode);
+  const workspace = selectWorkspace(mine.data, demoMode, getSupportTenantId());
   const tenant = workspace?.tenant;
   const tenantId = tenant?.id ?? 0;
   const role = (demoMode ? "owner" : workspace?.membership?.role ?? "technician") as WorkspaceRole;

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Boxes, CheckCircle2, PackageCheck, PackagePlus, ShoppingCart, Truck, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -24,7 +24,7 @@ const pendingStatuses = ["draft", "ordered", "partially_received"] as const;
 
 export default function Purchases() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
 

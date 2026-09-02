@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { financialErrorMessage } from "@/lib/financialStates";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CircleDollarSign, Landmark, ReceiptText, TrendingUp, Wallet } from "lucide-react";
@@ -22,7 +22,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 export default function FinanceSummary() {
   const demoMode = isDemoWorkspace();
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, demoMode)?.tenant;
+  const tenant = selectWorkspace(mine.data, demoMode, getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
 
   const [view, setView] = useState<PeriodView>("month");

@@ -22,7 +22,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
-import { isDemoWorkspace, withDemoContext } from "@/lib/demoWorkspace";
+import { getSupportTenantId, withDemoContext } from "@/lib/demoWorkspace";
 import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
 import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
 import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
@@ -209,7 +209,7 @@ function DashboardLayoutContent({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const currentPath = location.split("?")[0];
-  const demoMode = isDemoWorkspace();
+  const supportTenantId = getSupportTenantId();
   const activeMenuItem = menuItems.find(item => item.path === currentPath);
   const isMobile = useIsMobile();
 
@@ -287,7 +287,7 @@ function DashboardLayoutContent({
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => !item.disabled && setLocation(demoMode ? withDemoContext(item.path) : item.path)}
+                      onClick={() => !item.disabled && setLocation(withDemoContext(item.path))}
                       tooltip={item.label}
                       disabled={item.disabled}
                       className={`h-10 rounded-lg font-normal transition-all duration-150 active:scale-[0.99] data-[active=true]:font-semibold ${item.disabled ? "opacity-45" : ""}`}
@@ -352,6 +352,12 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset>
+        {supportTenantId ? (
+          <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950">
+            <span>Modo suporte: {workspaceName} — ação completa, registrada em auditoria como Super Admin.</span>
+            <Button size="sm" variant="outline" className="h-7 border-amber-900/30 bg-amber-100 text-amber-950 hover:bg-amber-50" onClick={() => setLocation("/plataforma")}>Sair</Button>
+          </div>
+        ) : null}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">

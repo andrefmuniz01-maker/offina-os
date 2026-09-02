@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, Ban, Building2, Copy, History, KeyRound, Link2, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { ArrowUpRight, Ban, Building2, CircleDollarSign, Copy, History, KeyRound, Link2, LogIn, Pencil, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type PlatformSection = "tenants" | "links" | "audit";
+type PlatformSection = "tenants" | "plans" | "links" | "audit";
 type MemberRole = "owner" | "admin" | "attendant" | "technician";
 const roleLabels: Record<MemberRole, string> = { owner: "Proprietário", admin: "Administrador", attendant: "Atendente", technician: "Técnico" };
 const quoteStatusLabels: Record<string, string> = { sent: "Enviada", viewed: "Visualizada", approved: "Aprovada", rejected: "Recusada", expired: "Expirada" };
@@ -52,6 +52,7 @@ export function PlatformDashboard() {
   const [section, setSection] = useState<PlatformSection>("tenants");
   const sections: { id: PlatformSection; label: string; icon: typeof Building2 }[] = [
     { id: "tenants", label: "Oficinas & Acessos", icon: Building2 },
+    { id: "plans", label: "Planos", icon: CircleDollarSign },
     { id: "links", label: "Links de aprovação", icon: Link2 },
     { id: "audit", label: "Auditoria", icon: History },
   ];
@@ -71,13 +72,19 @@ export function PlatformDashboard() {
         </div>
       </aside>
       <div className="min-w-0 flex-1 p-5 sm:p-8 lg:p-10">
-        {section === "tenants" ? <TenantsSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
+        {section === "tenants" ? <TenantsSection /> : section === "plans" ? <PlansSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
       </div>
     </div>
   </main>;
 }
 
-type PlatformTenant = { id: number; name: string; slug: string; status: string; active: boolean; isDemo: boolean; createdAt: string; publicIntakeLink: string; memberCount: number; ownerName: string | null; ownerEmail: string | null };
+type PlatformTenant = {
+  id: number; name: string; slug: string; status: string; active: boolean; isDemo: boolean; createdAt: string; publicIntakeLink: string; memberCount: number; ownerName: string | null; ownerEmail: string | null;
+  planId: number | null; planName: string | null;
+  contact: { whatsapp: string | null; email: string | null; phone: string | null; legalName: string | null; document: string | null };
+  branding: { primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; logoUrl: string | null; publicTitle: string | null };
+};
+type PlatformPlan = { id: number; code: string; name: string; description: string | null; maxUsers: number; maxCustomers: number | null; active: boolean; tenantCount: number };
 
 function statusLabel(tenant: PlatformTenant) {
   if (tenant.isDemo) return "Demo";
@@ -90,6 +97,7 @@ function TenantsSection() {
   const utils = trpc.useUtils();
   const tenants = trpc.platform.tenants.list.useQuery();
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
+  const [editingTenantId, setEditingTenantId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", slug: "", whatsapp: "" });
 
@@ -103,6 +111,7 @@ function TenantsSection() {
   });
 
   const selectedTenant = tenants.data?.find(t => t.id === selectedTenantId) ?? null;
+  const editingTenant = tenants.data?.find(t => t.id === editingTenantId) ?? null;
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
@@ -128,10 +137,13 @@ function TenantsSection() {
             <button type="button" className="w-full text-left" onClick={() => setSelectedTenantId(tenant.id)}>
               <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{tenant.name}</p><p className="mt-1 text-xs text-slate-500">{tenant.slug}</p></div><Badge variant="outline" className={tenant.status === "suspended" ? "border-red-200 bg-red-50 text-red-800" : undefined}>{statusLabel(tenant)}</Badge></div>
               <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500"><UsersRound className="h-3.5 w-3.5" />{tenant.memberCount} integrante(s){tenant.ownerName ? ` · dono: ${tenant.ownerName}` : ""}</p>
+              <p className="mt-1 text-xs text-slate-500">Plano: {tenant.planName ?? "sem plano"}</p>
             </button>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <a className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 hover:text-orange-900 hover:underline" href={tenant.publicIntakeLink} target="_blank" rel="noreferrer">Link de solicitação <ArrowUpRight className="h-3.5 w-3.5" /></a>
               <button type="button" className="text-slate-400 hover:text-slate-700" onClick={() => copyToClipboard(`${window.location.origin}${tenant.publicIntakeLink}`)} aria-label="Copiar link de solicitação"><Copy className="h-3.5 w-3.5" /></button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTenantId(tenant.id)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Editar</Button>
+              {!tenant.isDemo ? <Button size="sm" variant="outline" onClick={() => window.open(`/?asTenant=${tenant.id}`, "_blank", "noopener,noreferrer")}><LogIn className="mr-1.5 h-3.5 w-3.5" />Entrar como</Button> : null}
               {!tenant.isDemo ? <Button size="sm" variant="outline" className={tenant.status === "suspended" ? "ml-auto" : "ml-auto text-red-700 hover:bg-red-50 hover:text-red-800"} disabled={setStatus.isPending} onClick={() => setStatus.mutate({ tenantId: tenant.id, status: tenant.status === "suspended" ? "active" : "suspended" })}>{tenant.status === "suspended" ? "Reativar" : <><Ban className="mr-1.5 h-3.5 w-3.5" />Suspender</>}</Button> : null}
             </div>
           </div>)}
@@ -139,6 +151,7 @@ function TenantsSection() {
       </CardContent>
     </Card>
 
+    {editingTenant ? <TenantEditPanel tenant={editingTenant} onClose={() => setEditingTenantId(null)} /> : null}
     {selectedTenant ? <TenantAccessCard tenant={selectedTenant} onClose={() => setSelectedTenantId(null)} /> : null}
   </div>;
 }
@@ -180,6 +193,155 @@ function TenantAccessCard({ tenant, onClose }: { tenant: PlatformTenant; onClose
       </div> : <EmptyState title="Nenhum integrante ainda" description="Conceda o primeiro acesso pelo formulário acima." />}
     </CardContent>
   </Card>;
+}
+
+function TenantEditPanel({ tenant, onClose }: { tenant: PlatformTenant; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const plans = trpc.platform.plans.list.useQuery();
+  const setPlan = trpc.platform.tenants.setPlan.useMutation({
+    onSuccess: () => { toast.success("Plano atualizado."); utils.platform.tenants.list.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const [form, setForm] = useState({
+    name: tenant.name,
+    slug: tenant.slug,
+    whatsapp: tenant.contact.whatsapp ?? "",
+    email: tenant.contact.email ?? "",
+    phone: tenant.contact.phone ?? "",
+    legalName: tenant.contact.legalName ?? "",
+    document: tenant.contact.document ?? "",
+    primaryColor: tenant.branding.primaryColor ?? "#E84D1C",
+    secondaryColor: tenant.branding.secondaryColor ?? "#171717",
+    accentColor: tenant.branding.accentColor ?? "#F5B33A",
+    logoUrl: tenant.branding.logoUrl ?? "",
+    publicTitle: tenant.branding.publicTitle ?? "",
+  });
+  const [confirmSlugChange, setConfirmSlugChange] = useState(false);
+  const slugChanged = form.slug.trim().toLowerCase() !== tenant.slug;
+
+  const update = trpc.platform.tenants.update.useMutation({
+    onSuccess: () => { toast.success("Oficina atualizada."); setConfirmSlugChange(false); utils.platform.tenants.list.invalidate(); onClose(); },
+    onError: error => toast.error(error.message),
+  });
+
+  const submit = () => {
+    if (slugChanged && !confirmSlugChange) return;
+    update.mutate({
+      tenantId: tenant.id,
+      name: form.name,
+      slug: slugChanged ? form.slug.trim().toLowerCase() : undefined,
+      whatsapp: form.whatsapp || undefined,
+      email: form.email || undefined,
+      phone: form.phone || undefined,
+      legalName: form.legalName || undefined,
+      document: form.document || undefined,
+      primaryColor: form.primaryColor || undefined,
+      secondaryColor: form.secondaryColor || undefined,
+      accentColor: form.accentColor || undefined,
+      logoUrl: form.logoUrl || undefined,
+      publicTitle: form.publicTitle || undefined,
+    });
+  };
+
+  return <Card className="border-orange-200 shadow-sm">
+    <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+      <div><CardTitle className="text-lg">Editar · {tenant.name}</CardTitle><CardDescription>Dados gerais, contato e marca da oficina.</CardDescription></div>
+      <Button size="sm" variant="ghost" onClick={onClose}>Fechar</Button>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      <section className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dados gerais</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5"><Label htmlFor="edit-name">Nome comercial</Label><Input id="edit-name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-slug">Identificador público (slug)</Label><Input id="edit-slug" value={form.slug} onChange={event => { setForm({ ...form, slug: event.target.value.toLowerCase() }); setConfirmSlugChange(false); }} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-plan">Plano</Label><select id="edit-plan" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={tenant.planId ?? ""} disabled={setPlan.isPending} onChange={event => setPlan.mutate({ tenantId: tenant.id, planId: Number(event.target.value) })}>{plans.data?.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}</select></div>
+        </div>
+        {slugChanged ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><p>Mudar o slug muda o link público de solicitação — <code>/solicitar/{tenant.slug}</code> deixa de funcionar; o novo será <code>/solicitar/{form.slug || "..."}</code>.</p><label className="mt-2 flex items-center gap-2 font-medium"><input type="checkbox" checked={confirmSlugChange} onChange={event => setConfirmSlugChange(event.target.checked)} />Entendo e quero mudar o link público</label></div> : null}
+      </section>
+
+      <section className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contato</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={form.whatsapp} onChange={event => setForm({ ...form, whatsapp: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-email">E-mail</Label><Input id="edit-email" type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-phone">Telefone</Label><Input id="edit-phone" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-document">CNPJ/CPF</Label><Input id="edit-document" value={form.document} onChange={event => setForm({ ...form, document: event.target.value })} /></div>
+          <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="edit-legal-name">Razão social</Label><Input id="edit-legal-name" value={form.legalName} onChange={event => setForm({ ...form, legalName: event.target.value })} /></div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Marca</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-1.5"><Label htmlFor="edit-primary-color">Cor primária</Label><Input id="edit-primary-color" type="color" className="h-9 p-1" value={form.primaryColor} onChange={event => setForm({ ...form, primaryColor: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-secondary-color">Cor secundária</Label><Input id="edit-secondary-color" type="color" className="h-9 p-1" value={form.secondaryColor} onChange={event => setForm({ ...form, secondaryColor: event.target.value })} /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-accent-color">Cor de destaque</Label><Input id="edit-accent-color" type="color" className="h-9 p-1" value={form.accentColor} onChange={event => setForm({ ...form, accentColor: event.target.value })} /></div>
+          <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="edit-logo-url">URL do logo</Label><Input id="edit-logo-url" value={form.logoUrl} onChange={event => setForm({ ...form, logoUrl: event.target.value })} placeholder="https://..." /></div>
+          <div className="grid gap-1.5"><Label htmlFor="edit-public-title">Título público</Label><Input id="edit-public-title" value={form.publicTitle} onChange={event => setForm({ ...form, publicTitle: event.target.value })} /></div>
+        </div>
+      </section>
+
+      <Button disabled={update.isPending || form.name.trim().length < 3 || (slugChanged && !confirmSlugChange)} onClick={submit}>{update.isPending ? "Salvando…" : "Salvar alterações"}</Button>
+    </CardContent>
+  </Card>;
+}
+
+function PlansSection() {
+  const utils = trpc.useUtils();
+  const plans = trpc.platform.plans.list.useQuery();
+  const [editingPlanId, setEditingPlanId] = useState<number | null | "new">(null);
+  const emptyForm = { code: "", name: "", description: "", maxUsers: "50", maxCustomers: "", active: true };
+  const [form, setForm] = useState(emptyForm);
+
+  const invalidate = () => utils.platform.plans.list.invalidate();
+  const upsert = trpc.platform.plans.upsert.useMutation({
+    onSuccess: () => { toast.success("Plano salvo."); setEditingPlanId(null); setForm(emptyForm); invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+
+  const startEdit = (plan: PlatformPlan) => {
+    setEditingPlanId(plan.id);
+    setForm({ code: plan.code, name: plan.name, description: plan.description ?? "", maxUsers: String(plan.maxUsers), maxCustomers: plan.maxCustomers != null ? String(plan.maxCustomers) : "", active: plan.active });
+  };
+  const startNew = () => { setEditingPlanId("new"); setForm(emptyForm); };
+
+  return <div className="space-y-6">
+    <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Planos</h1><p className="mt-2 text-sm text-slate-500">Limites por oficina. Toda oficina nova entra automaticamente no plano Padrão.</p></div>
+      <Button onClick={startNew}><Plus className="mr-2 h-4 w-4" />Novo plano</Button>
+    </header>
+
+    {editingPlanId !== null ? <Card className="border-orange-200 shadow-sm">
+      <CardHeader><CardTitle className="text-lg">{editingPlanId === "new" ? "Novo plano" : "Editar plano"}</CardTitle></CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1.5"><Label htmlFor="plan-name">Nome</Label><Input id="plan-name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Pro" /></div>
+        <div className="grid gap-1.5"><Label htmlFor="plan-code">Código</Label><Input id="plan-code" value={form.code} onChange={event => setForm({ ...form, code: event.target.value.toLowerCase() })} placeholder="pro" /></div>
+        <div className="grid gap-1.5 sm:col-span-2"><Label htmlFor="plan-description">Descrição</Label><Input id="plan-description" value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="plan-max-users">Limite de usuários</Label><Input id="plan-max-users" type="number" min="1" value={form.maxUsers} onChange={event => setForm({ ...form, maxUsers: event.target.value })} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="plan-max-customers">Limite de clientes (vazio = sem limite)</Label><Input id="plan-max-customers" type="number" min="0" value={form.maxCustomers} onChange={event => setForm({ ...form, maxCustomers: event.target.value })} /></div>
+        <div className="flex items-center gap-2 sm:col-span-2"><input id="plan-active" type="checkbox" checked={form.active} onChange={event => setForm({ ...form, active: event.target.checked })} /><Label htmlFor="plan-active">Plano ativo</Label></div>
+        <div className="flex gap-2 sm:col-span-2">
+          <Button disabled={upsert.isPending || !form.name.trim() || !form.code.trim()} onClick={() => upsert.mutate({ planId: editingPlanId === "new" ? undefined : editingPlanId, code: form.code, name: form.name, description: form.description || undefined, maxUsers: Number(form.maxUsers) || 1, maxCustomers: form.maxCustomers ? Number(form.maxCustomers) : undefined, active: form.active })}>{upsert.isPending ? "Salvando…" : "Salvar plano"}</Button>
+          <Button variant="ghost" onClick={() => setEditingPlanId(null)}>Cancelar</Button>
+        </div>
+      </CardContent>
+    </Card> : null}
+
+    <Card className="border-slate-200 shadow-none">
+      <CardHeader><CardTitle>Planos cadastrados</CardTitle></CardHeader>
+      <CardContent>
+        {plans.isLoading ? <Skeleton className="h-36" /> : plans.isError ? <QueryError title="Planos indisponíveis" description="Não foi possível consultar os planos agora." /> : plans.data?.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {plans.data.map(plan => <div key={plan.id} className="rounded-xl border border-slate-200 p-4">
+            <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{plan.name}</p><p className="mt-1 text-xs text-slate-500">{plan.code}</p></div><Badge variant="outline" className={plan.active ? undefined : "border-slate-200 bg-slate-100 text-slate-500"}>{plan.active ? "Ativo" : "Inativo"}</Badge></div>
+            {plan.description ? <p className="mt-2 text-xs text-slate-500">{plan.description}</p> : null}
+            <p className="mt-3 text-xs text-slate-500">Até {plan.maxUsers} usuário(s) · {plan.maxCustomers == null ? "clientes ilimitados" : `até ${plan.maxCustomers} clientes`}</p>
+            <p className="mt-1 text-xs text-slate-500">{plan.tenantCount} oficina(s) neste plano</p>
+            <Button size="sm" variant="outline" className="mt-3" onClick={() => startEdit(plan)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Editar</Button>
+          </div>)}
+        </div> : <EmptyState title="Nenhum plano cadastrado" description="Crie o primeiro plano pelo botão acima." />}
+      </CardContent>
+    </Card>
+  </div>;
 }
 
 function PublicLinksSection() {

@@ -18,6 +18,21 @@ type PlatformTenant = {
   memberCount: number;
   ownerName: string | null;
   ownerEmail: string | null;
+  planId: number | null;
+  planName: string | null;
+  contact: { whatsapp: string | null; email: string | null; phone: string | null; legalName: string | null; document: string | null };
+  branding: { primaryColor: string | null; secondaryColor: string | null; accentColor: string | null; logoUrl: string | null; publicTitle: string | null };
+};
+
+type PlatformPlan = {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  maxUsers: number;
+  maxCustomers: number | null;
+  active: boolean;
+  tenantCount: number;
 };
 
 type PlatformTenantMember = {
@@ -80,6 +95,79 @@ export const supabasePlatformRouter = router({
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_set_tenant_status", { target_tenant_id: input.tenantId, status_input: input.status });
       if (error || !data) throw databaseError(error);
       return { success: true as const, status: input.status };
+    }),
+    setPlan: supabaseAdminProcedure.input(tenantIdInput.extend({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_set_tenant_plan", { target_tenant_id: input.tenantId, target_plan_id: input.planId });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const };
+    }),
+    /**
+     * Edita nome, contato e marca da oficina numa chamada só. O slug (link
+     * público) só é alterado quando enviado explicitamente — o front pede
+     * confirmação separada antes de incluí-lo, porque muda o link já
+     * divulgado ao cliente.
+     */
+    update: supabaseAdminProcedure.input(z.object({
+      tenantId: z.number().int().positive(),
+      name: z.string().trim().min(3).max(160),
+      slug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+      whatsapp: z.string().trim().max(32).optional(),
+      email: z.string().trim().email().max(255).optional(),
+      phone: z.string().trim().max(32).optional(),
+      legalName: z.string().trim().max(180).optional(),
+      document: z.string().trim().max(32).optional(),
+      primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      logoUrl: z.string().trim().url().max(2048).optional(),
+      publicTitle: z.string().trim().max(160).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_update_tenant_details", {
+        target_tenant_id: input.tenantId,
+        tenant_name: input.name,
+        tenant_slug: input.slug ?? null,
+        contact_whatsapp: input.whatsapp ?? null,
+        contact_email: input.email ?? null,
+        contact_phone: input.phone ?? null,
+        legal_name_input: input.legalName ?? null,
+        document_input: input.document ?? null,
+        primary_color_input: input.primaryColor ?? null,
+        secondary_color_input: input.secondaryColor ?? null,
+        accent_color_input: input.accentColor ?? null,
+        logo_url_input: input.logoUrl ?? null,
+        public_title_input: input.publicTitle ?? null,
+      });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const };
+    }),
+  }),
+
+  plans: router({
+    list: supabaseAdminProcedure.query(async ({ ctx }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_plans");
+      if (error) throw databaseError(error);
+      return (data ?? []) as PlatformPlan[];
+    }),
+    upsert: supabaseAdminProcedure.input(z.object({
+      planId: z.number().int().positive().optional(),
+      code: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      name: z.string().trim().min(2).max(120),
+      description: z.string().trim().max(500).optional(),
+      maxUsers: z.number().int().min(1).max(10000),
+      maxCustomers: z.number().int().min(0).max(1000000).optional(),
+      active: z.boolean().default(true),
+    })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_upsert_plan", {
+        target_plan_id: input.planId ?? null,
+        plan_code: input.code,
+        plan_name: input.name,
+        plan_description: input.description ?? null,
+        plan_max_users: input.maxUsers,
+        plan_max_customers: input.maxCustomers ?? null,
+        plan_active: input.active,
+      });
+      if (error || !data) throw databaseError(error);
+      return { id: Number((data as { id: number }).id) };
     }),
   }),
 

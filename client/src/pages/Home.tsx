@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 // Regras reutilizáveis ficam fora do componente para manter a atualização rápida estável.
 import { getHomeNavigationContext, getWorkspaceMenuKeys, getWorkspaceMetrics, getWorkspaceNoTenantState, getWorkspacePriorityKeys, type WorkspaceDailyMenuKey, type WorkspaceRole } from "@/lib/homeWorkspace";
-import { isDemoWorkspace, selectWorkspace, withDemoContext } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace, withDemoContext } from "@/lib/demoWorkspace";
 import { ArrowRight, Bell, Boxes, CalendarClock, ChartNoAxesCombined, CircleAlert, CircleDollarSign, ClipboardCheck, PackageSearch, Plus, ReceiptText, Settings2, ShieldCheck, Store, UsersRound, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -74,10 +74,11 @@ export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const navigationContext = getHomeNavigationContext(user?.platformRole);
   const isDemoMode = isDemoWorkspace();
-  const isPlatformAdmin = navigationContext === "platform" && !isDemoMode;
+  const supportTenantId = getSupportTenantId();
+  const isPlatformAdmin = navigationContext === "platform" && !isDemoMode && !supportTenantId;
   const tenantList = trpc.workspace.mine.useQuery(undefined, { enabled: isAuthenticated && !isPlatformAdmin });
   const [activeTenantId, setActiveTenantId] = useState<number | null>(null);
-  const activeTenant = selectWorkspace(tenantList.data, isDemoMode, activeTenantId);
+  const activeTenant = selectWorkspace(tenantList.data, isDemoMode, activeTenantId ?? supportTenantId);
   const title = activeTenant?.tenant.name ?? "OficinaOS";
   const workspaceMenuItems = getWorkspaceMenuItems((activeTenant?.membership.role ?? "technician") as WorkspaceRole);
   const noTenantState = getWorkspaceNoTenantState(user?.platformRole);

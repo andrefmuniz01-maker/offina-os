@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Boxes, Search, Truck, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -23,7 +23,7 @@ const menu: DashboardMenuItem[] = [
 
 export default function CatalogSuppliers() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { getTeamWorkspaceSummary } from "@/lib/teamWorkspace";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CircleCheck, KeyRound, LockKeyhole, ShieldCheck, Trash2, UsersRound } from "lucide-react";
@@ -29,7 +29,7 @@ type InviteRole = "admin" | "attendant" | "technician";
 export default function Team() {
   const me = trpc.auth.me.useQuery();
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const members = trpc.workspaceManagement.team.list.useQuery({ tenantId }, { enabled: Boolean(tenantId) });

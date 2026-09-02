@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { commercialGroupStatuses, getQueueUrgency, getRequestStatusTone, requestStatusLabels, type RequestQueueStatus } from "@/lib/requestQueue";
 import { buildWhatsappLink, renderQuoteMessageTemplate } from "@/lib/whatsappLink";
 import { AlertCircle, ArrowLeft, Ban, ChevronLeft, ChevronRight, Clock3, ExternalLink, FileText, FilterX, History, ListChecks, MessageCircle, ReceiptText, Search, Sparkles, UserRound } from "lucide-react";
@@ -68,7 +68,7 @@ function formatCurrency(value: number) {
 
 export default function Requests() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const [status, setStatus] = useState<RequestStatus>("all");
   const [search, setSearch] = useState("");

@@ -11,7 +11,7 @@ import { getInventoryAccessMessage } from "@/lib/inventoryAccess";
 import { getInventoryAvailability, getInventoryTone } from "@/lib/inventoryPriority";
 import { inventoryBalanceLabels } from "@/lib/inventoryView";
 import { trpc } from "@/lib/trpc";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { AlertTriangle, ArrowLeft, Boxes, CalendarRange, ChevronLeft, ChevronRight, History, PackageCheck, PackageSearch, Search, ShoppingCart, Truck, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -63,7 +63,7 @@ function defaultForecastDate() {
 
 export default function Inventory() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [forecastUntil, setForecastUntil] = useState(defaultForecastDate);

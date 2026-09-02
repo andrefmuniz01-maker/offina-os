@@ -20,6 +20,20 @@ export function isDemoWorkspace() {
   return new URLSearchParams(window.location.search).get("demo") === "1";
 }
 
+/**
+ * Modo suporte: o Super Admin "entra como" uma oficina real a partir do
+ * painel /plataforma para diagnosticar ou corrigir algo, com ação completa
+ * (ele já contorna toda permissão no banco). O alvo viaja pela URL
+ * (?asTenant=<id>), no mesmo estilo do ?demo=1, e é propagado por
+ * withDemoContext em toda navegação interna via SafeLink/DashboardLayout.
+ */
+export function getSupportTenantId(): number | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("asTenant");
+  const parsed = raw ? Number(raw) : NaN;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export function selectWorkspace<T extends WorkspaceEntry>(workspaces: T[] | undefined, preferDemo: boolean, activeTenantId?: number | null) {
   if (!workspaces?.length) return undefined;
   if (preferDemo) return workspaces.find(entry => entry.tenant.isDemo) ?? undefined;
@@ -31,7 +45,11 @@ export function selectWorkspace<T extends WorkspaceEntry>(workspaces: T[] | unde
 }
 
 export function withDemoContext(path: string) {
-  if (!isDemoWorkspace() || !path.startsWith("/")) return path;
-  if (path.includes("demo=1")) return path;
-  return `${path}${path.includes("?") ? "&" : "?"}demo=1`;
+  if (!path.startsWith("/")) return path;
+  const extraParams: string[] = [];
+  if (isDemoWorkspace() && !path.includes("demo=1")) extraParams.push("demo=1");
+  const supportTenantId = getSupportTenantId();
+  if (supportTenantId && !path.includes("asTenant=")) extraParams.push(`asTenant=${supportTenantId}`);
+  if (!extraParams.length) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${extraParams.join("&")}`;
 }

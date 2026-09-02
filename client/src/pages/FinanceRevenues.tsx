@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { financialErrorMessage, hasFinancialPermissionError } from "@/lib/financialStates";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, CircleDollarSign, Landmark, Search, TrendingUp, Wallet } from "lucide-react";
@@ -28,7 +28,7 @@ const statusLabels: Record<string, string> = { expected: "Prevista", received: "
 export default function FinanceRevenues() {
   const demoMode = isDemoWorkspace();
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, demoMode)?.tenant;
+  const tenant = selectWorkspace(mine.data, demoMode, getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
 

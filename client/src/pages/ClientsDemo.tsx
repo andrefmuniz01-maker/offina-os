@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getClientWorkspaceStep } from "@/lib/clientWorkspace";
 import { trpc } from "@/lib/trpc";
-import { isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, selectWorkspace } from "@/lib/demoWorkspace";
 import { ArrowLeft, Ban, CarFront, ChevronLeft, ChevronRight, ClipboardList, CircleUserRound, History, Pencil, Plus, Search, ShieldCheck, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -50,7 +50,7 @@ const emptyVehicleForm = { make: "", model: "", modelYear: "", plate: "" };
 
 export default function Clients() {
   const mine = trpc.workspace.mine.useQuery();
-  const tenant = selectWorkspace(mine.data, isDemoWorkspace())?.tenant;
+  const tenant = selectWorkspace(mine.data, isDemoWorkspace(), getSupportTenantId())?.tenant;
   const tenantId = tenant?.id ?? 0;
   const utils = trpc.useUtils();
   const [customerId, setCustomerId] = useState("");
