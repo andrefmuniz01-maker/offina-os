@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createSupabaseClient } from "../_core/supabase";
+import { createSupabaseClient, createSupabaseServiceRoleClient, resolveRequestOrigin } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
 import { requireSupabaseTenantPermission, getSupabaseTenantAccess, hasSupabasePermission } from "../supabaseTenantAccess";
 
@@ -105,9 +105,9 @@ export const supabaseManagementRouter = router({
   }),
 
   audit: router({
-    list: supabaseProtectedProcedure.input(tenantInput.extend({ search: z.string().trim().max(120).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ ctx, input }) => {
+    list: supabaseProtectedProcedure.input(tenantInput.extend({ search: z.string().trim().max(120).optional(), actionPrefix: z.string().trim().max(60).optional(), rangeStart: z.string().datetime({ offset: true }).optional(), rangeEnd: z.string().datetime({ offset: true }).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ ctx, input }) => {
       await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "tenant.manage");
-      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_list_audit_logs", { target_tenant_id: input.tenantId, search_input: input.search ?? null, page_input: input.page, page_size_input: input.pageSize });
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_list_audit_logs", { target_tenant_id: input.tenantId, search_input: input.search ?? null, action_prefix_input: input.actionPrefix ?? null, range_start_input: input.rangeStart ?? null, range_end_input: input.rangeEnd ?? null, page_input: input.page, page_size_input: input.pageSize });
       if (error) throw databaseError(error);
       return (data ?? { items: [], page: input.page, pageSize: input.pageSize, hasMore: false }) as { items: Array<{ id: number; action: string; entityType: string; entityId: number | null; metadata: Record<string, unknown> | null; createdAt: string }>; page: number; pageSize: number; hasMore: boolean };
     }),
@@ -161,6 +161,42 @@ export const supabaseManagementRouter = router({
       const result = workspaceTeamListSchema.safeParse(data ?? []);
       if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A equipe retornou dados incompatíveis." });
       return result.data;
+    }),
+    /**
+     * Convite de equipe pelo próprio dono/admin da oficina. Reaproveita a
+     * mesma mecânica de convite por e-mail do Super Admin (Supabase Auth cria
+     * a conta e dispara o e-mail para definir senha quando a pessoa ainda não
+     * tem cadastro), mas limitada aos papéis Admin/Atendente/Técnico — só o
+     * Super Admin concede Proprietário (checado também no banco).
+     */
+    invite: supabaseProtectedProcedure.input(tenantInput.extend({ email: z.string().trim().email().max(255), name: z.string().trim().max(160).optional(), role: z.enum(["admin", "attendant", "technician"]) })).mutation(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "team.manage");
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
+
+      const normalizedEmail = input.email.trim().toLowerCase();
+      const { data: existingProfile, error: lookupError } = await serviceClient.from("profiles").select("id").ilike("email", normalizedEmail).maybeSingle();
+      if (lookupError) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível verificar se este e-mail já possui conta." });
+
+      let userId = existingProfile?.id as string | undefined;
+      let invited = false;
+      if (!userId) {
+        const redirectTo = `${resolveRequestOrigin(ctx.req)}/auth/callback`;
+        const { data: invitedUser, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(normalizedEmail, { redirectTo, data: input.name ? { full_name: input.name } : undefined });
+        if (inviteError || !invitedUser?.user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: inviteError?.message ?? "Não foi possível enviar o convite por e-mail." });
+        userId = invitedUser.user.id;
+        invited = true;
+      }
+
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_grant_team_access", { target_tenant_id: input.tenantId, target_user_id: userId, role_input: input.role });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const, invited, userId };
+    }),
+    revoke: supabaseProtectedProcedure.input(tenantInput.extend({ userId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
+      await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "team.manage");
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_revoke_team_access", { target_tenant_id: input.tenantId, target_user_id: input.userId });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const };
     }),
   }),
 

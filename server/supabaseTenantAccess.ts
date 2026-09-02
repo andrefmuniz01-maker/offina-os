@@ -99,13 +99,19 @@ export async function getSupabaseTenantAccess(
     .maybeSingle<TenantRecord>();
 
   if (tenantError) throw unavailable();
-  if (!tenant || !tenant.active || !["trial", "active"].includes(tenant.status)) {
+  if (!tenant || !tenant.active) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Oficina não encontrada ou inativa." });
   }
 
   const isPlatformSuperAdmin = user.platformRole === "super_admin";
   if (isPlatformSuperAdmin) {
     return { tenantId, tenant, membership: null, isPlatformSuperAdmin: true, permissions: [] };
+  }
+
+  // Uma oficina suspensa bloqueia a equipe dela, mas não o Super Admin (checado
+  // acima) — ele precisa continuar conseguindo entrar para investigar e reativar.
+  if (!["trial", "active"].includes(tenant.status)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Esta oficina está suspensa. Fale com o Super Admin para reativar o acesso." });
   }
 
   const { data: membership, error: membershipError } = await supabase

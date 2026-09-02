@@ -36,6 +36,19 @@ export function createSupabaseServiceRoleClient() {
   });
 }
 
+/**
+ * O e-mail de convite do Supabase leva a pessoa para /auth/callback com
+ * type=invite; a origem é derivada da própria requisição para funcionar tanto
+ * em desenvolvimento quanto em qualquer domínio de produção sem variável extra.
+ */
+export function resolveRequestOrigin(req: { headers: Record<string, unknown> }): string {
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && origin.length > 0) return origin;
+  const host = req.headers.host;
+  if (typeof host === "string" && host.length > 0) return `https://${host}`;
+  throw new Error("Não foi possível determinar o endereço da aplicação para enviar o convite.");
+}
+
 export function getBearerToken(value: string | undefined): string | null {
   if (!value?.startsWith("Bearer ")) return null;
   const token = value.slice("Bearer ".length).trim();

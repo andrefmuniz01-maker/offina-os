@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createSupabaseClient, createSupabaseServiceRoleClient } from "../_core/supabase";
+import { createSupabaseClient, createSupabaseServiceRoleClient, resolveRequestOrigin } from "../_core/supabase";
 import { router, supabaseAdminProcedure } from "../_core/trpc";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
@@ -30,6 +30,18 @@ type PlatformTenantMember = {
   createdAt: string;
 };
 
+type PlatformAuditEntry = {
+  id: number;
+  tenantId: number;
+  tenantName: string;
+  action: string;
+  entityType: string;
+  entityId: number | null;
+  actorName: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
 type PlatformPublicLink = {
   quoteId: number;
   number: number;
@@ -52,19 +64,6 @@ function databaseError(error: { code?: string | null; message?: string | null } 
   return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível concluir esta operação de plataforma agora." });
 }
 
-/**
- * O e-mail de convite do Supabase leva o usuário para /auth/callback com
- * type=invite; a origem é derivada da própria requisição para funcionar tanto
- * em desenvolvimento quanto em qualquer domínio de produção sem variável extra.
- */
-function resolveAppOrigin(req: { headers: Record<string, unknown> }): string {
-  const origin = req.headers.origin;
-  if (typeof origin === "string" && origin.length > 0) return origin;
-  const host = req.headers.host;
-  if (typeof host === "string" && host.length > 0) return `https://${host}`;
-  throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível determinar o endereço da aplicação para enviar o convite." });
-}
-
 export const supabasePlatformRouter = router({
   tenants: router({
     list: supabaseAdminProcedure.query(async ({ ctx }) => {
@@ -76,6 +75,19 @@ export const supabasePlatformRouter = router({
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_tenant_members", { target_tenant_id: input.tenantId });
       if (error) throw databaseError(error);
       return (data ?? []) as PlatformTenantMember[];
+    }),
+    setStatus: supabaseAdminProcedure.input(tenantIdInput.extend({ status: z.enum(["active", "suspended"]) })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_set_tenant_status", { target_tenant_id: input.tenantId, status_input: input.status });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const, status: input.status };
+    }),
+  }),
+
+  audit: router({
+    list: supabaseAdminProcedure.input(z.object({ tenantId: z.number().int().positive().optional(), actionPrefix: z.string().trim().max(60).optional(), rangeStart: z.string().datetime({ offset: true }).optional(), rangeEnd: z.string().datetime({ offset: true }).optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(20) })).query(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_audit_logs", { tenant_id_filter: input.tenantId ?? null, action_prefix_input: input.actionPrefix ?? null, range_start_input: input.rangeStart ?? null, range_end_input: input.rangeEnd ?? null, page_input: input.page, page_size_input: input.pageSize });
+      if (error) throw databaseError(error);
+      return (data ?? { items: [], page: input.page, pageSize: input.pageSize, hasMore: false }) as { items: PlatformAuditEntry[]; page: number; pageSize: number; hasMore: boolean };
     }),
   }),
 
@@ -111,7 +123,7 @@ export const supabasePlatformRouter = router({
       let invited = false;
 
       if (!userId) {
-        const redirectTo = `${resolveAppOrigin(ctx.req)}/auth/callback`;
+        const redirectTo = `${resolveRequestOrigin(ctx.req)}/auth/callback`;
         const { data: invitedUser, error: inviteError } = await serviceClient.auth.admin.inviteUserByEmail(normalizedEmail, {
           redirectTo,
           data: input.name ? { full_name: input.name } : undefined,

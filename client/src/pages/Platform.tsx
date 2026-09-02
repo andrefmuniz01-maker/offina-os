@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { SafeLink as Link } from "@/components/SafeLink";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,16 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, Building2, Copy, KeyRound, Link2, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { ArrowUpRight, Ban, Building2, Copy, History, KeyRound, Link2, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type PlatformSection = "tenants" | "links";
+type PlatformSection = "tenants" | "links" | "audit";
 type MemberRole = "owner" | "admin" | "attendant" | "technician";
 const roleLabels: Record<MemberRole, string> = { owner: "Proprietário", admin: "Administrador", attendant: "Atendente", technician: "Técnico" };
 const quoteStatusLabels: Record<string, string> = { sent: "Enviada", viewed: "Visualizada", approved: "Aprovada", rejected: "Recusada", expired: "Expirada" };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const actionCategories = [
+  { value: "", label: "Todas as ações" },
+  { value: "tenant_member.", label: "Acesso de equipe" },
+  { value: "tenant.", label: "Oficina" },
+  { value: "quote.", label: "Orçamentos" },
+  { value: "work_order.", label: "Ordens de serviço" },
+];
 
 export function getPlatformAccessState(user: { platformRole?: string | null } | null, loading: boolean) {
   if (loading) return "loading" as const;
@@ -44,6 +53,7 @@ export function PlatformDashboard() {
   const sections: { id: PlatformSection; label: string; icon: typeof Building2 }[] = [
     { id: "tenants", label: "Oficinas & Acessos", icon: Building2 },
     { id: "links", label: "Links de aprovação", icon: Link2 },
+    { id: "audit", label: "Auditoria", icon: History },
   ];
 
   return <main className="min-h-screen bg-[#f7f8fa] text-slate-950">
@@ -61,13 +71,20 @@ export function PlatformDashboard() {
         </div>
       </aside>
       <div className="min-w-0 flex-1 p-5 sm:p-8 lg:p-10">
-        {section === "tenants" ? <TenantsSection /> : <PublicLinksSection />}
+        {section === "tenants" ? <TenantsSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
       </div>
     </div>
   </main>;
 }
 
 type PlatformTenant = { id: number; name: string; slug: string; status: string; active: boolean; isDemo: boolean; createdAt: string; publicIntakeLink: string; memberCount: number; ownerName: string | null; ownerEmail: string | null };
+
+function statusLabel(tenant: PlatformTenant) {
+  if (tenant.isDemo) return "Demo";
+  if (!tenant.active) return "inativa";
+  if (tenant.status === "suspended") return "Suspensa";
+  return tenant.status;
+}
 
 function TenantsSection() {
   const utils = trpc.useUtils();
@@ -78,6 +95,10 @@ function TenantsSection() {
 
   const createTenant = trpc.workspace.createTenant.useMutation({
     onSuccess: () => { toast.success("Oficina criada."); setCreateForm({ name: "", slug: "", whatsapp: "" }); setShowCreate(false); utils.platform.tenants.list.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const setStatus = trpc.platform.tenants.setStatus.useMutation({
+    onSuccess: result => { toast.success(result.status === "suspended" ? "Oficina suspensa." : "Oficina reativada."); utils.platform.tenants.list.invalidate(); },
     onError: error => toast.error(error.message),
   });
 
@@ -103,14 +124,17 @@ function TenantsSection() {
       <CardHeader><CardTitle>Oficinas cadastradas</CardTitle><CardDescription>Clique em uma oficina para gerenciar a equipe e conceder acesso.</CardDescription></CardHeader>
       <CardContent>
         {tenants.isLoading ? <Skeleton className="h-36" /> : tenants.isError ? <QueryError title="Diretório indisponível" description="Não foi possível consultar as oficinas agora." /> : tenants.data?.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {tenants.data.map(tenant => <button key={tenant.id} type="button" onClick={() => setSelectedTenantId(tenant.id)} className={`rounded-xl border p-4 text-left transition-colors ${selectedTenantId === tenant.id ? "border-orange-400 bg-orange-50/60" : "border-slate-200 hover:border-slate-300"}`}>
-            <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{tenant.name}</p><p className="mt-1 text-xs text-slate-500">{tenant.slug}</p></div><Badge variant="outline">{tenant.isDemo ? "Demo" : tenant.active ? tenant.status : "inativa"}</Badge></div>
-            <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500"><UsersRound className="h-3.5 w-3.5" />{tenant.memberCount} integrante(s){tenant.ownerName ? ` · dono: ${tenant.ownerName}` : ""}</p>
-            <div className="mt-3 flex items-center gap-2">
-              <a className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 hover:text-orange-900 hover:underline" href={tenant.publicIntakeLink} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()}>Link de solicitação <ArrowUpRight className="h-3.5 w-3.5" /></a>
-              <button type="button" className="text-slate-400 hover:text-slate-700" onClick={event => { event.stopPropagation(); copyToClipboard(`${window.location.origin}${tenant.publicIntakeLink}`); }} aria-label="Copiar link de solicitação"><Copy className="h-3.5 w-3.5" /></button>
+          {tenants.data.map(tenant => <div key={tenant.id} className={`rounded-xl border p-4 text-left transition-colors ${selectedTenantId === tenant.id ? "border-orange-400 bg-orange-50/60" : "border-slate-200 hover:border-slate-300"}`}>
+            <button type="button" className="w-full text-left" onClick={() => setSelectedTenantId(tenant.id)}>
+              <div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{tenant.name}</p><p className="mt-1 text-xs text-slate-500">{tenant.slug}</p></div><Badge variant="outline" className={tenant.status === "suspended" ? "border-red-200 bg-red-50 text-red-800" : undefined}>{statusLabel(tenant)}</Badge></div>
+              <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-500"><UsersRound className="h-3.5 w-3.5" />{tenant.memberCount} integrante(s){tenant.ownerName ? ` · dono: ${tenant.ownerName}` : ""}</p>
+            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <a className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 hover:text-orange-900 hover:underline" href={tenant.publicIntakeLink} target="_blank" rel="noreferrer">Link de solicitação <ArrowUpRight className="h-3.5 w-3.5" /></a>
+              <button type="button" className="text-slate-400 hover:text-slate-700" onClick={() => copyToClipboard(`${window.location.origin}${tenant.publicIntakeLink}`)} aria-label="Copiar link de solicitação"><Copy className="h-3.5 w-3.5" /></button>
+              {!tenant.isDemo ? <Button size="sm" variant="outline" className={tenant.status === "suspended" ? "ml-auto" : "ml-auto text-red-700 hover:bg-red-50 hover:text-red-800"} disabled={setStatus.isPending} onClick={() => setStatus.mutate({ tenantId: tenant.id, status: tenant.status === "suspended" ? "active" : "suspended" })}>{tenant.status === "suspended" ? "Reativar" : <><Ban className="mr-1.5 h-3.5 w-3.5" />Suspender</>}</Button> : null}
             </div>
-          </button>)}
+          </div>)}
         </div> : <EmptyState title="Nenhuma oficina cadastrada" description="Crie a primeira oficina para liberar o acesso e o link público de solicitação." />}
       </CardContent>
     </Card>
@@ -145,6 +169,7 @@ function TenantAccessCard({ tenant, onClose }: { tenant: PlatformTenant; onClose
         <div className="grid gap-1.5"><Label htmlFor="grant-name">Nome (opcional)</Label><Input id="grant-name" value={grantForm.name} onChange={event => setGrantForm({ ...grantForm, name: event.target.value })} placeholder="Nome completo" /></div>
         <div className="grid gap-1.5"><Label htmlFor="grant-role">Papel</Label><select id="grant-role" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={grantForm.role} onChange={event => setGrantForm({ ...grantForm, role: event.target.value as MemberRole })}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
         <Button disabled={grantAccess.isPending || !grantForm.email.trim()} onClick={() => grantAccess.mutate({ tenantId: tenant.id, email: grantForm.email, role: grantForm.role, name: grantForm.name || undefined })}><KeyRound className="mr-2 h-4 w-4" />{grantAccess.isPending ? "Concedendo…" : "Conceder acesso"}</Button>
+        {grantForm.role === "owner" ? <p className="sm:col-span-4 text-xs text-amber-700">Um Proprietário concede controle total; a oficina pode ter mais de um Proprietário ao mesmo tempo.</p> : null}
       </div>
 
       {members.isLoading ? <Skeleton className="h-24" /> : members.isError ? <QueryError title="Integrantes indisponíveis" description="Não foi possível listar os integrantes desta oficina." /> : members.data?.length ? <div className="space-y-2">
@@ -177,6 +202,45 @@ function PublicLinksSection() {
             <div className="flex items-center gap-2"><Badge variant="outline">{quoteStatusLabels[item.status] ?? item.status}</Badge><Button size="sm" variant="outline" onClick={() => window.open(item.publicUrl, "_blank", "noopener,noreferrer")}>Abrir link <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Button><button type="button" className="text-slate-400 hover:text-slate-700" onClick={() => copyToClipboard(`${window.location.origin}${item.publicUrl}`)} aria-label="Copiar link"><Copy className="h-3.5 w-3.5" /></button></div>
           </div>)}
         </div> : <EmptyState title="Nenhuma proposta neste filtro" description="Propostas enviadas às clientes aparecerão aqui com o link direto de aprovação." />}
+      </CardContent>
+    </Card>
+  </div>;
+}
+
+function AuditSection() {
+  const tenants = trpc.platform.tenants.list.useQuery();
+  const [tenantId, setTenantId] = useState<number | "all">("all");
+  const [actionPrefix, setActionPrefix] = useState("");
+  const [view, setView] = useState<PeriodView>("month");
+  const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
+  const range = getPeriodRange(view, anchor);
+
+  const audit = trpc.platform.audit.list.useQuery({
+    tenantId: tenantId === "all" ? undefined : tenantId,
+    actionPrefix: actionPrefix || undefined,
+    rangeStart: range.start.toISOString(),
+    rangeEnd: range.end.toISOString(),
+    page: 1,
+    pageSize: 50,
+  });
+
+  return <div className="space-y-6">
+    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Auditoria</h1><p className="mt-2 text-sm text-slate-500">Trilha de eventos críticos de todas as oficinas, filtrável por oficina, tipo de ação e período.</p></header>
+
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="grid gap-1.5"><Label className="text-xs" htmlFor="audit-tenant">Oficina</Label><select id="audit-tenant" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={tenantId} onChange={event => setTenantId(event.target.value === "all" ? "all" : Number(event.target.value))}><option value="all">Todas as oficinas</option>{tenants.data?.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></div>
+      <div className="grid gap-1.5"><Label className="text-xs" htmlFor="audit-action">Tipo de ação</Label><select id="audit-action" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={actionPrefix} onChange={event => setActionPrefix(event.target.value)}>{actionCategories.map(category => <option key={category.value} value={category.value}>{category.label}</option>)}</select></div>
+      <PeriodPicker view={view} onViewChange={setView} anchor={anchor} onAnchorChange={setAnchor} />
+    </div>
+
+    <Card className="border-slate-200 shadow-none">
+      <CardContent className="pt-6">
+        {audit.isLoading ? <Skeleton className="h-48" /> : audit.isError ? <QueryError title="Auditoria indisponível" description="Não foi possível consultar os eventos agora." /> : audit.data?.items.length ? <div className="space-y-2">
+          {audit.data.items.map(entry => <div key={entry.id} className="flex flex-col gap-1 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-medium text-slate-900">{entry.action}</p><p className="text-xs text-slate-500">{entry.tenantName} · {entry.entityType}{entry.entityId ? ` #${entry.entityId}` : ""}{entry.actorName ? ` · por ${entry.actorName}` : ""}</p></div>
+            <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString("pt-BR")}</p>
+          </div>)}
+        </div> : <EmptyState title="Nenhum evento neste filtro" description="Ajuste a oficina, o tipo de ação ou o período para encontrar o que procura." />}
       </CardContent>
     </Card>
   </div>;

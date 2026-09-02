@@ -103,9 +103,9 @@ describe("permissões de tenant no Supabase", () => {
   });
 
   it.each([
-    { active: false, status: "active" as const, label: "inativo" },
-    { active: true, status: "suspended" as const, label: "suspenso" },
-  ])("nega tenant $label antes de consultar vínculo ou permissões", async ({ active, status }) => {
+    { active: false, status: "active" as const, label: "inativo", expectedCode: "NOT_FOUND" as const },
+    { active: true, status: "suspended" as const, label: "suspenso", expectedCode: "FORBIDDEN" as const },
+  ])("nega tenant $label antes de consultar vínculo ou permissões", async ({ active, status, expectedCode }) => {
     tenantQuery.maybeSingle.mockResolvedValueOnce({
       data: { id: 12, name: "Oficina indisponível", slug: "oficina-indisponivel", status, active, is_demo: false, primary_owner_user_id: null },
       error: null,
@@ -117,8 +117,26 @@ describe("permissões de tenant no Supabase", () => {
       email: "atendente@empresa.test",
       platformRole: "platform_user",
       accessToken: "teste",
-    }, 12)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }, 12)).rejects.toMatchObject({ code: expectedCode });
 
+    expect(from).not.toHaveBeenCalledWith("tenant_members");
+  });
+
+  it("mantém o acesso do Super Admin mesmo com a oficina suspensa, para poder investigar e reativar", async () => {
+    tenantQuery.maybeSingle.mockResolvedValueOnce({
+      data: { id: 12, name: "Oficina suspensa", slug: "oficina-suspensa", status: "suspended", active: true, is_demo: false, primary_owner_user_id: null },
+      error: null,
+    });
+
+    const access = await getSupabaseTenantAccess({
+      id: "f3b9d977-1a0c-407a-b56b-7ca7337d9e88",
+      name: "Super Admin",
+      email: "super@empresa.test",
+      platformRole: "super_admin",
+      accessToken: "teste",
+    }, 12);
+
+    expect(access.isPlatformSuperAdmin).toBe(true);
     expect(from).not.toHaveBeenCalledWith("tenant_members");
   });
 });
