@@ -57,6 +57,44 @@ type PlatformAuditEntry = {
   createdAt: string;
 };
 
+type PlatformContract = {
+  id: number;
+  prospectName: string;
+  contactWhatsapp: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  planId: number | null;
+  planName: string | null;
+  monthlyValue: number | string;
+  status: "negotiating" | "closed" | "cancelled";
+  notes: string | null;
+  tenantId: number | null;
+  tenantName: string | null;
+  closedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+};
+
+type PlatformRevenue = {
+  id: number;
+  contractId: number | null;
+  contractProspectName: string | null;
+  tenantId: number | null;
+  tenantName: string | null;
+  description: string;
+  amount: number | string;
+  receivedAt: string;
+};
+
+type PlatformDashboardStats = {
+  activeTenants: number;
+  platformUsers: number;
+  negotiatingContracts: number;
+  periodRevenue: number | string;
+  manualRevenue: number | string;
+  contractRevenue: number | string;
+};
+
 type PlatformPublicLink = {
   quoteId: number;
   number: number;
@@ -184,6 +222,85 @@ export const supabasePlatformRouter = router({
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_public_links", { status_filter: input.status ?? null, page_input: input.page, page_size_input: input.pageSize });
       if (error) throw databaseError(error);
       return (data ?? { items: [], page: input.page, pageSize: input.pageSize, hasMore: false }) as { items: PlatformPublicLink[]; page: number; pageSize: number; hasMore: boolean };
+    }),
+  }),
+
+  dashboard: router({
+    stats: supabaseAdminProcedure.input(z.object({ rangeStart: z.string().datetime({ offset: true }), rangeEnd: z.string().datetime({ offset: true }) })).query(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_dashboard_stats", { range_start_input: input.rangeStart, range_end_input: input.rangeEnd });
+      if (error) throw databaseError(error);
+      return data as PlatformDashboardStats;
+    }),
+  }),
+
+  contracts: router({
+    list: supabaseAdminProcedure.query(async ({ ctx }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_contracts");
+      if (error) throw databaseError(error);
+      return (data ?? []) as PlatformContract[];
+    }),
+    create: supabaseAdminProcedure.input(z.object({
+      prospectName: z.string().trim().min(2).max(160),
+      monthlyValue: z.number().min(0),
+      planId: z.number().int().positive().optional(),
+      contactWhatsapp: z.string().trim().max(32).optional(),
+      contactEmail: z.string().trim().email().max(255).optional(),
+      contactPhone: z.string().trim().max(32).optional(),
+      notes: z.string().trim().max(1000).optional(),
+      tenantId: z.number().int().positive().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_create_contract", {
+        prospect_name_input: input.prospectName,
+        monthly_value_input: input.monthlyValue,
+        plan_id_input: input.planId ?? null,
+        contact_whatsapp_input: input.contactWhatsapp ?? null,
+        contact_email_input: input.contactEmail ?? null,
+        contact_phone_input: input.contactPhone ?? null,
+        notes_input: input.notes ?? null,
+        tenant_id_input: input.tenantId ?? null,
+      });
+      if (error || !data) throw databaseError(error);
+      return { id: Number((data as { id: number }).id) };
+    }),
+    close: supabaseAdminProcedure.input(z.object({ contractId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_close_contract", { contract_id_input: input.contractId });
+      if (error || !data) throw databaseError(error);
+      return { success: true as const };
+    }),
+    cancel: supabaseAdminProcedure.input(z.object({ contractId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_cancel_contract", { contract_id_input: input.contractId });
+      if (error || !data) throw databaseError(error);
+      return data as { success: true; tenantId: number | null };
+    }),
+    generateTenant: supabaseAdminProcedure.input(z.object({ contractId: z.number().int().positive(), tenantSlug: z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/) })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_generate_tenant_from_contract", { contract_id_input: input.contractId, tenant_slug_input: input.tenantSlug });
+      if (error || !data) throw databaseError(error);
+      return { tenantId: Number((data as { tenantId: number }).tenantId) };
+    }),
+  }),
+
+  revenues: router({
+    list: supabaseAdminProcedure.input(z.object({ rangeStart: z.string().datetime({ offset: true }).optional(), rangeEnd: z.string().datetime({ offset: true }).optional() })).query(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_list_revenues", { range_start_input: input.rangeStart ?? null, range_end_input: input.rangeEnd ?? null });
+      if (error) throw databaseError(error);
+      return (data ?? []) as PlatformRevenue[];
+    }),
+    create: supabaseAdminProcedure.input(z.object({
+      description: z.string().trim().min(2).max(300),
+      amount: z.number().positive(),
+      receivedAt: z.string().datetime({ offset: true }).optional(),
+      contractId: z.number().int().positive().optional(),
+      tenantId: z.number().int().positive().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_create_revenue", {
+        description_input: input.description,
+        amount_input: input.amount,
+        received_at_input: input.receivedAt ?? null,
+        contract_id_input: input.contractId ?? null,
+        tenant_id_input: input.tenantId ?? null,
+      });
+      if (error || !data) throw databaseError(error);
+      return { id: Number((data as { id: number }).id) };
     }),
   }),
 

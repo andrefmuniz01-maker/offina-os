@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, Ban, Building2, CircleDollarSign, Copy, History, KeyRound, Link2, LogIn, Pencil, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { ArrowUpRight, Ban, Building2, CircleDollarSign, Copy, FileSignature, Gauge, History, KeyRound, Link2, LogIn, Pencil, Plus, ShieldCheck, Trash2, UsersRound, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type PlatformSection = "tenants" | "plans" | "links" | "audit";
+type PlatformSection = "overview" | "tenants" | "plans" | "contracts" | "links" | "audit";
 type MemberRole = "owner" | "admin" | "attendant" | "technician";
 const roleLabels: Record<MemberRole, string> = { owner: "Proprietário", admin: "Administrador", attendant: "Atendente", technician: "Técnico" };
 const quoteStatusLabels: Record<string, string> = { sent: "Enviada", viewed: "Visualizada", approved: "Aprovada", rejected: "Recusada", expired: "Expirada" };
@@ -49,10 +49,12 @@ function copyToClipboard(value: string) {
 }
 
 export function PlatformDashboard() {
-  const [section, setSection] = useState<PlatformSection>("tenants");
+  const [section, setSection] = useState<PlatformSection>("overview");
   const sections: { id: PlatformSection; label: string; icon: typeof Building2 }[] = [
+    { id: "overview", label: "Visão geral", icon: Gauge },
     { id: "tenants", label: "Oficinas & Acessos", icon: Building2 },
     { id: "plans", label: "Planos", icon: CircleDollarSign },
+    { id: "contracts", label: "Contratos", icon: FileSignature },
     { id: "links", label: "Links de aprovação", icon: Link2 },
     { id: "audit", label: "Auditoria", icon: History },
   ];
@@ -72,7 +74,7 @@ export function PlatformDashboard() {
         </div>
       </aside>
       <div className="min-w-0 flex-1 p-5 sm:p-8 lg:p-10">
-        {section === "tenants" ? <TenantsSection /> : section === "plans" ? <PlansSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
+        {section === "overview" ? <OverviewSection /> : section === "tenants" ? <TenantsSection /> : section === "plans" ? <PlansSection /> : section === "contracts" ? <ContractsSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
       </div>
     </div>
   </main>;
@@ -91,6 +93,34 @@ function statusLabel(tenant: PlatformTenant) {
   if (!tenant.active) return "inativa";
   if (tenant.status === "suspended") return "Suspensa";
   return tenant.status;
+}
+
+function OverviewSection() {
+  const [view, setView] = useState<PeriodView>("month");
+  const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
+  const range = getPeriodRange(view, anchor);
+  const stats = trpc.platform.dashboard.stats.useQuery({ rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() });
+
+  const cards = [
+    { label: "Oficinas ativas", value: stats.data ? String(stats.data.activeTenants) : "—", hint: "Oficinas reais em operação, exclui a demo" },
+    { label: "Usuários da plataforma", value: stats.data ? String(stats.data.platformUsers) : "—", hint: "Donos e equipe de todas as oficinas, exclui a demo" },
+    { label: "Faturamento do período", value: stats.data ? money.format(Number(stats.data.periodRevenue)) : "—", hint: "Contratos ativos no período + receitas lançadas" },
+    { label: "Contratos em negociação", value: stats.data ? String(stats.data.negotiatingContracts) : "—", hint: "Pipeline comercial aberto" },
+  ];
+
+  return <div className="space-y-6">
+    <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Visão geral</h1><p className="mt-2 text-sm text-slate-500">Métricas consolidadas do negócio, direto do banco.</p></div>
+      <PeriodPicker view={view} onViewChange={setView} anchor={anchor} onAnchorChange={setAnchor} />
+    </header>
+
+    {stats.isError ? <QueryError title="Métricas indisponíveis" description="Não foi possível calcular as métricas agora." /> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {cards.map(card => <Card key={card.label} className="border-slate-200 shadow-none">
+        <CardHeader className="pb-2"><CardDescription>{card.label}</CardDescription></CardHeader>
+        <CardContent>{stats.isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-3xl font-semibold tracking-tight text-slate-950">{card.value}</p>}<p className="mt-2 text-xs text-slate-500">{card.hint}</p></CardContent>
+      </Card>)}
+    </div>}
+  </div>;
 }
 
 function TenantsSection() {
@@ -339,6 +369,134 @@ function PlansSection() {
             <Button size="sm" variant="outline" className="mt-3" onClick={() => startEdit(plan)}><Pencil className="mr-1.5 h-3.5 w-3.5" />Editar</Button>
           </div>)}
         </div> : <EmptyState title="Nenhum plano cadastrado" description="Crie o primeiro plano pelo botão acima." />}
+      </CardContent>
+    </Card>
+  </div>;
+}
+
+type PlatformContract = {
+  id: number; prospectName: string; contactWhatsapp: string | null; contactEmail: string | null; contactPhone: string | null;
+  planId: number | null; planName: string | null; monthlyValue: number | string; status: "negotiating" | "closed" | "cancelled"; notes: string | null;
+  tenantId: number | null; tenantName: string | null; closedAt: string | null; cancelledAt: string | null; createdAt: string;
+};
+type PlatformRevenue = { id: number; contractId: number | null; contractProspectName: string | null; tenantId: number | null; tenantName: string | null; description: string; amount: number | string; receivedAt: string };
+const contractStatusMeta: Record<PlatformContract["status"], { label: string; className: string }> = {
+  negotiating: { label: "Em negociação", className: "border-sky-200 bg-sky-50 text-sky-800" },
+  closed: { label: "Fechado", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
+  cancelled: { label: "Cancelado", className: "border-slate-200 bg-slate-100 text-slate-500" },
+};
+
+function slugify(value: string) {
+  return value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function ContractsSection() {
+  const utils = trpc.useUtils();
+  const contracts = trpc.platform.contracts.list.useQuery();
+  const plans = trpc.platform.plans.list.useQuery();
+  const revenues = trpc.platform.revenues.list.useQuery({});
+  const [showCreate, setShowCreate] = useState(false);
+  const emptyForm = { prospectName: "", monthlyValue: "", planId: "", contactWhatsapp: "", contactEmail: "", contactPhone: "", notes: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [revenueForm, setRevenueForm] = useState({ description: "", amount: "", contractId: "" });
+  const [generatingContractId, setGeneratingContractId] = useState<number | null>(null);
+  const [generateSlug, setGenerateSlug] = useState("");
+
+  const invalidateContracts = () => { utils.platform.contracts.list.invalidate(); utils.platform.dashboard.stats.invalidate(); };
+  const invalidateRevenues = () => { utils.platform.revenues.list.invalidate(); utils.platform.dashboard.stats.invalidate(); };
+
+  const createContract = trpc.platform.contracts.create.useMutation({
+    onSuccess: () => { toast.success("Contrato registrado."); setForm(emptyForm); setShowCreate(false); invalidateContracts(); },
+    onError: error => toast.error(error.message),
+  });
+  const closeContract = trpc.platform.contracts.close.useMutation({
+    onSuccess: () => { toast.success("Contrato fechado."); invalidateContracts(); },
+    onError: error => toast.error(error.message),
+  });
+  const setTenantStatus = trpc.platform.tenants.setStatus.useMutation({
+    onSuccess: () => { toast.success("Oficina suspensa."); utils.platform.tenants.list.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const cancelContract = trpc.platform.contracts.cancel.useMutation({
+    onSuccess: result => {
+      toast.success("Contrato cancelado.");
+      invalidateContracts();
+      if (result.tenantId && window.confirm("Contrato cancelado. Deseja também suspender a oficina vinculada agora?")) {
+        setTenantStatus.mutate({ tenantId: result.tenantId, status: "suspended" });
+      }
+    },
+    onError: error => toast.error(error.message),
+  });
+  const generateTenant = trpc.platform.contracts.generateTenant.useMutation({
+    onSuccess: () => { toast.success("Oficina gerada a partir do contrato."); setGeneratingContractId(null); setGenerateSlug(""); invalidateContracts(); utils.platform.tenants.list.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const createRevenue = trpc.platform.revenues.create.useMutation({
+    onSuccess: () => { toast.success("Receita lançada."); setRevenueForm({ description: "", amount: "", contractId: "" }); invalidateRevenues(); },
+    onError: error => toast.error(error.message),
+  });
+
+  const startGenerate = (contract: PlatformContract) => { setGeneratingContractId(contract.id); setGenerateSlug(slugify(contract.prospectName)); };
+
+  return <div className="space-y-6">
+    <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
+      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Contratos</h1><p className="mt-2 text-sm text-slate-500">Pipeline comercial: negocie, feche o contrato e gere a oficina no SaaS. Fechado não muda mais o valor — reajuste vira um novo contrato.</p></div>
+      <Button onClick={() => setShowCreate(current => !current)}><Plus className="mr-2 h-4 w-4" />Novo contrato</Button>
+    </header>
+
+    {showCreate ? <Card className="border-slate-200 shadow-sm">
+      <CardHeader><CardTitle className="text-lg">Novo contrato</CardTitle><CardDescription>Prospect ainda sem oficina — ao fechar, você poderá gerar a oficina a partir daqui.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-1.5"><Label htmlFor="contract-name">Nome do prospect/oficina</Label><Input id="contract-name" value={form.prospectName} onChange={event => setForm({ ...form, prospectName: event.target.value })} placeholder="Auto Prime Centro Automotivo" /></div>
+        <div className="grid gap-1.5"><Label htmlFor="contract-value">Valor mensal (R$)</Label><Input id="contract-value" type="number" min="0" step="0.01" value={form.monthlyValue} onChange={event => setForm({ ...form, monthlyValue: event.target.value })} placeholder="299.00" /></div>
+        <div className="grid gap-1.5"><Label htmlFor="contract-plan">Plano negociado</Label><select id="contract-plan" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={form.planId} onChange={event => setForm({ ...form, planId: event.target.value })}><option value="">Sem plano definido</option>{plans.data?.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}</select></div>
+        <div className="grid gap-1.5"><Label htmlFor="contract-whatsapp">WhatsApp</Label><Input id="contract-whatsapp" value={form.contactWhatsapp} onChange={event => setForm({ ...form, contactWhatsapp: event.target.value })} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="contract-email">E-mail</Label><Input id="contract-email" type="email" value={form.contactEmail} onChange={event => setForm({ ...form, contactEmail: event.target.value })} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="contract-phone">Telefone</Label><Input id="contract-phone" value={form.contactPhone} onChange={event => setForm({ ...form, contactPhone: event.target.value })} /></div>
+        <div className="grid gap-1.5 sm:col-span-3"><Label htmlFor="contract-notes">Observações</Label><Input id="contract-notes" value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} placeholder="Condições combinadas, prazo, etc." /></div>
+        <div className="sm:col-span-3"><Button disabled={createContract.isPending || form.prospectName.trim().length < 2 || !form.monthlyValue} onClick={() => createContract.mutate({ prospectName: form.prospectName, monthlyValue: Number(form.monthlyValue), planId: form.planId ? Number(form.planId) : undefined, contactWhatsapp: form.contactWhatsapp || undefined, contactEmail: form.contactEmail || undefined, contactPhone: form.contactPhone || undefined, notes: form.notes || undefined })}>{createContract.isPending ? "Registrando…" : "Registrar contrato"}</Button></div>
+      </CardContent>
+    </Card> : null}
+
+    <Card className="border-slate-200 shadow-none">
+      <CardHeader><CardTitle>Contratos</CardTitle></CardHeader>
+      <CardContent>
+        {contracts.isLoading ? <Skeleton className="h-36" /> : contracts.isError ? <QueryError title="Contratos indisponíveis" description="Não foi possível consultar os contratos agora." /> : contracts.data?.length ? <div className="space-y-3">
+          {contracts.data.map(contract => <div key={contract.id} className="rounded-xl border border-slate-200 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div><p className="font-semibold">{contract.prospectName}</p><p className="mt-1 text-xs text-slate-500">{money.format(Number(contract.monthlyValue))}/mês · {contract.planName ?? "sem plano"}{contract.tenantName ? ` · oficina: ${contract.tenantName}` : ""}</p></div>
+              <Badge variant="outline" className={contractStatusMeta[contract.status].className}>{contractStatusMeta[contract.status].label}</Badge>
+            </div>
+            {contract.notes ? <p className="mt-2 text-xs text-slate-500">{contract.notes}</p> : null}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {contract.status === "negotiating" ? <Button size="sm" disabled={closeContract.isPending} onClick={() => closeContract.mutate({ contractId: contract.id })}>Fechar contrato</Button> : null}
+              {contract.status === "closed" && !contract.tenantId ? <Button size="sm" variant="outline" onClick={() => startGenerate(contract)}><Building2 className="mr-1.5 h-3.5 w-3.5" />Gerar oficina</Button> : null}
+              {contract.status !== "cancelled" ? <Button size="sm" variant="outline" className="ml-auto text-red-700 hover:bg-red-50 hover:text-red-800" disabled={cancelContract.isPending} onClick={() => cancelContract.mutate({ contractId: contract.id })}><XCircle className="mr-1.5 h-3.5 w-3.5" />Cancelar</Button> : null}
+            </div>
+            {generatingContractId === contract.id ? <div className="mt-3 grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 sm:grid-cols-[1fr_auto]">
+              <div className="grid gap-1.5"><Label htmlFor={`generate-slug-${contract.id}`} className="text-xs">Identificador público (slug) da nova oficina</Label><Input id={`generate-slug-${contract.id}`} value={generateSlug} onChange={event => setGenerateSlug(event.target.value.toLowerCase())} /></div>
+              <div className="flex items-end gap-2"><Button size="sm" disabled={generateTenant.isPending || !generateSlug.trim()} onClick={() => generateTenant.mutate({ contractId: contract.id, tenantSlug: generateSlug.trim() })}>{generateTenant.isPending ? "Gerando…" : "Confirmar"}</Button><Button size="sm" variant="ghost" onClick={() => setGeneratingContractId(null)}>Cancelar</Button></div>
+            </div> : null}
+          </div>)}
+        </div> : <EmptyState title="Nenhum contrato registrado" description="Registre o primeiro contrato pelo botão acima." />}
+      </CardContent>
+    </Card>
+
+    <Card className="border-slate-200 shadow-none">
+      <CardHeader><CardTitle>Lançar receita</CardTitle><CardDescription>Registro manual de valores recebidos — soma no faturamento do período, vinculado a um contrato ou avulso.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-[1.4fr_.8fr_1fr_auto] sm:items-end">
+        <div className="grid gap-1.5"><Label htmlFor="revenue-description">Descrição</Label><Input id="revenue-description" value={revenueForm.description} onChange={event => setRevenueForm({ ...revenueForm, description: event.target.value })} placeholder="Mensalidade recebida, setup, etc." /></div>
+        <div className="grid gap-1.5"><Label htmlFor="revenue-amount">Valor (R$)</Label><Input id="revenue-amount" type="number" min="0.01" step="0.01" value={revenueForm.amount} onChange={event => setRevenueForm({ ...revenueForm, amount: event.target.value })} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="revenue-contract">Contrato (opcional)</Label><select id="revenue-contract" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={revenueForm.contractId} onChange={event => setRevenueForm({ ...revenueForm, contractId: event.target.value })}><option value="">Avulso</option>{contracts.data?.map(contract => <option key={contract.id} value={contract.id}>{contract.prospectName}</option>)}</select></div>
+        <Button disabled={createRevenue.isPending || revenueForm.description.trim().length < 2 || !revenueForm.amount} onClick={() => createRevenue.mutate({ description: revenueForm.description, amount: Number(revenueForm.amount), contractId: revenueForm.contractId ? Number(revenueForm.contractId) : undefined })}>{createRevenue.isPending ? "Lançando…" : "Lançar"}</Button>
+      </CardContent>
+      <CardContent className="pt-0">
+        {revenues.isLoading ? <Skeleton className="h-24" /> : revenues.data?.length ? <div className="space-y-2">
+          {revenues.data.slice(0, 20).map(revenue => <div key={revenue.id} className="flex flex-col gap-1 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-medium text-slate-900">{revenue.description}</p><p className="text-xs text-slate-500">{revenue.contractProspectName ?? revenue.tenantName ?? "Avulso"}</p></div>
+            <div className="flex items-center gap-3"><p className="font-semibold text-emerald-700">{money.format(Number(revenue.amount))}</p><p className="text-xs text-slate-500">{new Date(revenue.receivedAt).toLocaleDateString("pt-BR")}</p></div>
+          </div>)}
+        </div> : <EmptyState title="Nenhuma receita lançada" description="Lance a primeira receita pelo formulário acima." />}
       </CardContent>
     </Card>
   </div>;
