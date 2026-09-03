@@ -102,7 +102,7 @@ function OverviewSection() {
   const stats = trpc.platform.dashboard.stats.useQuery({ rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() });
 
   const cards = [
-    { label: "Oficinas ativas", value: stats.data ? String(stats.data.activeTenants) : "—", hint: "Oficinas reais em operação, exclui a demo" },
+    { label: "Oficinas ativas", value: stats.data ? String(stats.data.activeTenants) : "—", hint: "Todas as oficinas em operação, incluindo a demo" },
     { label: "Usuários da plataforma", value: stats.data ? String(stats.data.platformUsers) : "—", hint: "Donos e equipe de todas as oficinas, exclui a demo" },
     { label: "Faturamento do período", value: stats.data ? money.format(Number(stats.data.periodRevenue)) : "—", hint: "Contratos ativos no período + receitas lançadas" },
     { label: "Contratos em negociação", value: stats.data ? String(stats.data.negotiatingContracts) : "—", hint: "Pipeline comercial aberto" },
