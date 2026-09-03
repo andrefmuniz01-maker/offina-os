@@ -96,30 +96,40 @@ function statusLabel(tenant: PlatformTenant) {
 }
 
 function OverviewSection() {
+  const totals = trpc.platform.dashboard.totals.useQuery(undefined, { refetchOnWindowFocus: true });
   const [view, setView] = useState<PeriodView>("month");
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()));
   const range = getPeriodRange(view, anchor);
-  const stats = trpc.platform.dashboard.stats.useQuery({ rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() });
+  const revenue = trpc.platform.dashboard.periodRevenue.useQuery({ rangeStart: range.start.toISOString(), rangeEnd: range.end.toISOString() });
 
-  const cards = [
-    { label: "Oficinas ativas", value: stats.data ? String(stats.data.activeTenants) : "—", hint: "Todas as oficinas em operação, incluindo a demo" },
-    { label: "Usuários da plataforma", value: stats.data ? String(stats.data.platformUsers) : "—", hint: "Donos e equipe de todas as oficinas, exclui a demo" },
-    { label: "Faturamento do período", value: stats.data ? money.format(Number(stats.data.periodRevenue)) : "—", hint: "Contratos ativos no período + receitas lançadas" },
-    { label: "Contratos em negociação", value: stats.data ? String(stats.data.negotiatingContracts) : "—", hint: "Pipeline comercial aberto" },
+  const totalCards = [
+    { label: "Oficinas ativas", value: totals.data ? String(totals.data.activeTenants) : "—", hint: "Todas as oficinas em operação agora, incluindo a demo" },
+    { label: "Usuários da plataforma", value: totals.data ? String(totals.data.platformUsers) : "—", hint: "Donos e equipe de todas as oficinas agora, exclui a demo" },
+    { label: "Contratos em negociação", value: totals.data ? String(totals.data.negotiatingContracts) : "—", hint: "Pipeline comercial aberto agora" },
   ];
 
   return <div className="space-y-6">
-    <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Visão geral</h1><p className="mt-2 text-sm text-slate-500">Métricas consolidadas do negócio, direto do banco.</p></div>
-      <PeriodPicker view={view} onViewChange={setView} anchor={anchor} onAnchorChange={setAnchor} />
-    </header>
+    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Visão geral</h1><p className="mt-2 text-sm text-slate-500">Estado atual do negócio, sem filtro — muda na hora a cada oficina, contrato ou receita alterada.</p></header>
 
-    {stats.isError ? <QueryError title="Métricas indisponíveis" description="Não foi possível calcular as métricas agora." /> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(card => <Card key={card.label} className="border-slate-200 shadow-none">
+    {totals.isError ? <QueryError title="Métricas indisponíveis" description="Não foi possível calcular as métricas agora." /> : <div className="grid gap-4 sm:grid-cols-3">
+      {totalCards.map(card => <Card key={card.label} className="border-slate-200 shadow-none">
         <CardHeader className="pb-2"><CardDescription>{card.label}</CardDescription></CardHeader>
-        <CardContent>{stats.isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-3xl font-semibold tracking-tight text-slate-950">{card.value}</p>}<p className="mt-2 text-xs text-slate-500">{card.hint}</p></CardContent>
+        <CardContent>{totals.isLoading ? <Skeleton className="h-8 w-24" /> : <p className="text-3xl font-semibold tracking-tight text-slate-950">{card.value}</p>}<p className="mt-2 text-xs text-slate-500">{card.hint}</p></CardContent>
       </Card>)}
     </div>}
+
+    <Card className="border-orange-200 shadow-sm">
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div><CardTitle className="text-lg">Faturamento por período</CardTitle><CardDescription>Único indicador filtrável — os demais cards acima são sempre o total atual.</CardDescription></div>
+        <PeriodPicker view={view} onViewChange={setView} anchor={anchor} onAnchorChange={setAnchor} />
+      </CardHeader>
+      <CardContent>
+        {revenue.isError ? <QueryError title="Faturamento indisponível" description="Não foi possível calcular o faturamento deste período." /> : revenue.isLoading ? <Skeleton className="h-10 w-40" /> : <>
+          <p className="text-4xl font-semibold tracking-tight text-slate-950">{money.format(Number(revenue.data?.periodRevenue ?? 0))}</p>
+          <p className="mt-2 text-xs text-slate-500">{money.format(Number(revenue.data?.contractRevenue ?? 0))} de contratos fechados no período + {money.format(Number(revenue.data?.manualRevenue ?? 0))} de receitas lançadas.</p>
+        </>}
+      </CardContent>
+    </Card>
   </div>;
 }
 
@@ -132,11 +142,11 @@ function TenantsSection() {
   const [createForm, setCreateForm] = useState({ name: "", slug: "", whatsapp: "" });
 
   const createTenant = trpc.workspace.createTenant.useMutation({
-    onSuccess: () => { toast.success("Oficina criada."); setCreateForm({ name: "", slug: "", whatsapp: "" }); setShowCreate(false); utils.platform.tenants.list.invalidate(); },
+    onSuccess: () => { toast.success("Oficina criada."); setCreateForm({ name: "", slug: "", whatsapp: "" }); setShowCreate(false); utils.platform.tenants.list.invalidate(); utils.platform.dashboard.totals.invalidate(); },
     onError: error => toast.error(error.message),
   });
   const setStatus = trpc.platform.tenants.setStatus.useMutation({
-    onSuccess: result => { toast.success(result.status === "suspended" ? "Oficina suspensa." : "Oficina reativada."); utils.platform.tenants.list.invalidate(); },
+    onSuccess: result => { toast.success(result.status === "suspended" ? "Oficina suspensa." : "Oficina reativada."); utils.platform.tenants.list.invalidate(); utils.platform.dashboard.totals.invalidate(); },
     onError: error => toast.error(error.message),
   });
 
@@ -402,8 +412,8 @@ function ContractsSection() {
   const [generatingContractId, setGeneratingContractId] = useState<number | null>(null);
   const [generateSlug, setGenerateSlug] = useState("");
 
-  const invalidateContracts = () => { utils.platform.contracts.list.invalidate(); utils.platform.dashboard.stats.invalidate(); };
-  const invalidateRevenues = () => { utils.platform.revenues.list.invalidate(); utils.platform.dashboard.stats.invalidate(); };
+  const invalidateContracts = () => { utils.platform.contracts.list.invalidate(); utils.platform.dashboard.totals.invalidate(); utils.platform.dashboard.periodRevenue.invalidate(); };
+  const invalidateRevenues = () => { utils.platform.revenues.list.invalidate(); utils.platform.dashboard.periodRevenue.invalidate(); };
 
   const createContract = trpc.platform.contracts.create.useMutation({
     onSuccess: () => { toast.success("Contrato registrado."); setForm(emptyForm); setShowCreate(false); invalidateContracts(); },
@@ -414,7 +424,7 @@ function ContractsSection() {
     onError: error => toast.error(error.message),
   });
   const setTenantStatus = trpc.platform.tenants.setStatus.useMutation({
-    onSuccess: () => { toast.success("Oficina suspensa."); utils.platform.tenants.list.invalidate(); },
+    onSuccess: () => { toast.success("Oficina suspensa."); utils.platform.tenants.list.invalidate(); utils.platform.dashboard.totals.invalidate(); },
     onError: error => toast.error(error.message),
   });
   const cancelContract = trpc.platform.contracts.cancel.useMutation({

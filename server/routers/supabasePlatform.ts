@@ -86,10 +86,13 @@ type PlatformRevenue = {
   receivedAt: string;
 };
 
-type PlatformDashboardStats = {
+type PlatformDashboardTotals = {
   activeTenants: number;
   platformUsers: number;
   negotiatingContracts: number;
+};
+
+type PlatformDashboardPeriodRevenue = {
   periodRevenue: number | string;
   manualRevenue: number | string;
   contractRevenue: number | string;
@@ -226,10 +229,17 @@ export const supabasePlatformRouter = router({
   }),
 
   dashboard: router({
-    stats: supabaseAdminProcedure.input(z.object({ rangeStart: z.string().datetime({ offset: true }), rangeEnd: z.string().datetime({ offset: true }) })).query(async ({ ctx, input }) => {
-      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_dashboard_stats", { range_start_input: input.rangeStart, range_end_input: input.rangeEnd });
+    // Sem filtro de período de propósito: reflete o estado atual (cancelar
+    // um contrato ou suspender uma oficina muda o número na hora).
+    totals: supabaseAdminProcedure.query(async ({ ctx }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_dashboard_totals");
       if (error) throw databaseError(error);
-      return data as PlatformDashboardStats;
+      return data as PlatformDashboardTotals;
+    }),
+    periodRevenue: supabaseAdminProcedure.input(z.object({ rangeStart: z.string().datetime({ offset: true }), rangeEnd: z.string().datetime({ offset: true }) })).query(async ({ ctx, input }) => {
+      const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_dashboard_period_revenue", { range_start_input: input.rangeStart, range_end_input: input.rangeEnd });
+      if (error) throw databaseError(error);
+      return data as PlatformDashboardPeriodRevenue;
     }),
   }),
 
