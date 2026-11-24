@@ -7,7 +7,7 @@
 // executa esse servidor; sem esta configuração ela publica a pasta dist/ como
 // estática e o navegador mostra o código de dist/index.js em vez do sistema.
 import { execSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
 
@@ -15,18 +15,30 @@ const root = path.resolve(import.meta.dirname, "..");
 const outDir = path.join(root, ".vercel", "output");
 const fnDir = path.join(outDir, "functions", "api.func");
 
+// Valores PÚBLICOS (URL e chave publishable do Supabase) versionados em
+// .env.production: já vão no JavaScript que o navegador baixa, então não são
+// segredo. Variáveis já definidas no ambiente (painel da Vercel) têm prioridade.
+const publicNames = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"];
+const publicEnvFile = path.join(root, ".env.production");
+if (existsSync(publicEnvFile)) {
+  for (const line of readFileSync(publicEnvFile, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.+?)\s*$/);
+    if (!match || !publicNames.includes(match[1])) continue;
+    if (!process.env[match[1]]?.trim()) process.env[match[1]] = match[2].replace(/^["']|["']$/g, "");
+  }
+}
+
 // As variáveis VITE_* são embutidas no navegador na hora do build. Sem elas o
 // front quebra com tela em branco, então é melhor falhar o deploy com um aviso
 // claro do que publicar um site que não abre.
-const requiredAtBuild = ["VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"];
-const missing = requiredAtBuild.filter(name => !process.env[name]?.trim());
+const missing = publicNames.filter(name => !process.env[name]?.trim());
 if (process.env.VERCEL && missing.length > 0) {
-  console.error(`\nDeploy interrompido: faltam variáveis de ambiente na Vercel: ${missing.join(", ")}.`);
-  console.error("Cadastre em Project Settings > Environment Variables (Production) e faça um novo deploy.\n");
+  console.error(`\nDeploy interrompido: faltam variáveis de ambiente: ${missing.join(", ")}.`);
+  console.error("Defina-as em .env.production (valores públicos) ou em Project Settings > Environment Variables da Vercel.\n");
   process.exit(1);
 }
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
-  console.warn("Aviso: SUPABASE_SERVICE_ROLE_KEY não definida — convites por e-mail e o intake público não vão funcionar.");
+  console.warn("Aviso: SUPABASE_SERVICE_ROLE_KEY não definida — convites por e-mail e o intake público não vão funcionar até cadastrá-la na Vercel.");
 }
 
 rmSync(outDir, { recursive: true, force: true });
@@ -55,6 +67,8 @@ await build({
       "const require = __createRequire(import.meta.url);",
       "const __filename = __fileURLToPath(import.meta.url);",
       "const __dirname = __dirname_fn(__filename);",
+      // O servidor lê estas duas variáveis públicas em runtime; o valor do painel da Vercel (se houver) vence.
+      ...publicNames.map(name => `process.env.${name} ??= ${JSON.stringify(process.env[name] ?? "")};`),
     ].join("\n"),
   },
 });

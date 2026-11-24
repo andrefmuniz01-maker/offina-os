@@ -86,16 +86,13 @@ como **front estático + função serverless da API**, gerados por `pnpm build:v
 (`scripts/build-vercel.mjs`, configurado em `vercel.json`). Não altere o *Output Directory*
 nem o *Framework Preset* no painel da Vercel: o `vercel.json` já define tudo.
 
-Variáveis de ambiente obrigatórias (Project Settings → Environment Variables → Production):
+A URL e a chave *publishable* do Supabase (valores públicos, já presentes no JavaScript do navegador)
+ficam versionadas em `.env.production`; o deploy funciona sem cadastrar nada na Vercel. Variáveis
+cadastradas no painel da Vercel têm prioridade sobre esse arquivo.
 
-| Variável | Uso |
-| --- | --- |
-| `VITE_SUPABASE_URL` | URL do projeto Supabase (embutida no front no build) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | chave publishable/anon (embutida no front no build) |
-| `SUPABASE_SERVICE_ROLE_KEY` | chave administrativa, **somente servidor** (convites, intake público) |
-| `NODE_ENV` | `production` |
+Para liberar convites por e-mail e o recebimento público de solicitações, cadastre **uma** variável
+secreta na Vercel (Project Settings → Environment Variables → Production): `SUPABASE_SERVICE_ROLE_KEY`
+(somente servidor — nunca versionar). `NODE_ENV` a Vercel define sozinha.
 
-`VITE_*` são lidas no build: ao alterá-las, faça um novo deploy. O build falha de propósito,
-com mensagem clara, se `VITE_SUPABASE_URL` ou `VITE_SUPABASE_PUBLISHABLE_KEY` estiverem ausentes.
 No Supabase, em Authentication → URL Configuration, cadastre o domínio da Vercel como *Site URL*
 e em *Redirect URLs* (`https://SEU-DOMINIO/auth/callback`) para o e-mail de convite funcionar.
