@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createSupabaseClient, createSupabaseServiceRoleClient, resolveRequestOrigin } from "../_core/supabase";
 import { router, supabaseAdminProcedure } from "../_core/trpc";
+import { ensureUserWithTemporaryPassword, resetUserTemporaryPassword, writePlatformAudit } from "../_core/userProvisioning";
 
 const tenantIdInput = z.object({ tenantId: z.number().int().positive() });
 const memberRole = z.enum(["owner", "admin", "attendant", "technician"]);
@@ -314,6 +315,46 @@ export const supabasePlatformRouter = router({
     }),
   }),
 
+  /** Administradores mestres (Super Admin) da plataforma. */
+  admins: router({
+    list: supabaseAdminProcedure.query(async () => {
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
+      const { data, error } = await serviceClient.from("profiles").select("id, email, name, created_at, last_signed_in_at").eq("platform_role", "super_admin").order("created_at");
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível listar os administradores." });
+      return (data ?? []).map(row => ({ id: row.id as string, email: row.email as string | null, name: row.name as string | null, createdAt: row.created_at as string, lastSignedInAt: row.last_signed_in_at as string | null }));
+    }),
+    /** Dá acesso de administrador mestre a um e-mail; cria a conta com senha temporária se ainda não existir. */
+    add: supabaseAdminProcedure.input(z.object({ email: z.string().trim().email().max(255), name: z.string().trim().max(160).optional() })).mutation(async ({ ctx, input }) => {
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
+      const email = input.email.trim().toLowerCase();
+      let provisioned;
+      try {
+        provisioned = await ensureUserWithTemporaryPassword(serviceClient, email, input.name);
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Não foi possível criar a conta." });
+      }
+      const { error } = await serviceClient.from("profiles").update({ platform_role: "super_admin", updated_at: new Date().toISOString() }).eq("id", provisioned.userId);
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A conta foi criada, mas não foi possível conceder o papel de administrador." });
+      await writePlatformAudit(serviceClient, ctx.supabaseUser!.id, "platform.super_admin_granted", { email, userId: provisioned.userId, accountCreated: provisioned.created });
+      return { success: true as const, userId: provisioned.userId, email, accountCreated: provisioned.created, temporaryPassword: provisioned.temporaryPassword };
+    }),
+    /** Remove o papel de administrador mestre. Nunca remove a si mesmo nem o último administrador. */
+    remove: supabaseAdminProcedure.input(z.object({ userId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.supabaseUser!.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode remover o seu próprio acesso de administrador mestre." });
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
+      const { count, error: countError } = await serviceClient.from("profiles").select("id", { count: "exact", head: true }).eq("platform_role", "super_admin");
+      if (countError) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível verificar os administradores." });
+      if ((count ?? 0) <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "A plataforma precisa manter ao menos um administrador mestre." });
+      const { data, error } = await serviceClient.from("profiles").update({ platform_role: "platform_user", updated_at: new Date().toISOString() }).eq("id", input.userId).eq("platform_role", "super_admin").select("email").maybeSingle();
+      if (error || !data) throw new TRPCError({ code: "NOT_FOUND", message: "Administrador não encontrado." });
+      await writePlatformAudit(serviceClient, ctx.supabaseUser!.id, "platform.super_admin_revoked", { email: data.email, userId: input.userId });
+      return { success: true as const };
+    }),
+  }),
+
   access: router({
     /**
      * Concede acesso a uma oficina por e-mail. Se a pessoa ainda não tem conta,
@@ -322,11 +363,31 @@ export const supabasePlatformRouter = router({
      * Se o e-mail já pertence a um perfil existente, só vincula a oficina —
      * a pessoa já tem senha e acesso, não faz sentido reenviar convite.
      */
-    grant: supabaseAdminProcedure.input(z.object({ tenantId: z.number().int().positive(), email: z.string().trim().email().max(255), role: memberRole, name: z.string().trim().max(160).optional() })).mutation(async ({ ctx, input }) => {
+    grant: supabaseAdminProcedure.input(z.object({ tenantId: z.number().int().positive(), email: z.string().trim().email().max(255), role: memberRole, name: z.string().trim().max(160).optional(), method: z.enum(["password", "email"]).default("password") })).mutation(async ({ ctx, input }) => {
       const serviceClient = createSupabaseServiceRoleClient();
       if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
 
       const normalizedEmail = input.email.trim().toLowerCase();
+
+      // method "password": cria a conta já com senha temporária (devolvida uma única vez ao Super Admin
+      // para repassar) — não depende do e-mail de convite do Supabase.
+      if (input.method === "password") {
+        let provisioned;
+        try {
+          provisioned = await ensureUserWithTemporaryPassword(serviceClient, normalizedEmail, input.name);
+        } catch (error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Não foi possível criar a conta." });
+        }
+        const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("platform_grant_tenant_access", {
+          target_tenant_id: input.tenantId,
+          target_user_id: provisioned.userId,
+          role_input: input.role,
+        });
+        if (error || !data) throw databaseError(error);
+        await writePlatformAudit(serviceClient, ctx.supabaseUser!.id, "platform.access_granted_with_password", { email: normalizedEmail, tenantId: input.tenantId, role: input.role, accountCreated: provisioned.created });
+        return { success: true as const, invited: false, userId: provisioned.userId, email: normalizedEmail, temporaryPassword: provisioned.temporaryPassword };
+      }
+
       const { data: existingProfile, error: lookupError } = await serviceClient
         .from("profiles")
         .select("id")
@@ -357,7 +418,24 @@ export const supabasePlatformRouter = router({
       });
       if (error || !data) throw databaseError(error);
 
-      return { success: true as const, invited, userId };
+      return { success: true as const, invited, userId, email: normalizedEmail, temporaryPassword: null as string | null };
+    }),
+
+    /**
+     * Define uma nova senha temporária para qualquer conta (o "esqueci a senha" por e-mail depende do
+     * serviço de e-mail do Supabase). A senha é devolvida uma única vez e não é gravada em lugar nenhum.
+     */
+    resetPassword: supabaseAdminProcedure.input(z.object({ userId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
+      const serviceClient = createSupabaseServiceRoleClient();
+      if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
+      let result;
+      try {
+        result = await resetUserTemporaryPassword(serviceClient, input.userId);
+      } catch (error) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Não foi possível definir a nova senha." });
+      }
+      await writePlatformAudit(serviceClient, ctx.supabaseUser!.id, "platform.password_reset_by_admin", { userId: input.userId, email: result.email });
+      return { success: true as const, email: result.email, temporaryPassword: result.temporaryPassword };
     }),
 
     revoke: supabaseAdminProcedure.input(z.object({ tenantId: z.number().int().positive(), userId: z.string().uuid() })).mutation(async ({ ctx, input }) => {

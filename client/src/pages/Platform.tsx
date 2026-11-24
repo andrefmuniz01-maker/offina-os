@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPeriodRange, startOfDay, type PeriodView } from "@/lib/periodRange";
 import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, Ban, Building2, CircleDollarSign, Copy, FileSignature, Gauge, History, KeyRound, Link2, LogIn, Pencil, Plus, ShieldCheck, Trash2, UsersRound, XCircle } from "lucide-react";
+import { CredentialsCard, type IssuedCredentials } from "@/components/CredentialsCard";
+import { ArrowUpRight, Ban, Building2, CircleDollarSign, Copy, FileSignature, Gauge, History, KeyRound, Link2, LogIn, Pencil, Plus, RotateCcw, ShieldCheck, Trash2, UserCog, UsersRound, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type PlatformSection = "overview" | "tenants" | "plans" | "contracts" | "links" | "audit";
+type PlatformSection = "overview" | "tenants" | "plans" | "contracts" | "admins" | "links" | "audit";
 type MemberRole = "owner" | "admin" | "attendant" | "technician";
 const roleLabels: Record<MemberRole, string> = { owner: "Proprietário", admin: "Administrador", attendant: "Atendente", technician: "Técnico" };
 const quoteStatusLabels: Record<string, string> = { sent: "Enviada", viewed: "Visualizada", approved: "Aprovada", rejected: "Recusada", expired: "Expirada" };
@@ -55,6 +56,7 @@ export function PlatformDashboard() {
     { id: "tenants", label: "Oficinas & Acessos", icon: Building2 },
     { id: "plans", label: "Planos", icon: CircleDollarSign },
     { id: "contracts", label: "Contratos", icon: FileSignature },
+    { id: "admins", label: "Administradores", icon: UserCog },
     { id: "links", label: "Links de aprovação", icon: Link2 },
     { id: "audit", label: "Auditoria", icon: History },
   ];
@@ -74,7 +76,7 @@ export function PlatformDashboard() {
         </div>
       </aside>
       <div className="min-w-0 flex-1 p-5 sm:p-8 lg:p-10">
-        {section === "overview" ? <OverviewSection /> : section === "tenants" ? <TenantsSection /> : section === "plans" ? <PlansSection /> : section === "contracts" ? <ContractsSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
+        {section === "overview" ? <OverviewSection /> : section === "tenants" ? <TenantsSection /> : section === "plans" ? <PlansSection /> : section === "contracts" ? <ContractsSection /> : section === "admins" ? <AdminsSection /> : section === "links" ? <PublicLinksSection /> : <AuditSection />}
       </div>
     </div>
   </main>;
@@ -199,11 +201,27 @@ function TenantsSection() {
 function TenantAccessCard({ tenant, onClose }: { tenant: PlatformTenant; onClose: () => void }) {
   const utils = trpc.useUtils();
   const members = trpc.platform.tenants.members.useQuery({ tenantId: tenant.id });
-  const [grantForm, setGrantForm] = useState({ email: "", name: "", role: "attendant" as MemberRole });
+  const [grantForm, setGrantForm] = useState({ email: "", name: "", role: "attendant" as MemberRole, method: "password" as "password" | "email" });
+  const [issued, setIssued] = useState<{ credentials: IssuedCredentials; title: string } | null>(null);
 
   const invalidate = () => { utils.platform.tenants.members.invalidate({ tenantId: tenant.id }); utils.platform.tenants.list.invalidate(); };
   const grantAccess = trpc.platform.access.grant.useMutation({
-    onSuccess: result => { toast.success(result.invited ? "Convite enviado por e-mail para definir a senha." : "Acesso concedido."); setGrantForm({ email: "", name: "", role: "attendant" }); invalidate(); },
+    onSuccess: result => {
+      if (result.temporaryPassword) {
+        toast.success("Acesso criado. Envie a senha à pessoa.");
+        setIssued({ credentials: { email: result.email, temporaryPassword: result.temporaryPassword }, title: "Acesso criado" });
+      } else {
+        toast.success(result.invited ? "Convite enviado por e-mail para definir a senha." : "Acesso concedido (a pessoa já tinha conta e usa a senha dela).");
+      }
+      setGrantForm(current => ({ ...current, email: "", name: "" }));
+      invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const resetPassword = trpc.platform.access.resetPassword.useMutation({
+    onSuccess: result => {
+      if (result.email && result.temporaryPassword) setIssued({ credentials: { email: result.email, temporaryPassword: result.temporaryPassword }, title: "Nova senha gerada" });
+    },
     onError: error => toast.error(error.message),
   });
   const revokeAccess = trpc.platform.access.revoke.useMutation({
@@ -217,18 +235,20 @@ function TenantAccessCard({ tenant, onClose }: { tenant: PlatformTenant; onClose
       <Button size="sm" variant="ghost" onClick={onClose}>Fechar</Button>
     </CardHeader>
     <CardContent className="space-y-5">
+      {issued ? <CredentialsCard credentials={issued.credentials} title={issued.title} onClose={() => setIssued(null)} /> : null}
       <div className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:grid-cols-[1.2fr_1fr_.8fr_auto] sm:items-end">
         <div className="grid gap-1.5"><Label htmlFor="grant-email">E-mail</Label><Input id="grant-email" type="email" value={grantForm.email} onChange={event => setGrantForm({ ...grantForm, email: event.target.value })} placeholder="pessoa@oficina.com" /></div>
         <div className="grid gap-1.5"><Label htmlFor="grant-name">Nome (opcional)</Label><Input id="grant-name" value={grantForm.name} onChange={event => setGrantForm({ ...grantForm, name: event.target.value })} placeholder="Nome completo" /></div>
         <div className="grid gap-1.5"><Label htmlFor="grant-role">Papel</Label><select id="grant-role" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={grantForm.role} onChange={event => setGrantForm({ ...grantForm, role: event.target.value as MemberRole })}>{Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-        <Button disabled={grantAccess.isPending || !grantForm.email.trim()} onClick={() => grantAccess.mutate({ tenantId: tenant.id, email: grantForm.email, role: grantForm.role, name: grantForm.name || undefined })}><KeyRound className="mr-2 h-4 w-4" />{grantAccess.isPending ? "Concedendo…" : "Conceder acesso"}</Button>
+        <Button disabled={grantAccess.isPending || !grantForm.email.trim()} onClick={() => grantAccess.mutate({ tenantId: tenant.id, email: grantForm.email, role: grantForm.role, name: grantForm.name || undefined, method: grantForm.method })}><KeyRound className="mr-2 h-4 w-4" />{grantAccess.isPending ? "Concedendo…" : "Conceder acesso"}</Button>
+        <div className="grid gap-1.5 sm:col-span-4 sm:grid-cols-[auto_1fr] sm:items-center"><Label htmlFor="grant-method" className="text-xs">Como a pessoa recebe o acesso</Label><select id="grant-method" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={grantForm.method} onChange={event => setGrantForm({ ...grantForm, method: event.target.value as "password" | "email" })}><option value="password">Gerar senha temporária (você envia por e-mail ou WhatsApp)</option><option value="email">Convite automático por e-mail (depende do serviço de e-mail do Supabase)</option></select></div>
         {grantForm.role === "owner" ? <p className="sm:col-span-4 text-xs text-amber-700">Um Proprietário concede controle total; a oficina pode ter mais de um Proprietário ao mesmo tempo.</p> : null}
       </div>
 
       {members.isLoading ? <Skeleton className="h-24" /> : members.isError ? <QueryError title="Integrantes indisponíveis" description="Não foi possível listar os integrantes desta oficina." /> : members.data?.length ? <div className="space-y-2">
         {members.data.map(member => <div key={member.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div><p className="font-medium text-slate-900">{member.name ?? "Sem nome"}</p><p className="text-xs text-slate-500">{member.email ?? "sem e-mail"}</p></div>
-          <div className="flex items-center gap-2"><Badge variant="outline">{roleLabels[member.role]}</Badge><Badge className={member.active ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-50" : "bg-slate-100 text-slate-600 hover:bg-slate-100"}>{member.active ? "Ativo" : "Revogado"}</Badge>{member.active ? <Button size="sm" variant="outline" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={revokeAccess.isPending} onClick={() => revokeAccess.mutate({ tenantId: tenant.id, userId: member.userId })}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Revogar</Button> : null}</div>
+          <div className="flex items-center gap-2"><Badge variant="outline">{roleLabels[member.role]}</Badge><Badge className={member.active ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-50" : "bg-slate-100 text-slate-600 hover:bg-slate-100"}>{member.active ? "Ativo" : "Revogado"}</Badge><Button size="sm" variant="outline" disabled={resetPassword.isPending} onClick={() => { if (window.confirm(`Gerar uma nova senha para ${member.email ?? "este usuário"}? A senha atual deixa de funcionar.`)) resetPassword.mutate({ userId: member.userId }); }}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Nova senha</Button>{member.active ? <Button size="sm" variant="outline" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={revokeAccess.isPending} onClick={() => revokeAccess.mutate({ tenantId: tenant.id, userId: member.userId })}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Revogar</Button> : null}</div>
         </div>)}
       </div> : <EmptyState title="Nenhum integrante ainda" description="Conceda o primeiro acesso pelo formulário acima." />}
     </CardContent>
@@ -507,6 +527,68 @@ function ContractsSection() {
             <div className="flex items-center gap-3"><p className="font-semibold text-emerald-700">{money.format(Number(revenue.amount))}</p><p className="text-xs text-slate-500">{new Date(revenue.receivedAt).toLocaleDateString("pt-BR")}</p></div>
           </div>)}
         </div> : <EmptyState title="Nenhuma receita lançada" description="Lance a primeira receita pelo formulário acima." />}
+      </CardContent>
+    </Card>
+  </div>;
+}
+
+function AdminsSection() {
+  const utils = trpc.useUtils();
+  const me = trpc.auth.me.useQuery();
+  const admins = trpc.platform.admins.list.useQuery();
+  const [form, setForm] = useState({ email: "", name: "" });
+  const [issued, setIssued] = useState<{ credentials: IssuedCredentials; title: string } | null>(null);
+
+  const add = trpc.platform.admins.add.useMutation({
+    onSuccess: result => {
+      if (result.temporaryPassword) {
+        toast.success("Administrador criado. Envie a senha à pessoa.");
+        setIssued({ credentials: { email: result.email, temporaryPassword: result.temporaryPassword }, title: "Administrador mestre criado" });
+      } else {
+        toast.success("Acesso de administrador mestre concedido (a pessoa já tinha conta e usa a senha dela).");
+      }
+      setForm({ email: "", name: "" });
+      utils.platform.admins.list.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const remove = trpc.platform.admins.remove.useMutation({
+    onSuccess: () => { toast.success("Acesso de administrador removido."); utils.platform.admins.list.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const resetPassword = trpc.platform.access.resetPassword.useMutation({
+    onSuccess: result => {
+      if (result.email && result.temporaryPassword) setIssued({ credentials: { email: result.email, temporaryPassword: result.temporaryPassword }, title: "Nova senha gerada" });
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  return <div className="space-y-6">
+    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Administradores mestres</h1><p className="mt-2 text-sm text-slate-500">Quem tem controle total da plataforma. Ao adicionar um e-mail novo, a conta é criada com uma senha temporária que você envia à pessoa.</p></header>
+
+    {issued ? <CredentialsCard credentials={issued.credentials} title={issued.title} onClose={() => setIssued(null)} /> : null}
+
+    <Card className="border-slate-200 shadow-sm">
+      <CardHeader><CardTitle className="text-lg">Adicionar administrador mestre</CardTitle><CardDescription>Dá acesso total à plataforma. Conceda apenas a quem você confia.</CardDescription></CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-[1.4fr_1fr_auto] sm:items-end">
+        <div className="grid gap-1.5"><Label htmlFor="admin-email">E-mail</Label><Input id="admin-email" type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="pessoa@exemplo.com" /></div>
+        <div className="grid gap-1.5"><Label htmlFor="admin-name">Nome (opcional)</Label><Input id="admin-name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></div>
+        <Button disabled={add.isPending || !form.email.trim()} onClick={() => add.mutate({ email: form.email, name: form.name || undefined })}><KeyRound className="mr-2 h-4 w-4" />{add.isPending ? "Adicionando…" : "Adicionar"}</Button>
+      </CardContent>
+    </Card>
+
+    <Card className="border-slate-200 shadow-none">
+      <CardHeader><CardTitle>Administradores atuais</CardTitle></CardHeader>
+      <CardContent>
+        {admins.isLoading ? <Skeleton className="h-24" /> : admins.isError ? <QueryError title="Lista indisponível" description="Não foi possível consultar os administradores agora." /> : admins.data?.length ? <div className="space-y-2">
+          {admins.data.map(admin => <div key={admin.id} className="flex flex-col gap-2 rounded-xl border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-medium text-slate-900">{admin.name ?? admin.email ?? "Sem nome"}{admin.id === me.data?.id ? <Badge variant="outline" className="ml-2">Você</Badge> : null}</p><p className="text-xs text-slate-500">{admin.email ?? "sem e-mail"} · {admin.lastSignedInAt ? `último acesso ${new Date(admin.lastSignedInAt).toLocaleDateString("pt-BR")}` : "ainda não entrou"}</p></div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={resetPassword.isPending} onClick={() => { if (window.confirm(`Gerar uma nova senha para ${admin.email ?? "este usuário"}? A senha atual deixa de funcionar.`)) resetPassword.mutate({ userId: admin.id }); }}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Nova senha</Button>
+              {admin.id !== me.data?.id ? <Button size="sm" variant="outline" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={remove.isPending} onClick={() => { if (window.confirm(`Remover o acesso de administrador mestre de ${admin.email ?? "este usuário"}?`)) remove.mutate({ userId: admin.id }); }}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Remover</Button> : null}
+            </div>
+          </div>)}
+        </div> : <EmptyState title="Nenhum administrador" description="Adicione o primeiro pelo formulário acima." />}
       </CardContent>
     </Card>
   </div>;

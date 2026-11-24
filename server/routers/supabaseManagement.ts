@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createSupabaseClient, createSupabaseServiceRoleClient, resolveRequestOrigin } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
+import { ensureUserWithTemporaryPassword } from "../_core/userProvisioning";
 import { requireSupabaseTenantPermission, getSupabaseTenantAccess, hasSupabasePermission } from "../supabaseTenantAccess";
 
 const tenantInput = z.object({ tenantId: z.number().int().positive() });
@@ -169,12 +170,27 @@ export const supabaseManagementRouter = router({
      * tem cadastro), mas limitada aos papéis Admin/Atendente/Técnico — só o
      * Super Admin concede Proprietário (checado também no banco).
      */
-    invite: supabaseProtectedProcedure.input(tenantInput.extend({ email: z.string().trim().email().max(255), name: z.string().trim().max(160).optional(), role: z.enum(["admin", "attendant", "technician"]) })).mutation(async ({ ctx, input }) => {
+    invite: supabaseProtectedProcedure.input(tenantInput.extend({ email: z.string().trim().email().max(255), name: z.string().trim().max(160).optional(), role: z.enum(["admin", "attendant", "technician"]), method: z.enum(["password", "email"]).default("password") })).mutation(async ({ ctx, input }) => {
       await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "team.manage");
       const serviceClient = createSupabaseServiceRoleClient();
       if (!serviceClient) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O Supabase Admin não está configurado no servidor." });
 
       const normalizedEmail = input.email.trim().toLowerCase();
+
+      // method "password": cria a conta com senha temporária (devolvida uma única vez a quem convida),
+      // sem depender do e-mail de convite do Supabase.
+      if (input.method === "password") {
+        let provisioned;
+        try {
+          provisioned = await ensureUserWithTemporaryPassword(serviceClient, normalizedEmail, input.name);
+        } catch (error) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Não foi possível criar a conta." });
+        }
+        const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_grant_team_access", { target_tenant_id: input.tenantId, target_user_id: provisioned.userId, role_input: input.role });
+        if (error || !data) throw databaseError(error);
+        return { success: true as const, invited: false, userId: provisioned.userId, email: normalizedEmail, temporaryPassword: provisioned.temporaryPassword };
+      }
+
       const { data: existingProfile, error: lookupError } = await serviceClient.from("profiles").select("id").ilike("email", normalizedEmail).maybeSingle();
       if (lookupError) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível verificar se este e-mail já possui conta." });
 
@@ -190,7 +206,7 @@ export const supabaseManagementRouter = router({
 
       const { data, error } = await createSupabaseClient(ctx.supabaseUser!.accessToken).rpc("workspace_grant_team_access", { target_tenant_id: input.tenantId, target_user_id: userId, role_input: input.role });
       if (error || !data) throw databaseError(error);
-      return { success: true as const, invited, userId };
+      return { success: true as const, invited, userId, email: normalizedEmail, temporaryPassword: null as string | null };
     }),
     revoke: supabaseProtectedProcedure.input(tenantInput.extend({ userId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
       await requireSupabaseTenantPermission(ctx.supabaseUser!, input.tenantId, "team.manage");

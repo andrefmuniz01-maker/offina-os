@@ -1,5 +1,6 @@
 import DashboardLayout, { type DashboardMenuItem } from "@/components/DashboardLayout";
 import { SafeLink as Link } from "@/components/SafeLink";
+import { CredentialsCard, type IssuedCredentials } from "@/components/CredentialsCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,10 +41,16 @@ export default function Team() {
   const myRole = members.data?.find(({ user }) => user.id === me.data?.id)?.member.role;
   const canManageTeam = myRole === "owner" || myRole === "admin";
 
-  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "attendant" as InviteRole });
+  const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "attendant" as InviteRole, method: "password" as "password" | "email" });
+  const [issued, setIssued] = useState<IssuedCredentials | null>(null);
   const invalidate = () => utils.workspaceManagement.team.list.invalidate({ tenantId });
   const invite = trpc.workspaceManagement.team.invite.useMutation({
-    onSuccess: result => { toast.success(result.invited ? "Convite enviado por e-mail para definir a senha." : "Acesso concedido."); setInviteForm({ email: "", name: "", role: "attendant" }); invalidate(); },
+    onSuccess: result => {
+      if (result.temporaryPassword) { toast.success("Acesso criado. Envie a senha à pessoa."); setIssued({ email: result.email, temporaryPassword: result.temporaryPassword }); }
+      else toast.success(result.invited ? "Convite enviado por e-mail para definir a senha." : "Acesso concedido (a pessoa já tinha conta e usa a senha dela).");
+      setInviteForm(current => ({ ...current, email: "", name: "" }));
+      invalidate();
+    },
     onError: error => toast.error(error.message),
   });
   const revoke = trpc.workspaceManagement.team.revoke.useMutation({
@@ -90,13 +97,16 @@ export default function Team() {
         </div>
       </section>
 
+      {issued ? <CredentialsCard credentials={issued} onClose={() => setIssued(null)} /> : null}
+
       {canManageTeam ? <Card className="border-slate-200 shadow-sm">
-        <CardHeader><CardTitle className="text-lg">Convidar para a equipe</CardTitle><CardDescription>Quem ainda não tem conta recebe um e-mail automático para definir a senha. O papel de Proprietário só o Super Admin concede.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Convidar para a equipe</CardTitle><CardDescription>Quem ainda não tem conta recebe uma senha temporária para você repassar (e-mail ou WhatsApp). O papel de Proprietário só o Super Admin concede.</CardDescription></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-[1.2fr_1fr_.8fr_auto] sm:items-end">
           <div className="grid gap-1.5"><Label htmlFor="invite-email">E-mail</Label><Input id="invite-email" type="email" value={inviteForm.email} onChange={event => setInviteForm({ ...inviteForm, email: event.target.value })} placeholder="pessoa@oficina.com" /></div>
           <div className="grid gap-1.5"><Label htmlFor="invite-name">Nome (opcional)</Label><Input id="invite-name" value={inviteForm.name} onChange={event => setInviteForm({ ...inviteForm, name: event.target.value })} placeholder="Nome completo" /></div>
           <div className="grid gap-1.5"><Label htmlFor="invite-role">Papel</Label><select id="invite-role" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={inviteForm.role} onChange={event => setInviteForm({ ...inviteForm, role: event.target.value as InviteRole })}><option value="admin">Administrador</option><option value="attendant">Atendente</option><option value="technician">Técnico</option></select></div>
-          <Button disabled={invite.isPending || !inviteForm.email.trim()} onClick={() => invite.mutate({ tenantId, email: inviteForm.email, name: inviteForm.name || undefined, role: inviteForm.role })}><KeyRound className="mr-2 h-4 w-4" />{invite.isPending ? "Convidando…" : "Convidar"}</Button>
+          <Button disabled={invite.isPending || !inviteForm.email.trim()} onClick={() => invite.mutate({ tenantId, email: inviteForm.email, name: inviteForm.name || undefined, role: inviteForm.role, method: inviteForm.method })}><KeyRound className="mr-2 h-4 w-4" />{invite.isPending ? "Convidando…" : "Convidar"}</Button>
+          <div className="grid gap-1.5 sm:col-span-4 sm:grid-cols-[auto_1fr] sm:items-center"><Label htmlFor="invite-method" className="text-xs">Como a pessoa recebe o acesso</Label><select id="invite-method" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={inviteForm.method} onChange={event => setInviteForm({ ...inviteForm, method: event.target.value as "password" | "email" })}><option value="password">Gerar senha temporária (você envia por e-mail ou WhatsApp)</option><option value="email">Convite automático por e-mail</option></select></div>
         </CardContent>
       </Card> : null}
 
