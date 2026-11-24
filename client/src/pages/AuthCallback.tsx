@@ -1,6 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import { initialAuthCallback, supabase } from "@/lib/supabase";
 import { trpc } from "@/lib/trpc";
-import { requiresPasswordSetup } from "@/lib/authCallbackFlow";
+import { getAuthCallbackErrorMessage, requiresPasswordSetup } from "@/lib/authCallbackFlow";
 import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
 import { AuthPasswordSetupForm } from "@/components/AuthPasswordSetupForm";
 import { LoaderCircle } from "lucide-react";
@@ -38,7 +38,10 @@ export default function AuthCallback() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const passwordSetupMode = useMemo(() => requiresPasswordSetup(new URLSearchParams(window.location.hash.slice(1)).get("type")), []);
+  // O tipo do link e o erro vêm do fragmento da URL, que o cliente Supabase apaga
+  // ao iniciar; por isso são capturados em lib/supabase.ts, antes disso.
+  const passwordSetupMode = useMemo(() => requiresPasswordSetup(initialAuthCallback.type), []);
+  const linkErrorMessage = useMemo(() => getAuthCallbackErrorMessage(initialAuthCallback.errorCode), []);
   const meQuery = trpc.auth.me.useQuery(undefined, {
     enabled: sessionState === "ready" && !recoveryReady,
     // Logo após o link mágico, a otimização de dependências do Vite (em um projeto
@@ -53,6 +56,12 @@ export default function AuthCallback() {
     let active = true;
 
     void (async () => {
+      if (linkErrorMessage) {
+        setMessage(linkErrorMessage);
+        setSessionState("invalid");
+        return;
+      }
+
       try {
         const { data, error } = await withAuthTimeout(() => supabase.auth.getSession());
         if (!active) return;
@@ -80,7 +89,7 @@ export default function AuthCallback() {
     return () => {
       active = false;
     };
-  }, [passwordSetupMode, setLocation]);
+  }, [linkErrorMessage, passwordSetupMode, setLocation]);
 
   const savePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
