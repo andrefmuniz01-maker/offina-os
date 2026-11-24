@@ -31,9 +31,22 @@ Causa (logs `auth_logs`): o serviço Auth do Supabase está numa versão mais no
 Efeito: reset de senha, convite por e-mail (Super Admin e Equipe) e magic link ficam fora do ar; o login com
 senha continua funcionando (não usa essa tabela).
 
-Correção: no painel do Supabase, Project Settings → General → **Restart project** (o Auth aplica migrações ao
-subir). Se persistir, abrir chamado no suporte do Supabase citando os erros acima e o ref `jpvvhowgpuinuuputoot`.
-Depois, testar "esqueci a senha" e conferir em `auth_logs` que não há mais erro 500.
+Tentativa (24/11/2026): o projeto foi pausado e restaurado para forçar o Auth a reiniciar. O log mostrou
+"GoTrue migrations applied successfully", mas o esquema continuou em `20260625000000` e a coluna continuou
+ausente; um novo pedido de redefinição voltou a falhar com o mesmo erro. Conclusão: o defeito está na versão do
+Auth hospedada pelo Supabase (o código espera `expires_at`, as migrações embutidas não a criam) e só o suporte
+deles corrige. Dados e o restante do sistema ficaram intactos após o reinício.
+
+Texto para o chamado no suporte do Supabase (projeto `jpvvhowgpuinuuputoot`, região sa-east-1):
+
+> Auth returns 500 on /recover and /invite: "column one_time_tokens.expires_at does not exist".
+> auth.schema_migrations stops at 20260625000000; the upstream migration 20260831180000
+> (alter table auth.one_time_tokens add column if not exists expires_at timestamptz) was not applied,
+> even after restarting the project. Please apply it or roll back the Auth version.
+
+Enquanto isso: o login por senha funciona normalmente (não usa essa tabela). Reset por e-mail, convite de
+Super Admin e convite de Equipe ficam indisponíveis. A conta mestre recebeu uma senha temporária definida
+pela API admin. Depois da correção, testar "esqueci a senha" e conferir em `auth_logs` que não há erro 500.
 
 Também apareceram `invalid_credentials` repetidos vindos de `oficinaos-zu7j2buy.manus.space` (site antigo da
 Manus): a senha digitada não confere com a cadastrada.
