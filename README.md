@@ -78,3 +78,24 @@ O repositório também inclui `todo.md`, que registra o estado das entregas e pe
 ## Documentação complementar
 
 Leia `docs/repository-portability.md` para o roteiro de continuidade e `docs/environment-reference.md` para a configuração do ambiente. Os documentos de migração e decisões de segurança ficam em `docs/`; a foundation versionada está em `supabase/migrations/`.
+
+## Deploy na Vercel
+
+O projeto é um servidor Express único (API tRPC + front Vite). Na Vercel ele é publicado
+como **front estático + função serverless da API**, gerados por `pnpm build:vercel`
+(`scripts/build-vercel.mjs`, configurado em `vercel.json`). Não altere o *Output Directory*
+nem o *Framework Preset* no painel da Vercel: o `vercel.json` já define tudo.
+
+Variáveis de ambiente obrigatórias (Project Settings → Environment Variables → Production):
+
+| Variável | Uso |
+| --- | --- |
+| `VITE_SUPABASE_URL` | URL do projeto Supabase (embutida no front no build) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | chave publishable/anon (embutida no front no build) |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave administrativa, **somente servidor** (convites, intake público) |
+| `NODE_ENV` | `production` |
+
+`VITE_*` são lidas no build: ao alterá-las, faça um novo deploy. O build falha de propósito,
+com mensagem clara, se `VITE_SUPABASE_URL` ou `VITE_SUPABASE_PUBLISHABLE_KEY` estiverem ausentes.
+No Supabase, em Authentication → URL Configuration, cadastre o domínio da Vercel como *Site URL*
+e em *Redirect URLs* (`https://SEU-DOMINIO/auth/callback`) para o e-mail de convite funcionar.
