@@ -163,7 +163,7 @@
 
   .workshop-eyebrow {
     color: var(--brand-orange-deep);
-    letter-spacing: 0.14em;
+    letter-spacing: normal;
   }
 
   :is(

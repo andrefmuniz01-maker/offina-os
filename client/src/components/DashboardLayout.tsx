@@ -22,10 +22,10 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarResizeWidth } from "@/lib/sidebarAccessibility";
-import { getSupportTenantId, withDemoContext } from "@/lib/demoWorkspace";
+import { getSupportTenantId, isDemoWorkspace, withDemoContext } from "@/lib/demoWorkspace";
 import { getPasswordAuthErrorMessage, getPasswordSetupMessage } from "@/lib/passwordAuthMessages";
 import { getAuthConnectionTimeoutMessage, withAuthTimeout } from "@/lib/authTimeout";
-import { LayoutDashboard, LogOut, PanelLeft, Wrench } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, LogOut, PanelLeft, ShieldCheck, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -98,48 +98,43 @@ function PasswordAccess() {
     }
   };
 
+  const busy = status === "signing-in" || status === "resetting";
+  const inputClass = "h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25";
+
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <form onSubmit={signInWithPassword} className="flex flex-col items-center gap-5 p-8 max-w-md w-full">
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-center">Acesse sua oficina</h1>
-          <p className="text-sm text-muted-foreground text-center max-w-sm">Entre com seu e-mail e senha. No primeiro acesso, crie sua senha de forma segura.</p>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-7 flex items-center gap-3">
+          <div className="workshop-brand-mark grid h-10 w-10 place-items-center rounded-xl" aria-hidden="true"><Wrench className="h-5 w-5" /></div>
+          <span className="text-lg font-semibold tracking-tight">OficinaOS</span>
         </div>
-        <input
-          aria-label="E-mail de acesso"
-          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-          type="email"
-          value={email}
-          onChange={event => setEmail(event.target.value)}
-          required
-          autoComplete="email"
-          placeholder="voce@empresa.com"
-        />
-        <input
-          aria-label="Senha"
-          className="h-11 w-full rounded-md border bg-background px-3 text-sm"
-          type="password"
-          value={password}
-          onChange={event => setPassword(event.target.value)}
-          required
-          minLength={10}
-          autoComplete="current-password"
-          placeholder="Sua senha"
-        />
-        <Button type="submit" disabled={status === "signing-in" || status === "resetting"} size="lg" className="w-full shadow-lg hover:shadow-xl transition-all">
-          {status === "signing-in" ? "Entrando…" : "Entrar no painel"}
-        </Button>
-        <button
-          type="button"
-          onClick={requestPasswordSetup}
-          disabled={status === "signing-in" || status === "resetting"}
-          className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
-        >
-          {status === "resetting" ? "Preparando redefinição…" : "Primeiro acesso ou esqueceu a senha?"}
-        </button>
-        {status === "reset-sent" && <p className="text-center text-sm text-muted-foreground">{getPasswordSetupMessage()}</p>}
-        {status === "error" && <p className="text-center text-sm text-destructive">{errorMessage}</p>}
-      </form>
+        <form onSubmit={signInWithPassword} className="space-y-5 rounded-2xl border bg-card p-7 shadow-sm">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">Entrar</h1>
+            <p className="text-sm text-muted-foreground">Use o e-mail e a senha do seu cadastro.</p>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="login-email" className="text-sm font-medium">E-mail</label>
+            <input id="login-email" className={inputClass} type="email" value={email} onChange={event => setEmail(event.target.value)} required autoComplete="email" placeholder="voce@empresa.com" />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="login-password" className="text-sm font-medium">Senha</label>
+              <button type="button" onClick={requestPasswordSetup} disabled={busy} className="text-xs font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60">
+                {status === "resetting" ? "Enviando…" : "Esqueci a senha"}
+              </button>
+            </div>
+            <input id="login-password" className={inputClass} type="password" value={password} onChange={event => setPassword(event.target.value)} required minLength={10} autoComplete="current-password" />
+          </div>
+          <Button type="submit" disabled={busy} size="lg" className="w-full">
+            {status === "signing-in" ? "Entrando…" : "Entrar"}
+          </Button>
+          <div aria-live="polite" className="empty:hidden">
+            {status === "reset-sent" && <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{getPasswordSetupMessage()}</p>}
+            {status === "error" && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">{errorMessage}</p>}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -210,6 +205,10 @@ function DashboardLayoutContent({
   const sidebarRef = useRef<HTMLDivElement>(null);
   const currentPath = location.split("?")[0];
   const supportTenantId = getSupportTenantId();
+  // Quem é administrador mestre precisa sempre ter um caminho de volta ao painel mestre,
+  // inclusive dentro da Oficina Demo e do modo suporte.
+  const isSuperAdmin = user?.platformRole === "super_admin";
+  const inDemo = isDemoWorkspace() && !supportTenantId;
   const activeMenuItem = menuItems.find(item => item.path === currentPath);
   const isMobile = useIsMobile();
 
@@ -303,7 +302,17 @@ function DashboardLayoutContent({
             </SidebarMenu></nav>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="gap-2 p-3">
+            {isSuperAdmin ? (
+              <SidebarMenuButton
+                onClick={() => setLocation("/plataforma")}
+                tooltip="Painel mestre"
+                className="h-10 rounded-lg border border-sidebar-border bg-background font-medium"
+              >
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span>Painel mestre</span>
+              </SidebarMenuButton>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -355,7 +364,13 @@ function DashboardLayoutContent({
         {supportTenantId ? (
           <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-amber-500 px-4 py-2 text-sm font-medium text-amber-950">
             <span>Modo suporte: {workspaceName} — ação completa, registrada em auditoria como Super Admin.</span>
-            <Button size="sm" variant="outline" className="h-7 border-amber-900/30 bg-amber-100 text-amber-950 hover:bg-amber-50" onClick={() => setLocation("/plataforma")}>Sair</Button>
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 border-amber-900/30 bg-amber-100 text-amber-950 hover:bg-amber-50" onClick={() => setLocation("/plataforma")}><ArrowLeft className="h-3.5 w-3.5" />Voltar ao painel mestre</Button>
+          </div>
+        ) : null}
+        {inDemo && isSuperAdmin ? (
+          <div className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-2 text-sm text-slate-100">
+            <span><span className="font-semibold">Oficina Demo</span><span className="hidden text-slate-400 sm:inline"> — ambiente de demonstração, dados fictícios</span></span>
+            <Button size="sm" variant="secondary" className="h-8 gap-1.5" onClick={() => setLocation("/plataforma")}><ArrowLeft className="h-3.5 w-3.5" />Voltar ao painel mestre</Button>
           </div>
         ) : null}
         {isMobile && (

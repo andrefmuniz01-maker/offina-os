@@ -38,7 +38,7 @@ export function CredentialsCard({ credentials, onClose, title = "Acesso criado" 
       <dl className="grid gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <dt className="font-medium text-slate-500">E-mail</dt><dd className="break-all font-mono text-slate-900">{credentials.email}</dd>
         <Button size="sm" variant="outline" onClick={() => copy(credentials.email, "E-mail copiado.")}><Copy className="mr-1.5 h-3.5 w-3.5" />Copiar</Button>
-        <dt className="font-medium text-slate-500">Senha temporária</dt><dd className="select-all font-mono text-base font-semibold tracking-wide text-slate-950">{credentials.temporaryPassword}</dd>
+        <dt className="font-medium text-slate-500">Senha temporária</dt><dd className="select-all font-mono text-base font-semibold text-slate-950">{credentials.temporaryPassword}</dd>
         <Button size="sm" variant="outline" onClick={() => copy(credentials.temporaryPassword, "Senha copiada.")}><Copy className="mr-1.5 h-3.5 w-3.5" />Copiar</Button>
       </dl>
       <div className="flex flex-wrap gap-2">

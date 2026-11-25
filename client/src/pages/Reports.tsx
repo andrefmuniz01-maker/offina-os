@@ -12,7 +12,7 @@ const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 const menu: DashboardMenuItem[] = [{ icon: ArrowLeft, label: "Visão geral", path: "/" }, { icon: ChartNoAxesCombined, label: "Relatórios", path: "/relatorios" }];
 
 function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="border-l-2 border-slate-300 pl-4"><p className="text-xs font-medium uppercase tracking-[.1em] text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums text-slate-950">{value}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></div>;
+  return <div className="border-l-2 border-slate-300 pl-4"><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums text-slate-950">{value}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></div>;
 }
 
 export default function Reports() {

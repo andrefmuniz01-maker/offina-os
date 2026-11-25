@@ -108,7 +108,7 @@ export default function Purchases() {
           <div className="grid gap-2"><Label htmlFor="purchase-notes">Observação (opcional)</Label><Input id="purchase-notes" value={notes} onChange={event => setNotes(event.target.value)} placeholder="Ex.: compra de balcão para reposição" /></div>
 
           <div className="grid gap-2 rounded-xl border border-slate-200 p-3">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Quando a peça chega</Label>
+            <Label className="text-xs font-semibold text-slate-500">Quando a peça chega</Label>
             <RadioGroup value={arrival} onValueChange={value => setArrival(value as "now" | "later")} className="grid gap-2">
               <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50"><RadioGroupItem value="now" id="arrival-now" className="mt-0.5" /><span><span className="block text-sm font-medium text-slate-900">Já chegou</span><span className="block text-xs text-slate-500">A peça já está na oficina. O estoque sobe agora mesmo.</span></span></label>
               <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-orange-400 has-[:checked]:bg-orange-50"><RadioGroupItem value="later" id="arrival-later" className="mt-0.5" /><span><span className="block text-sm font-medium text-slate-900">Vai chegar depois</span><span className="block text-xs text-slate-500">Pedido feito a um fornecedor. Fica pendente até você confirmar a chegada.</span></span></label>

@@ -72,7 +72,7 @@ export function PlatformDashboard() {
           <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible" aria-label="Navegação da plataforma">
             {sections.map(item => { const Icon = item.icon; const active = item.id === section; return <button key={item.id} type="button" aria-current={active ? "page" : undefined} onClick={() => setSection(item.id)} className={`flex min-w-max items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${active ? "bg-white text-slate-950" : "text-slate-300 hover:bg-slate-800 hover:text-white"}`}><Icon className="h-4 w-4" /><span>{item.label}</span></button>; })}
           </nav>
-          <div className="mt-auto hidden rounded-xl border border-slate-700 bg-slate-900 p-4 lg:block"><p className="text-xs font-semibold uppercase tracking-[.12em] text-orange-300">Fonte única</p><p className="mt-2 text-xs leading-5 text-slate-400">Todas as oficinas, acessos e links vêm direto do banco Supabase, sem dados calculados fora daqui.</p></div>
+          <div className="mt-auto hidden rounded-xl border border-slate-700 bg-slate-900 p-4 lg:block"><p className="text-xs font-semibold text-orange-300">Fonte única</p><p className="mt-2 text-xs leading-5 text-slate-400">Todas as oficinas, acessos e links vêm direto do banco Supabase, sem dados calculados fora daqui.</p></div>
         </div>
       </aside>
       <div className="min-w-0 flex-1 p-5 sm:p-8 lg:p-10">
@@ -111,7 +111,7 @@ function OverviewSection() {
   ];
 
   return <div className="space-y-6">
-    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Visão geral</h1><p className="mt-2 text-sm text-slate-500">Estado atual do negócio, sem filtro — muda na hora a cada oficina, contrato ou receita alterada.</p></header>
+    <header className="border-b border-slate-200 pb-6"><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Visão geral</h1><p className="mt-2 text-sm text-slate-500">Estado atual do negócio, sem filtro — muda na hora a cada oficina, contrato ou receita alterada.</p></header>
 
     {totals.isError ? <QueryError title="Métricas indisponíveis" description="Não foi possível calcular as métricas agora." /> : <div className="grid gap-4 sm:grid-cols-3">
       {totalCards.map(card => <Card key={card.label} className="border-slate-200 shadow-none">
@@ -157,7 +157,7 @@ function TenantsSection() {
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Oficinas & Acessos</h1><p className="mt-2 text-sm text-slate-500">Diretório completo das oficinas, links públicos de solicitação e concessão de acesso à equipe.</p></div>
+      <div><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Oficinas & Acessos</h1><p className="mt-2 text-sm text-slate-500">Diretório completo das oficinas, links públicos de solicitação e concessão de acesso à equipe.</p></div>
       <Button onClick={() => setShowCreate(current => !current)}><Plus className="mr-2 h-4 w-4" />Nova oficina</Button>
     </header>
 
@@ -310,7 +310,7 @@ function TenantEditPanel({ tenant, onClose }: { tenant: PlatformTenant; onClose:
     </CardHeader>
     <CardContent className="space-y-6">
       <section className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dados gerais</p>
+        <p className="text-xs font-semibold text-slate-500">Dados gerais</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5"><Label htmlFor="edit-name">Nome comercial</Label><Input id="edit-name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></div>
           <div className="grid gap-1.5"><Label htmlFor="edit-slug">Identificador público (slug)</Label><Input id="edit-slug" value={form.slug} onChange={event => { setForm({ ...form, slug: event.target.value.toLowerCase() }); setConfirmSlugChange(false); }} /></div>
@@ -320,7 +320,7 @@ function TenantEditPanel({ tenant, onClose }: { tenant: PlatformTenant; onClose:
       </section>
 
       <section className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Contato</p>
+        <p className="text-xs font-semibold text-slate-500">Contato</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5"><Label htmlFor="edit-whatsapp">WhatsApp</Label><Input id="edit-whatsapp" value={form.whatsapp} onChange={event => setForm({ ...form, whatsapp: event.target.value })} /></div>
           <div className="grid gap-1.5"><Label htmlFor="edit-email">E-mail</Label><Input id="edit-email" type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></div>
@@ -331,7 +331,7 @@ function TenantEditPanel({ tenant, onClose }: { tenant: PlatformTenant; onClose:
       </section>
 
       <section className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Marca</p>
+        <p className="text-xs font-semibold text-slate-500">Marca</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="grid gap-1.5"><Label htmlFor="edit-primary-color">Cor primária</Label><Input id="edit-primary-color" type="color" className="h-9 p-1" value={form.primaryColor} onChange={event => setForm({ ...form, primaryColor: event.target.value })} /></div>
           <div className="grid gap-1.5"><Label htmlFor="edit-secondary-color">Cor secundária</Label><Input id="edit-secondary-color" type="color" className="h-9 p-1" value={form.secondaryColor} onChange={event => setForm({ ...form, secondaryColor: event.target.value })} /></div>
@@ -367,7 +367,7 @@ function PlansSection() {
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Planos</h1><p className="mt-2 text-sm text-slate-500">Limites por oficina. Toda oficina nova entra automaticamente no plano Padrão.</p></div>
+      <div><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Planos</h1><p className="mt-2 text-sm text-slate-500">Limites por oficina. Toda oficina nova entra automaticamente no plano Padrão.</p></div>
       <Button onClick={startNew}><Plus className="mr-2 h-4 w-4" />Novo plano</Button>
     </header>
 
@@ -470,7 +470,7 @@ function ContractsSection() {
 
   return <div className="space-y-6">
     <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end">
-      <div><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Contratos</h1><p className="mt-2 text-sm text-slate-500">Pipeline comercial: negocie, feche o contrato e gere a oficina no SaaS. Fechado não muda mais o valor — reajuste vira um novo contrato.</p></div>
+      <div><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Contratos</h1><p className="mt-2 text-sm text-slate-500">Pipeline comercial: negocie, feche o contrato e gere a oficina no SaaS. Fechado não muda mais o valor — reajuste vira um novo contrato.</p></div>
       <Button onClick={() => setShowCreate(current => !current)}><Plus className="mr-2 h-4 w-4" />Novo contrato</Button>
     </header>
 
@@ -564,7 +564,7 @@ function AdminsSection() {
   });
 
   return <div className="space-y-6">
-    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Administradores mestres</h1><p className="mt-2 text-sm text-slate-500">Quem tem controle total da plataforma. Ao adicionar um e-mail novo, a conta é criada com uma senha temporária que você envia à pessoa.</p></header>
+    <header className="border-b border-slate-200 pb-6"><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Administradores mestres</h1><p className="mt-2 text-sm text-slate-500">Quem tem controle total da plataforma. Ao adicionar um e-mail novo, a conta é criada com uma senha temporária que você envia à pessoa.</p></header>
 
     {issued ? <CredentialsCard credentials={issued.credentials} title={issued.title} onClose={() => setIssued(null)} /> : null}
 
@@ -600,7 +600,7 @@ function PublicLinksSection() {
   const links = trpc.platform.links.list.useQuery({ status: statusFilter ? [...statusFilter] : undefined, page: 1, pageSize: 30 });
 
   return <div className="space-y-6">
-    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Links de aprovação</h1><p className="mt-2 text-sm text-slate-500">Propostas enviadas às clientes de todas as oficinas, com acesso direto ao link público de aprovação.</p></header>
+    <header className="border-b border-slate-200 pb-6"><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Links de aprovação</h1><p className="mt-2 text-sm text-slate-500">Propostas enviadas às clientes de todas as oficinas, com acesso direto ao link público de aprovação.</p></header>
 
     <div className="flex gap-2">
       {([["pending", "Aguardando"], ["approved", "Aprovadas"], ["all", "Todas"]] as const).map(([value, label]) => <Button key={value} size="sm" variant={status === value ? "default" : "outline"} onClick={() => setStatus(value)}>{label}</Button>)}
@@ -637,7 +637,7 @@ function AuditSection() {
   });
 
   return <div className="space-y-6">
-    <header className="border-b border-slate-200 pb-6"><p className="text-xs font-semibold uppercase tracking-[.13em] text-orange-700">Plataforma global</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">Auditoria</h1><p className="mt-2 text-sm text-slate-500">Trilha de eventos críticos de todas as oficinas, filtrável por oficina, tipo de ação e período.</p></header>
+    <header className="border-b border-slate-200 pb-6"><h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Auditoria</h1><p className="mt-2 text-sm text-slate-500">Trilha de eventos críticos de todas as oficinas, filtrável por oficina, tipo de ação e período.</p></header>
 
     <div className="flex flex-wrap items-end gap-3">
       <div className="grid gap-1.5"><Label className="text-xs" htmlFor="audit-tenant">Oficina</Label><select id="audit-tenant" className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm" value={tenantId} onChange={event => setTenantId(event.target.value === "all" ? "all" : Number(event.target.value))}><option value="all">Todas as oficinas</option>{tenants.data?.map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></div>

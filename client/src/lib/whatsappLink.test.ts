@@ -24,6 +24,21 @@ describe("renderQuoteMessageTemplate", () => {
     );
     expect(message).toBe("Olá Maria, Corolla está pronto. Total: R$ 100,00. Link: https://x.test/abc. Auto Prime");
   });
+
+  it("acrescenta o link da proposta quando o modelo não tem o campo {{link}}", () => {
+    const message = renderQuoteMessageTemplate(
+      "Olá, {{cliente}}. Preparamos uma sugestão para seu veículo. Consulte o link seguro para revisar e aprovar.",
+      { client: "Maria", vehicle: "Corolla", total: "R$ 100,00", link: "https://x.test/orcamento/abc", workshop: "Auto Prime" },
+    );
+    expect(message).toContain("Olá, Maria.");
+    expect(message.endsWith("Veja e aprove sua proposta aqui: https://x.test/orcamento/abc")).toBe(true);
+  });
+
+  it("não duplica o link quando o modelo já o inclui", () => {
+    const message = renderQuoteMessageTemplate("Proposta: {{link}}", { client: "Maria", vehicle: "Corolla", total: "R$ 1,00", link: "https://x.test/abc", workshop: "Auto Prime" });
+    expect(message).toBe("Proposta: https://x.test/abc");
+    expect(message.split("https://x.test/abc")).toHaveLength(2);
+  });
 });
 
 describe("buildWhatsappLink", () => {

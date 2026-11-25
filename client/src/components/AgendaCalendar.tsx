@@ -223,7 +223,7 @@ export function AgendaCalendar({ tenantId }: { tenantId: number }) {
 
       {view === "day" && appointments.some(item => item.bayId === null) ? (
         <div className="mt-4 border-t border-slate-100 pt-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Sem baia definida</p>
+          <p className="mb-2 text-xs font-semibold text-slate-500">Sem baia definida</p>
           <p className="mb-2 text-xs text-slate-500">Agendamentos antigos, criados antes das baias serem cadastradas.</p>
           <div className="grid gap-2 sm:grid-cols-2">{appointments.filter(item => item.bayId === null).map(item => <AppointmentCard key={item.id} item={item} />)}</div>
         </div>
@@ -332,7 +332,7 @@ function MonthGrid({ monthStart, appointments, onDayClick }: { monthStart: Date;
   return (
     <div className="overflow-x-auto">
       <div className="grid min-w-[640px] grid-cols-7 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200">
-        {weekdayLabels.map(label => <div key={label} className="bg-slate-50 p-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>)}
+        {weekdayLabels.map(label => <div key={label} className="bg-slate-50 p-2 text-center text-xs font-semibold text-slate-500">{label}</div>)}
         {days.map(day => {
           const dayEnd = addDays(day, 1);
           const dayItems = appointments.filter(item => { const start = new Date(item.scheduledStart); return start >= day && start < dayEnd; }).sort((a, b) => a.scheduledStart.localeCompare(b.scheduledStart));
