@@ -15,30 +15,35 @@ export default function PublicQuote() {
   const [, params] = useRoute("/orcamento/:token");
   const token = params?.token ?? "";
   const quote = trpc.publicQuotes.view.useQuery({ token }, { enabled: Boolean(token), retry: false });
-  const decision = trpc.publicQuotes.decide.useMutation({ onSuccess: () => quote.refetch() });
+  // A confirmação aparece na hora, a partir da resposta da própria decisão: não depende de o
+  // recarregamento da proposta voltar a tempo (nem de ela ainda estar "aberta" no banco).
+  const [decidedStatus, setDecidedStatus] = useState<"approved" | "rejected" | null>(null);
+  const decision = trpc.publicQuotes.decide.useMutation({ onSuccess: result => { setDecidedStatus(result.status); void quote.refetch(); } });
   const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
 
   if (quote.isLoading) {
     return <main className="grid min-h-screen place-items-center bg-stone-50" aria-live="polite"><div className="flex items-center gap-3 text-sm text-slate-600" role="status"><Loader2 className="h-6 w-6 animate-spin text-orange-700" aria-hidden="true" /><span>Carregando orçamento…</span></div></main>;
   }
-  if (quote.error || !quote.data) {
+  // Só mostra "indisponível" quando realmente não há proposta; uma falha de recarregamento mantém a tela atual.
+  if (!quote.data) {
     return <main className="grid min-h-screen place-items-center bg-stone-50 p-6" aria-live="assertive"><Card className="w-full max-w-md border-slate-200 shadow-sm" role="alert"><CardHeader><CircleAlert className="h-7 w-7 text-red-700" aria-hidden="true" /><h1 className="mt-3 text-xl font-semibold text-slate-950">Orçamento indisponível</h1><p className="text-sm leading-6 text-slate-600">Este link não está disponível. Solicite uma nova proposta diretamente à oficina.</p></CardHeader></Card></main>;
   }
 
   const data = quote.data;
+  const quoteStatus = decidedStatus ?? data.quote.status;
   const primaryColor = data.workshop.branding?.primaryColor ?? "#E84D1C";
   const secondaryColor = data.workshop.branding?.secondaryColor ?? "#171717";
   const accentColor = data.workshop.branding?.accentColor ?? "#F5B33A";
   const publicTitle = data.workshop.branding?.publicTitle || data.workshop.name;
   const validity = getQuoteValidity(data.quote.validUntil);
   const validityClass = validity.tone === "urgent" ? "border-red-200 bg-red-50 text-red-800" : validity.tone === "attention" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
-  const finished = data.quote.status === "approved" || data.quote.status === "rejected";
+  const finished = quoteStatus === "approved" || quoteStatus === "rejected";
   const confirmDecision = () => { if (pendingDecision) decision.mutate({ token, decision: pendingDecision }); };
   const decisionPanel = finished ? (
-    <section className={`mt-7 rounded-xl p-5 text-center ${data.quote.status === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
-      {data.quote.status === "approved" ? <CheckCircle2 className="mx-auto h-7 w-7" /> : <XCircle className="mx-auto h-7 w-7" />}
-      <p className="mt-2 font-semibold">{data.quote.status === "approved" ? "Proposta aprovada" : "Proposta recusada"}</p>
-      <p className="mt-1 text-sm">{data.quote.status === "approved" ? publicQuoteFollowUpNotice : "A oficina registrou sua decisão e poderá orientar você separadamente."}</p>
+    <section className={`mt-7 rounded-xl p-5 text-center ${quoteStatus === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>
+      {quoteStatus === "approved" ? <CheckCircle2 className="mx-auto h-7 w-7" /> : <XCircle className="mx-auto h-7 w-7" />}
+      <p className="mt-2 font-semibold">{quoteStatus === "approved" ? "Proposta aprovada" : "Proposta recusada"}</p>
+      <p className="mt-1 text-sm">{quoteStatus === "approved" ? publicQuoteFollowUpNotice : "A oficina registrou sua decisão e poderá orientar você separadamente."}</p>
     </section>
   ) : pendingDecision ? (
     <section className={`mt-7 rounded-xl border p-5 ${pendingDecision === "approved" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
