@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import { operationsRoutePaths } from "./lib/operationsRoutes";
 
 const PublicQuote = lazy(() => import("./pages/PublicQuote"));
+const PublicScheduling = lazy(() => import("./pages/PublicScheduling"));
 const PublicQuoteRequest = lazy(() => import("./pages/PublicQuoteRequest"));
 const Requests = lazy(() => import("./pages/Requests"));
 const Quotes = lazy(() => import("./pages/SupabaseQuotes"));
@@ -71,6 +72,7 @@ function Router() {
     <Route path={"/auditoria"} component={Audit} />
     <Route path={"/relatorios"} component={Reports} />
     <Route path={"/orcamento/:token"} component={PublicQuote} />
+    <Route path={"/agendar/:token"} component={PublicScheduling} />
     <Route path={"/404"} component={NotFound} />
     <Route component={NotFound} />
   </Switch></Suspense>;

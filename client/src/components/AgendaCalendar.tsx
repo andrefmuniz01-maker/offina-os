@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { addDays, getPeriodRange, startOfDay, startOfMonth, startOfWeek, type PeriodView } from "@/lib/periodRange";
+import { formatSlotDay, pickSuggestedSlots } from "@/lib/scheduling";
 import { trpc } from "@/lib/trpc";
 import { CalendarClock, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
@@ -72,6 +73,9 @@ function NewAppointmentDialog({ tenantId, initial, onClose }: { tenantId: number
     onError: error => toast.error(error.message),
   });
 
+  // Próximos horários livres para os serviços escolhidos (horário de funcionamento + baias + duração).
+  const slotSuggestions = trpc.workspaceOperations.availableSlots.useQuery({ tenantId, serviceIds, days: 14 }, { enabled: serviceIds.length > 0 });
+  const suggestedSlots = pickSuggestedSlots(slotSuggestions.data?.days ?? [], 8);
   const selectedServices = (services.data ?? []).filter((service: { id: number }) => serviceIds.includes(service.id));
   const totalMinutes = selectedServices.reduce((sum: number, service: { estimatedMinutes: number }) => sum + service.estimatedMinutes, 0);
   const toggleService = (id: number) => setServiceIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
@@ -158,6 +162,13 @@ function NewAppointmentDialog({ tenantId, initial, onClose }: { tenantId: number
             {totalMinutes > 0 ? <p className="text-xs text-slate-500">Duração total: {totalMinutes} min</p> : null}
           </div>
 
+          {serviceIds.length > 0 ? <div className="grid gap-1.5">
+            <Label>Próximos horários livres</Label>
+            {slotSuggestions.isLoading ? <Skeleton className="h-9 w-full" /> : suggestedSlots.length ? <div className="flex flex-wrap gap-2">{suggestedSlots.map(slot => {
+              const value = toDatetimeLocalValue(new Date(slot.start));
+              return <Button key={slot.start} type="button" size="sm" variant={start === value ? "default" : "outline"} onClick={() => { setStart(value); if (!bayId) setBayId((bays.data ?? []).find(bay => bay.active)?.id); }}>{formatSlotDay(slot.date)} · {slot.label}</Button>;
+            })}</div> : <p className="text-xs text-slate-500">Sem horários livres nos próximos dias para estes serviços. Escolha manualmente abaixo.</p>}
+          </div> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="agenda-bay-select">Baia</Label>

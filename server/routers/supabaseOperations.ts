@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { SupabaseSessionUser } from "../_core/context";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
+import { workspaceAvailableSlotsSchema, workspaceSchedulingLinkSchema } from "./supabaseSchedulingContract";
 import { getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission } from "../supabaseTenantAccess";
 import {
   parseWorkspaceAppointmentList,
@@ -130,6 +131,24 @@ export const supabaseOperationsRouter = router({
     return result.data;
   }),
 
+  /** Próximos horários livres (para uma proposta aprovada ou para serviços escolhidos). */
+  availableSlots: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), quoteId: z.number().int().positive().optional(), serviceIds: z.array(z.number().int().positive()).max(30).optional(), days: z.number().int().min(1).max(30).default(14) })).query(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser, input.tenantId, "appointments.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_available_slots", { target_tenant_id: input.tenantId, target_quote_id: input.quoteId ?? null, service_ids_input: input.serviceIds ?? null, days_input: input.days });
+    if (error || !data) throw databaseError(error);
+    const result = workspaceAvailableSlotsSchema.safeParse(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Os horários retornaram dados incompatíveis." });
+    return result.data;
+  }),
+  /** Dados para a mensagem de WhatsApp com o link de agendamento de uma proposta aprovada. */
+  quoteSchedulingLink: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive(), quoteId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser, input.tenantId, "appointments.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_quote_scheduling_link", { target_tenant_id: input.tenantId, target_quote_id: input.quoteId });
+    if (error || !data) throw databaseError(error);
+    const result = workspaceSchedulingLinkSchema.safeParse(data);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O link de agendamento retornou dados incompatíveis." });
+    return result.data;
+  }),
   calendar: supabaseProtectedProcedure.input(calendarRangeInput).query(async ({ ctx, input }) => {
     const access = await getSupabaseTenantAccess(ctx.supabaseUser!, input.tenantId);
     if (!hasSupabasePermission(access, "appointments.manage") && access.membership?.role !== "technician") throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso à agenda desta oficina." });

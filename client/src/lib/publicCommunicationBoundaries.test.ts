@@ -13,8 +13,10 @@ describe("limites de comunicação pública", () => {
     expect(publicRequestConfirmationNotice).toContain("Nenhuma cobrança ou aprovação");
   });
 
-  it("informa que decisão de proposta não cria comunicação, agenda ou cobrança automaticamente", () => {
-    expect(publicQuoteFollowUpNotice).toContain("sem mensagem automática");
-    expect(publicQuoteApprovalBoundary).toContain("Agenda, ordem de serviço, cobrança");
+  it("informa que depois de aprovar o cliente escolhe o horário e que cobrança é tratada à parte", () => {
+    expect(publicQuoteFollowUpNotice).toContain("escolha o dia e o horário");
+    expect(publicQuoteFollowUpNotice).toContain("cobrança");
+    expect(publicQuoteApprovalBoundary).toContain("escolhe o dia e o horário");
+    expect(publicQuoteApprovalBoundary).toContain("Cobrança");
   });
 });
