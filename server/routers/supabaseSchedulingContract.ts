@@ -36,3 +36,15 @@ export const workspaceSchedulingLinkSchema = z.object({
   workshopName: z.string(),
   alreadyScheduled: z.boolean(),
 }).strict();
+
+export const workspaceAwaitingScheduleSchema = z.array(z.object({
+  quoteId: z.number().int().positive(),
+  quoteNumber: z.number().int().positive(),
+  total: z.number().nonnegative(),
+  approvedAt: z.string().nullable(),
+  customerName: z.string(),
+  customerWhatsapp: z.string(),
+  vehicleName: z.string(),
+  workshopName: z.string(),
+  publicToken: z.string().min(32),
+}).strict());

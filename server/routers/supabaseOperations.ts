@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { SupabaseSessionUser } from "../_core/context";
 import { createSupabaseClient } from "../_core/supabase";
 import { router, supabaseProtectedProcedure } from "../_core/trpc";
-import { workspaceAvailableSlotsSchema, workspaceSchedulingLinkSchema } from "./supabaseSchedulingContract";
+import { workspaceAvailableSlotsSchema, workspaceAwaitingScheduleSchema, workspaceSchedulingLinkSchema } from "./supabaseSchedulingContract";
 import { getSupabaseTenantAccess, hasSupabasePermission, requireSupabaseTenantPermission } from "../supabaseTenantAccess";
 import {
   parseWorkspaceAppointmentList,
@@ -138,6 +138,15 @@ export const supabaseOperationsRouter = router({
     if (error || !data) throw databaseError(error);
     const result = workspaceAvailableSlotsSchema.safeParse(data);
     if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Os horários retornaram dados incompatíveis." });
+    return result.data;
+  }),
+  /** Fila da Agenda: propostas aprovadas que ainda não têm horário. */
+  awaitingScheduling: supabaseProtectedProcedure.input(z.object({ tenantId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    await requireSupabaseTenantPermission(ctx.supabaseUser, input.tenantId, "appointments.manage");
+    const { data, error } = await clientFor(ctx.supabaseUser).rpc("workspace_quotes_awaiting_schedule", { target_tenant_id: input.tenantId });
+    if (error) throw databaseError(error);
+    const result = workspaceAwaitingScheduleSchema.safeParse(data ?? []);
+    if (!result.success) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A fila de agendamento retornou dados incompatíveis." });
     return result.data;
   }),
   /** Dados para a mensagem de WhatsApp com o link de agendamento de uma proposta aprovada. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicBookingResultSchema, publicSchedulingInfoSchema, workspaceAvailableSlotsSchema, workspaceSchedulingLinkSchema } from "./supabaseSchedulingContract";
+import { publicBookingResultSchema, publicSchedulingInfoSchema, workspaceAvailableSlotsSchema, workspaceAwaitingScheduleSchema, workspaceSchedulingLinkSchema } from "./supabaseSchedulingContract";
 
 const days = [{ date: "2026-11-26", slots: [{ start: "2026-11-26T11:00:00+00:00", label: "08:00" }, { start: "2026-11-26T12:00:00+00:00", label: "09:00" }] }];
 
@@ -25,5 +25,12 @@ describe("contratos de agendamento", () => {
     expect(publicBookingResultSchema.safeParse({ appointmentId: 1, workOrderNumber: 22, scheduledStart: "2026-11-26T12:00:00+00:00", scheduledEnd: "2026-11-26T14:00:00+00:00" }).success).toBe(true);
     expect(workspaceSchedulingLinkSchema.safeParse({ quoteNumber: 37, publicToken: "a".repeat(64), customerName: "Maria", customerWhatsapp: "11999998888", vehicleName: "Corolla", workshopName: "Auto Prime", alreadyScheduled: false }).success).toBe(true);
     expect(workspaceSchedulingLinkSchema.safeParse({ quoteNumber: 37, publicToken: "curto", customerName: "Maria", customerWhatsapp: "1", vehicleName: "", workshopName: "A", alreadyScheduled: false }).success).toBe(false);
+  });
+
+  it("valida a fila de propostas aprovadas aguardando horário", () => {
+    const item = { quoteId: 89, quoteNumber: 37, total: 710, approvedAt: "2026-11-25T23:56:11+00:00", customerName: "Maria", customerWhatsapp: "11999998888", vehicleName: "BMW 320i", workshopName: "Auto Prime", publicToken: "a".repeat(64) };
+    expect(workspaceAwaitingScheduleSchema.safeParse([item]).success).toBe(true);
+    expect(workspaceAwaitingScheduleSchema.safeParse([]).success).toBe(true);
+    expect(workspaceAwaitingScheduleSchema.safeParse([{ ...item, publicToken: "curto" }]).success).toBe(false);
   });
 });
